@@ -21,7 +21,7 @@ data class RecordTransferUiState(
     val toAccountId: Long? = null,
     val amountText: String = "",
     val note: String = "",
-    val occurredAtText: String = DateTimeTextFormatter.format(System.currentTimeMillis()),
+    val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
 )
@@ -77,8 +77,11 @@ class RecordTransferViewModel(
         _uiState.value = _uiState.value.copy(note = value, errorMessage = null)
     }
 
-    fun updateOccurredAt(value: String) {
-        _uiState.value = _uiState.value.copy(occurredAtText = value, errorMessage = null)
+    fun updateOccurredAt(value: Long) {
+        _uiState.value = _uiState.value.copy(
+            occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
+            errorMessage = null,
+        )
     }
 
     fun save() {
@@ -101,9 +104,9 @@ class RecordTransferViewModel(
                 return@launch
             }
 
-            val occurredAt = DateTimeTextFormatter.parse(state.occurredAtText)
-            if (occurredAt == null) {
-                _uiState.value = state.copy(errorMessage = "请输入正确的时间，格式如 2026-04-02 16:30")
+            val occurredAt = state.occurredAtMillis
+            if (occurredAt > System.currentTimeMillis()) {
+                _uiState.value = state.copy(errorMessage = "时间不能晚于当前时间")
                 return@launch
             }
 

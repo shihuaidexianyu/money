@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.record
 
+import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -26,18 +30,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private enum class TransferPickerTarget {
     FROM,
     TO,
 }
 
+private enum class TransferDateTimeField {
+    DATE,
+    TIME,
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordTransferScreen(
     viewModel: RecordTransferViewModel,
@@ -45,8 +57,10 @@ fun RecordTransferScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var pickerTarget by remember { mutableStateOf<TransferPickerTarget?>(null) }
+    var dateTimeField by remember { mutableStateOf<TransferDateTimeField?>(null) }
     val fromAccount = state.accounts.firstOrNull { it.id == state.fromAccountId }
     val toAccount = state.accounts.firstOrNull { it.id == state.toAccountId }
 
@@ -73,6 +87,68 @@ fun RecordTransferScreen(
                 pickerTarget = null
             },
         )
+    }
+
+    dateTimeField?.let { currentField ->
+        when (currentField) {
+            TransferDateTimeField.DATE -> {
+                val pickerState = androidx.compose.material3.rememberDatePickerState(
+                    initialSelectedDateMillis = state.occurredAtMillis,
+                )
+                DatePickerDialog(
+                    onDismissRequest = { dateTimeField = null },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                pickerState.selectedDateMillis?.let { selectedDate ->
+                                    viewModel.updateOccurredAt(
+                                        DateTimeTextFormatter.replaceDate(
+                                            baseTimeMillis = state.occurredAtMillis,
+                                            selectedDateMillis = selectedDate,
+                                        ),
+                                    )
+                                }
+                                dateTimeField = null
+                            },
+                        ) {
+                            Text("确定")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { dateTimeField = null }) {
+                            Text("取消")
+                        }
+                    },
+                ) {
+                    DatePicker(state = pickerState)
+                }
+            }
+            TransferDateTimeField.TIME -> {
+                val zoneDateTime = java.time.Instant.ofEpochMilli(state.occurredAtMillis)
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDateTime()
+                LaunchedEffect(state.occurredAtMillis) {
+                    TimePickerDialog(
+                        context,
+                        { _, hour, minute ->
+                            viewModel.updateOccurredAt(
+                                DateTimeTextFormatter.replaceTime(
+                                    baseTimeMillis = state.occurredAtMillis,
+                                    hour = hour,
+                                    minute = minute,
+                                ),
+                            )
+                            dateTimeField = null
+                        },
+                        zoneDateTime.hour,
+                        zoneDateTime.minute,
+                        true,
+                    ).apply {
+                        setOnDismissListener { dateTimeField = null }
+                    }.show()
+                }
+            }
+        }
     }
 
     Column(modifier = modifier) {
@@ -123,12 +199,16 @@ fun RecordTransferScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                     )
-                    OutlinedTextField(
-                        value = state.occurredAtText,
-                        onValueChange = viewModel::updateOccurredAt,
-                        label = { Text("时间") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
+                    MoneySelectionField(
+                        label = "日期",
+                        value = DateTimeTextFormatter.formatDateOnly(state.occurredAtMillis),
+                        modifier = Modifier.clickable { dateTimeField = TransferDateTimeField.DATE },
+                    )
+                    MoneySelectionField(
+                        label = "时间",
+                        value = DateTimeTextFormatter.formatTimeOnly(state.occurredAtMillis),
+                        subtitle = "默认当前时间",
+                        modifier = Modifier.clickable { dateTimeField = TransferDateTimeField.TIME },
                     )
                     Button(
                         onClick = viewModel::save,

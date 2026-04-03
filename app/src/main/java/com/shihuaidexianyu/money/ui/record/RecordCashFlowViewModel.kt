@@ -22,7 +22,7 @@ data class RecordCashFlowUiState(
     val selectedAccountId: Long? = null,
     val amountText: String = "",
     val purpose: String = "",
-    val occurredAtText: String = DateTimeTextFormatter.format(System.currentTimeMillis()),
+    val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val showPurposeConfirm: Boolean = false,
@@ -71,8 +71,11 @@ class RecordCashFlowViewModel(
         _uiState.value = _uiState.value.copy(purpose = value, errorMessage = null)
     }
 
-    fun updateOccurredAt(value: String) {
-        _uiState.value = _uiState.value.copy(occurredAtText = value, errorMessage = null)
+    fun updateOccurredAt(value: Long) {
+        _uiState.value = _uiState.value.copy(
+            occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
+            errorMessage = null,
+        )
     }
 
     fun dismissPurposeConfirm() {
@@ -103,9 +106,9 @@ class RecordCashFlowViewModel(
                 return@launch
             }
 
-            val occurredAt = DateTimeTextFormatter.parse(state.occurredAtText)
-            if (occurredAt == null) {
-                _uiState.value = state.copy(errorMessage = "请输入正确的时间，格式如 2026-04-02 16:30")
+            val occurredAt = state.occurredAtMillis
+            if (occurredAt > System.currentTimeMillis()) {
+                _uiState.value = state.copy(errorMessage = "时间不能晚于当前时间")
                 return@launch
             }
 
