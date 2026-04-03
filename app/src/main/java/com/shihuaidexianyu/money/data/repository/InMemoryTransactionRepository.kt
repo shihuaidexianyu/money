@@ -25,6 +25,8 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override fun observeChangeVersion(): Flow<Long> = changeVersion.asStateFlow()
 
+    override suspend fun <T> runInTransaction(block: suspend () -> T): T = block()
+
     override suspend fun insertCashFlowRecord(record: CashFlowRecordEntity): Long {
         val id = nextCashFlowId++
         cashFlowRecords += record.copy(id = id)
@@ -153,12 +155,18 @@ class InMemoryTransactionRepository : TransactionRepository {
         return adjustments.firstOrNull { it.id == id }
     }
 
+    override suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long) {
+        if (adjustments.removeAll { it.sourceUpdateRecordId == sourceUpdateRecordId }) {
+            bumpVersion()
+        }
+    }
+
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity> {
         return adjustments.toList()
     }
 
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity> {
-        return adjustments.filter { it.accountId == accountId }
+        return adjustments.filter { it.accountId == accountId && it.sourceUpdateRecordId == 0L }
     }
 
     override suspend fun insertInvestmentSettlement(record: InvestmentSettlementEntity): Long {
@@ -227,13 +235,13 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long {
         return queryAllActiveCashFlowRecords()
-            .filter { it.direction == "inflow" && it.occurredAt in startAt..endAt }
+            .filter { it.direction == "inflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
     }
 
     override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long {
         return queryAllActiveCashFlowRecords()
-            .filter { it.direction == "outflow" && it.occurredAt in startAt..endAt }
+            .filter { it.direction == "outflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
     }
 

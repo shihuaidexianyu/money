@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.shihuaidexianyu.money.data.dao.AccountDao
 import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
 import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
@@ -17,6 +19,13 @@ import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS `index_balance_adjustment_records_sourceUpdateRecordId`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_balance_adjustment_records_sourceUpdateRecordId` ON `balance_adjustment_records` (`sourceUpdateRecordId`)")
+    }
+}
+
 @Database(
     entities = [
         AccountEntity::class,
@@ -26,8 +35,8 @@ import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
         BalanceAdjustmentRecordEntity::class,
         InvestmentSettlementEntity::class,
     ],
-    version = 1,
-    exportSchema = false,
+    version = 2,
+    exportSchema = true,
 )
 abstract class MoneyDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
@@ -47,7 +56,7 @@ abstract class MoneyDatabase : RoomDatabase() {
                     context,
                     MoneyDatabase::class.java,
                     "money.db",
-                ).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
             }
         }
     }

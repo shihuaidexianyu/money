@@ -7,10 +7,9 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
+import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import java.math.BigDecimal
-import java.math.RoundingMode
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,22 +54,26 @@ class EditBalanceUpdateViewModel(
 
     init {
         viewModelScope.launch {
-            val record = transactionRepository.getBalanceUpdateRecordById(recordId)
-            if (record == null) {
+            try {
+                val record = transactionRepository.getBalanceUpdateRecordById(recordId)
+                if (record == null) {
+                    emitDeletedOnce()
+                    return@launch
+                }
+                val account = accountRepository.getAccountById(record.accountId)
+                accountId = record.accountId
+                _uiState.value = EditBalanceUpdateUiState(
+                    isLoading = false,
+                    accountName = account?.name ?: "未知账户",
+                    actualBalanceText = AmountFormatter.formatPlain(record.actualBalance),
+                    occurredAtMillis = record.occurredAt,
+                    systemBalanceBeforeUpdate = record.systemBalanceBeforeUpdate,
+                    actualBalancePreview = record.actualBalance,
+                    deltaPreview = record.delta,
+                )
+            } catch (_: Exception) {
                 emitDeletedOnce()
-                return@launch
             }
-            val account = accountRepository.getAccountById(record.accountId)
-            accountId = record.accountId
-            _uiState.value = EditBalanceUpdateUiState(
-                isLoading = false,
-                accountName = account?.name ?: "未知账户",
-                actualBalanceText = record.actualBalance.toAmountText(),
-                occurredAtMillis = record.occurredAt,
-                systemBalanceBeforeUpdate = record.systemBalanceBeforeUpdate,
-                actualBalancePreview = record.actualBalance,
-                deltaPreview = record.delta,
-            )
         }
     }
 
@@ -151,12 +154,6 @@ class EditBalanceUpdateViewModel(
                 effects.emit(EditBalanceUpdateEffect.ShowMessage(throwable.message ?: "撤销失败"))
             }
         }
-    }
-
-    private fun Long.toAmountText(): String {
-        return BigDecimal.valueOf(this, 2)
-            .setScale(2, RoundingMode.DOWN)
-            .toPlainString()
     }
 
     private suspend fun emitDeletedOnce() {

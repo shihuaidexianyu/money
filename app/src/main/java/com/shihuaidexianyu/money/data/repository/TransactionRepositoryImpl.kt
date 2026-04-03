@@ -10,10 +10,13 @@ import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import androidx.room.RoomDatabase
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
 class TransactionRepositoryImpl(
+    private val database: RoomDatabase,
     private val cashFlowRecordDao: CashFlowRecordDao,
     private val transferRecordDao: TransferRecordDao,
     private val balanceUpdateRecordDao: BalanceUpdateRecordDao,
@@ -34,6 +37,10 @@ class TransactionRepositoryImpl(
                 adjustmentCount.toLong() +
                 settlementCount.toLong()
         }
+    }
+
+    override suspend fun <T> runInTransaction(block: suspend () -> T): T {
+        return database.withTransaction { block() }
     }
 
     override suspend fun insertCashFlowRecord(record: CashFlowRecordEntity): Long = cashFlowRecordDao.insert(record)
@@ -87,6 +94,10 @@ class TransactionRepositoryImpl(
     override suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity) = balanceAdjustmentRecordDao.update(record)
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecordEntity? = balanceAdjustmentRecordDao.queryById(id)
+
+    override suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long) {
+        balanceAdjustmentRecordDao.deleteBySourceUpdateRecordId(sourceUpdateRecordId)
+    }
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity> = balanceAdjustmentRecordDao.queryAllActive()
 

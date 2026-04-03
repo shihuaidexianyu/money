@@ -43,12 +43,16 @@ class RecordTransferViewModel(
 
     init {
         viewModelScope.launch {
-            val accounts = accountRepository.queryActiveAccounts()
-            _uiState.value = _uiState.value.copy(
-                accounts = accounts.toAccountOptionUiModels(),
-                fromAccountId = _uiState.value.fromAccountId ?: accounts.firstOrNull()?.id,
-                toAccountId = accounts.firstOrNull { it.id != _uiState.value.fromAccountId }?.id,
-            )
+            try {
+                val accounts = accountRepository.queryActiveAccounts()
+                _uiState.value = _uiState.value.copy(
+                    accounts = accounts.toAccountOptionUiModels(),
+                    fromAccountId = _uiState.value.fromAccountId ?: accounts.firstOrNull()?.id,
+                    toAccountId = accounts.firstOrNull { it.id != _uiState.value.fromAccountId }?.id,
+                )
+            } catch (_: Exception) {
+                // leave current state as-is
+            }
         }
     }
 

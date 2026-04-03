@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +32,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.TimeRangeUtils
@@ -114,14 +114,13 @@ fun HistoryScreen(
     sheet?.takeIf { it != HistoryFilterSheet.ACCOUNT }?.let { current ->
         HistoryFilterSheetContent(
             title = when (current) {
-                HistoryFilterSheet.ACCOUNT -> "账户"
                 HistoryFilterSheet.DATE -> "日期"
                 HistoryFilterSheet.AMOUNT -> "金额"
+                else -> ""
             },
             onDismiss = { sheet = null },
         ) {
             when (current) {
-                HistoryFilterSheet.ACCOUNT -> Unit
                 HistoryFilterSheet.DATE -> {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -179,6 +178,7 @@ fun HistoryScreen(
                         label = "最大金额",
                     )
                 }
+                else -> Unit
             }
         }
     }
@@ -310,8 +310,8 @@ private fun recordAmountColor(record: HistoryRecordUiModel): Color {
         HistoryRecordKind.BALANCE_UPDATE,
         HistoryRecordKind.BALANCE_ADJUSTMENT,
         -> when {
-            record.amount > 0 -> Color(0xFFC24A4A)
-            record.amount < 0 -> Color(0xFF3F8A63)
+            record.amount > 0 -> LocalMoneyColors.current.income
+            record.amount < 0 -> LocalMoneyColors.current.expense
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }

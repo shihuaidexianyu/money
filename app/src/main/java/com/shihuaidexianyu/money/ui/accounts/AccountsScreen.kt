@@ -17,7 +17,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
@@ -27,6 +26,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 
 @Composable
@@ -149,35 +149,20 @@ private fun AccountRow(
 ) {
     val statusColor = when {
         account.isArchived -> MaterialTheme.colorScheme.outline
-        account.isStale -> Color(0xFFC24A4A)
-        else -> Color(0xFF3F8A63)
-    }
-    val statusText = when {
-        account.isArchived -> "已归档"
-        account.isStale -> "待更新"
-        else -> "已更新"
+        account.isStale -> LocalMoneyColors.current.income
+        else -> LocalMoneyColors.current.expense
     }
 
     MoneyListRow(
         title = account.name,
         trailing = AmountFormatter.format(account.balance, currencySettings),
         accessory = {
-            Row(
-                modifier = Modifier.padding(start = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(color = statusColor, shape = CircleShape),
-                )
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = statusColor,
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .padding(start = 10.dp)
+                    .size(10.dp)
+                    .background(color = statusColor, shape = CircleShape),
+            )
         },
         modifier = Modifier.clickable(onClick = onClick),
     )

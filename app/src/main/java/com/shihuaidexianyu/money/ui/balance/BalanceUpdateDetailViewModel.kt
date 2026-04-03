@@ -46,8 +46,12 @@ class BalanceUpdateDetailViewModel(
 
     init {
         viewModelScope.launch {
-            transactionRepository.observeChangeVersion().collect {
-                loadRecord()
+            try {
+                transactionRepository.observeChangeVersion().collect {
+                    loadRecord()
+                }
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }

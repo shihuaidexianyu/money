@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -15,8 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.math.RoundingMode
 
 data class EditTransferUiState(
     val isLoading: Boolean = true,
@@ -52,21 +51,25 @@ class EditTransferViewModel(
 
     init {
         viewModelScope.launch {
-            val record = transactionRepository.queryTransferRecordById(recordId)
-            if (record == null) {
+            try {
+                val record = transactionRepository.queryTransferRecordById(recordId)
+                if (record == null) {
+                    emitDeletedOnce()
+                    return@launch
+                }
+                val accounts = accountRepository.queryActiveAccounts()
+                _uiState.value = EditTransferUiState(
+                    isLoading = false,
+                    accounts = accounts.toAccountOptionUiModels(),
+                    fromAccountId = record.fromAccountId,
+                    toAccountId = record.toAccountId,
+                    amountText = AmountFormatter.formatPlain(record.amount),
+                    note = record.note,
+                    occurredAtMillis = record.occurredAt,
+                )
+            } catch (_: Exception) {
                 emitDeletedOnce()
-                return@launch
             }
-            val accounts = accountRepository.queryActiveAccounts()
-            _uiState.value = EditTransferUiState(
-                isLoading = false,
-                accounts = accounts.toAccountOptionUiModels(),
-                fromAccountId = record.fromAccountId,
-                toAccountId = record.toAccountId,
-                amountText = record.amount.toAmountText(),
-                note = record.note,
-                occurredAtMillis = record.occurredAt,
-            )
         }
     }
 
@@ -142,10 +145,6 @@ class EditTransferViewModel(
     private fun updateState(transform: EditTransferUiState.() -> EditTransferUiState) {
         _uiState.value = _uiState.value.transform()
     }
-    private fun Long.toAmountText(): String {
-        return BigDecimal.valueOf(this, 2).setScale(2, RoundingMode.DOWN).toPlainString()
-    }
-
     private suspend fun emitDeletedOnce() {
         if (closed) return
         closed = true

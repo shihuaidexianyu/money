@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 import java.time.Instant
 import java.time.ZoneId
@@ -30,8 +31,6 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.max
 
 private val axisFormatter = DateTimeFormatter.ofPattern("MM-dd HH:mm")
-private val settlementMarkerColor = Color(0xFFB45309)
-private val currentMarkerColor = Color(0xFF0F766E)
 
 @Composable
 fun AccountTrendChartCard(
@@ -101,6 +100,8 @@ private fun AccountTrendCanvas(
     val secondary = MaterialTheme.colorScheme.secondary
     val outline = MaterialTheme.colorScheme.outline
     val grid = MaterialTheme.colorScheme.outlineVariant
+    val settlementColor = LocalMoneyColors.current.settlement
+    val currentColor = LocalMoneyColors.current.current
 
     Canvas(
         modifier = modifier
@@ -167,8 +168,8 @@ private fun AccountTrendCanvas(
             val color = when (point.markerType) {
                 AccountTrendMarkerType.INITIAL -> outline
                 AccountTrendMarkerType.UPDATE -> secondary
-                AccountTrendMarkerType.SETTLEMENT -> settlementMarkerColor
-                AccountTrendMarkerType.CURRENT -> currentMarkerColor
+                AccountTrendMarkerType.SETTLEMENT -> settlementColor
+                AccountTrendMarkerType.CURRENT -> currentColor
             }
             val radius = when (point.markerType) {
                 AccountTrendMarkerType.SETTLEMENT -> 5.dp.toPx()
@@ -229,8 +230,8 @@ private fun colorForMarker(type: AccountTrendMarkerType): Color {
     return when (type) {
         AccountTrendMarkerType.INITIAL -> MaterialTheme.colorScheme.outline
         AccountTrendMarkerType.UPDATE -> MaterialTheme.colorScheme.secondary
-        AccountTrendMarkerType.SETTLEMENT -> settlementMarkerColor
-        AccountTrendMarkerType.CURRENT -> currentMarkerColor
+        AccountTrendMarkerType.SETTLEMENT -> LocalMoneyColors.current.settlement
+        AccountTrendMarkerType.CURRENT -> LocalMoneyColors.current.current
     }
 }
 

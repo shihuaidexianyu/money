@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.navigation
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,11 +25,24 @@ internal fun NavGraphBuilder.addBalanceGraph(
     container: MoneyAppContainer,
 ) {
     val closeBalanceUpdateFlow = {
-        navController.navigate(MoneyDestination.History.route) {
-            launchSingleTop = true
-            restoreState = true
-            popUpTo(MoneyDestination.History.route) {
-                inclusive = false
+        if (!navController.popBackStack()) {
+            navController.navigate(MoneyDestination.History.route) {
+                launchSingleTop = true
+                restoreState = true
+                popUpTo(navController.graph.startDestinationId) {
+                    saveState = true
+                }
+            }
+        }
+    }
+    val closeBalanceUpdateResult = { accountId: Long ->
+        if (!navController.popBackStack(MoneyDestination.updateBalanceRoute(accountId), true)) {
+            navController.navigate(MoneyDestination.Home.route) {
+                launchSingleTop = true
+                restoreState = true
+                popUpTo(navController.graph.startDestinationId) {
+                    saveState = true
+                }
             }
         }
     }
@@ -159,7 +173,21 @@ internal fun NavGraphBuilder.addBalanceGraph(
         arguments = listOf(navArgument("accountId") { type = NavType.LongType }),
     ) { entry ->
         val accountId = entry.arguments?.getLong("accountId") ?: return@composable
-        val owner = navController.getBackStackEntry(MoneyDestination.updateBalanceRoute(accountId))
+        val owner = navController.previousBackStackEntry
+        if (owner?.destination?.route != MoneyDestination.UpdateBalanceRoute) {
+            LaunchedEffect(accountId) {
+                if (!navController.popBackStack()) {
+                    navController.navigate(MoneyDestination.Home.route) {
+                        launchSingleTop = true
+                        restoreState = true
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                    }
+                }
+            }
+            return@composable
+        }
         val viewModel = viewModel<UpdateBalanceViewModel>(
             viewModelStoreOwner = owner,
             key = "update_balance_$accountId",
@@ -178,13 +206,27 @@ internal fun NavGraphBuilder.addBalanceGraph(
         )
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         val updateState by viewModel.uiState.collectAsStateWithLifecycle()
-        val result = updateState.latestResult ?: return@composable
+        val result = updateState.latestResult
+        if (result == null) {
+            LaunchedEffect(accountId) {
+                if (!navController.popBackStack()) {
+                    navController.navigate(MoneyDestination.Home.route) {
+                        launchSingleTop = true
+                        restoreState = true
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                    }
+                }
+            }
+            return@composable
+        }
         BalanceUpdateResultScreen(
             result = result,
             settings = settingsState.settings,
-            onDone = { navController.popBackStack(MoneyDestination.updateBalanceRoute(accountId), true) },
+            onDone = { closeBalanceUpdateResult(accountId) },
             onOpenAccount = { targetAccountId ->
-                navController.popBackStack(MoneyDestination.updateBalanceRoute(accountId), true)
+                closeBalanceUpdateResult(accountId)
                 navController.navigate(MoneyDestination.accountDetailRoute(targetAccountId))
             },
         )

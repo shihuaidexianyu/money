@@ -63,7 +63,7 @@ class CalculateCurrentBalanceUseCaseTest {
             BalanceAdjustmentRecordEntity(
                 accountId = accountId,
                 delta = -100,
-                sourceUpdateRecordId = 1,
+                sourceUpdateRecordId = 0,
                 occurredAt = 5_000,
                 createdAt = 5_000,
             ),

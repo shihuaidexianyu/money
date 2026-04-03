@@ -21,8 +21,8 @@ android {
         applicationId = "com.shihuaidexianyu.money"
         minSdk = 31
         targetSdk = 36
-        versionCode = 14
-        versionName = "1.0.13"
+        versionCode = 19
+        versionName = "1.0.18"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,6 +60,10 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

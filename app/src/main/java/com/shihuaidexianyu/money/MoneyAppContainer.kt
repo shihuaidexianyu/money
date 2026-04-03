@@ -51,6 +51,7 @@ class MoneyAppContainer(context: Context) {
 
     val transactionRepository: TransactionRepository =
         TransactionRepositoryImpl(
+            database = moneyDatabase,
             cashFlowRecordDao = moneyDatabase.cashFlowRecordDao(),
             transferRecordDao = moneyDatabase.transferRecordDao(),
             balanceUpdateRecordDao = moneyDatabase.balanceUpdateRecordDao(),
@@ -103,21 +104,23 @@ class MoneyAppContainer(context: Context) {
         accountReminderSettingsRepository = accountReminderSettingsRepository,
     )
 
+    val recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(
+        accountRepository = accountRepository,
+        transactionRepository = transactionRepository,
+    )
+
     val createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val createTransferRecordUseCase = CreateTransferRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
-
-    val recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
     )
 
     val updateCashFlowRecordUseCase = UpdateCashFlowRecordUseCase(

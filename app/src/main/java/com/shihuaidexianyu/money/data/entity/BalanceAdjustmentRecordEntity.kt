@@ -9,7 +9,7 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["accountId"]),
         Index(value = ["occurredAt"]),
-        Index(value = ["sourceUpdateRecordId"], unique = true),
+        Index(value = ["sourceUpdateRecordId"]),
     ],
 )
 data class BalanceAdjustmentRecordEntity(

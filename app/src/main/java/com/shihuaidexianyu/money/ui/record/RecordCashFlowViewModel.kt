@@ -51,11 +51,15 @@ class RecordCashFlowViewModel(
 
     init {
         viewModelScope.launch {
-            val accounts = accountRepository.queryActiveAccounts()
-            _uiState.value = _uiState.value.copy(
-                accounts = accounts.toAccountOptionUiModels(),
-                selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
-            )
+            try {
+                val accounts = accountRepository.queryActiveAccounts()
+                _uiState.value = _uiState.value.copy(
+                    accounts = accounts.toAccountOptionUiModels(),
+                    selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
+                )
+            } catch (_: Exception) {
+                // leave current state as-is
+            }
         }
     }
 
