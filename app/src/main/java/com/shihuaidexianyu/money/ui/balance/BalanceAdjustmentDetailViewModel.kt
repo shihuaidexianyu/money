@@ -16,7 +16,6 @@ data class BalanceAdjustmentDetailUiState(
     val accountName: String = "",
     val delta: Long = 0,
     val occurredAt: Long = 0,
-    val sourceUpdateRecordId: Long = 0,
 )
 
 sealed interface BalanceAdjustmentDetailEffect {
@@ -36,19 +35,22 @@ class BalanceAdjustmentDetailViewModel(
 
     init {
         viewModelScope.launch {
-            val record = transactionRepository.getBalanceAdjustmentRecordById(recordId)
-            if (record == null) {
+            try {
+                val record = transactionRepository.getBalanceAdjustmentRecordById(recordId)
+                if (record == null || record.sourceUpdateRecordId > 0L) {
+                    emitClosedOnce()
+                    return@launch
+                }
+                val account = accountRepository.getAccountById(record.accountId)
+                _uiState.value = BalanceAdjustmentDetailUiState(
+                    isLoading = false,
+                    accountName = account?.name ?: "未知账户",
+                    delta = record.delta,
+                    occurredAt = record.occurredAt,
+                )
+            } catch (_: Exception) {
                 emitClosedOnce()
-                return@launch
             }
-            val account = accountRepository.getAccountById(record.accountId)
-            _uiState.value = BalanceAdjustmentDetailUiState(
-                isLoading = false,
-                accountName = account?.name ?: "未知账户",
-                delta = record.delta,
-                occurredAt = record.occurredAt,
-                sourceUpdateRecordId = record.sourceUpdateRecordId,
-            )
         }
     }
 

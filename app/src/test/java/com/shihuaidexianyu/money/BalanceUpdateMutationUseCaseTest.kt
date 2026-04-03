@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
@@ -171,5 +172,50 @@ class BalanceUpdateMutationUseCaseTest {
         assertEquals(emptyList(), transactionRepository.queryAllBalanceUpdateRecords())
         assertNull(accountRepository.getAccountById(accountId)?.lastBalanceUpdateAt)
         assertEquals(12_000, calculateCurrentBalanceUseCase(accountId))
+    }
+
+    @Test
+    fun `deleting balance update also removes legacy linked adjustment`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
+        val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val updateBalanceUseCase = UpdateBalanceUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            resolveBalanceUpdateContextUseCase = resolveContext,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
+            transactionRepository = transactionRepository,
+            recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
+        val accountId = accountRepository.createAccount(
+            AccountEntity(
+                name = "银河",
+                groupType = "bank",
+                initialBalance = 10_000,
+                createdAt = 1_000,
+            ),
+        )
+
+        updateBalanceUseCase(accountId = accountId, actualBalance = 9_000, occurredAt = 3_000)
+        val recordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
+        transactionRepository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecordEntity(
+                accountId = accountId,
+                delta = -1_000,
+                sourceUpdateRecordId = recordId,
+                occurredAt = 3_000,
+                createdAt = 3_000,
+            ),
+        )
+
+        deleteBalanceUpdateRecordUseCase(recordId)
+
+        assertEquals(emptyList(), transactionRepository.queryAllBalanceAdjustmentRecords())
+        assertEquals(10_000, calculateCurrentBalanceUseCase(accountId))
     }
 }

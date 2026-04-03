@@ -10,6 +10,8 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.util.TimeRangeUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
@@ -48,16 +50,20 @@ class ObserveHomeDashboardUseCase(
         accounts: List<AccountEntity>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: AppSettings,
-    ): HomeDashboardSnapshot {
+    ): HomeDashboardSnapshot = coroutineScope {
         val range = TimeRangeUtils.currentRange(settings.homePeriod)
-        val balances = accounts.associate { account ->
-            account.id to calculateCurrentBalanceUseCase(account.id)
+        val balanceJobs = accounts.map { account ->
+            async { account.id to calculateCurrentBalanceUseCase(account.id) }
         }
-        return HomeDashboardSnapshot(
+        val inflowJob = async { transactionRepository.sumAllInflowBetween(range.startAtMillis, range.endAtMillis) }
+        val outflowJob = async { transactionRepository.sumAllOutflowBetween(range.startAtMillis, range.endAtMillis) }
+
+        val balances = balanceJobs.associate { it.await() }
+        HomeDashboardSnapshot(
             settings = settings,
             totalAssets = balances.values.sum(),
-            periodNetInflow = transactionRepository.sumAllInflowBetween(range.startAtMillis, range.endAtMillis),
-            periodNetOutflow = transactionRepository.sumAllOutflowBetween(range.startAtMillis, range.endAtMillis),
+            periodNetInflow = inflowJob.await(),
+            periodNetOutflow = outflowJob.await(),
             staleAccountCount = accounts.count { account ->
                 AccountStatusUtils.isStale(
                     account,

@@ -56,29 +56,33 @@ class AccountsViewModel(
 
     init {
         viewModelScope.launch {
-            val snapshotFlow = combine(
-                accountRepository.observeActiveAccounts(),
-                accountRepository.observeArchivedAccounts(),
-                accountReminderSettingsRepository.observeReminderConfigs(),
-                settingsRepository.observeSettings(),
-                transactionRepository.observeChangeVersion(),
-            ) { active, archived, reminderConfigs, settings, _ ->
-                AccountsSnapshot(
-                    settings = settings,
-                    activeAccounts = buildItems(active, reminderConfigs, settings),
-                    archivedAccounts = buildItems(archived, reminderConfigs, settings),
-                )
-            }
-            combine(snapshotFlow, showArchivedFlow) { snapshot, showArchived ->
-                AccountsUiState(
-                    isLoading = false,
-                    settings = snapshot.settings,
-                    showArchived = showArchived,
-                    activeAccounts = snapshot.activeAccounts,
-                    archivedAccounts = snapshot.archivedAccounts,
-                )
-            }.collect { state ->
-                _uiState.value = state
+            try {
+                val snapshotFlow = combine(
+                    accountRepository.observeActiveAccounts(),
+                    accountRepository.observeArchivedAccounts(),
+                    accountReminderSettingsRepository.observeReminderConfigs(),
+                    settingsRepository.observeSettings(),
+                    transactionRepository.observeChangeVersion(),
+                ) { active, archived, reminderConfigs, settings, _ ->
+                    AccountsSnapshot(
+                        settings = settings,
+                        activeAccounts = buildItems(active, reminderConfigs, settings),
+                        archivedAccounts = buildItems(archived, reminderConfigs, settings),
+                    )
+                }
+                combine(snapshotFlow, showArchivedFlow) { snapshot, showArchived ->
+                    AccountsUiState(
+                        isLoading = false,
+                        settings = snapshot.settings,
+                        showArchived = showArchived,
+                        activeAccounts = snapshot.activeAccounts,
+                        archivedAccounts = snapshot.archivedAccounts,
+                    )
+                }.collect { state ->
+                    _uiState.value = state
+                }
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }

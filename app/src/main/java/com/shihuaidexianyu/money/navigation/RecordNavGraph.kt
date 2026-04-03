@@ -22,11 +22,13 @@ internal fun NavGraphBuilder.addRecordGraph(
     container: MoneyAppContainer,
 ) {
     val closeHistoryEditFlow = {
-        navController.navigate(MoneyDestination.History.route) {
-            launchSingleTop = true
-            restoreState = true
-            popUpTo(MoneyDestination.History.route) {
-                inclusive = false
+        if (!navController.popBackStack()) {
+            navController.navigate(MoneyDestination.History.route) {
+                launchSingleTop = true
+                restoreState = true
+                popUpTo(navController.graph.startDestinationId) {
+                    saveState = true
+                }
             }
         }
     }

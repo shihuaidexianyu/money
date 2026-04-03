@@ -45,17 +45,21 @@ class EditAccountViewModel(
 
     init {
         viewModelScope.launch {
-            val account = accountRepository.getAccountById(accountId)
-            if (account == null) {
+            try {
+                val account = accountRepository.getAccountById(accountId)
+                if (account == null) {
+                    emitClosedOnce()
+                    return@launch
+                }
+                _uiState.value = EditAccountUiState(
+                    isLoading = false,
+                    name = account.name,
+                    groupType = AccountGroupType.fromValue(account.groupType),
+                    reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
+                )
+            } catch (_: Exception) {
                 emitClosedOnce()
-                return@launch
             }
-            _uiState.value = EditAccountUiState(
-                isLoading = false,
-                name = account.name,
-                groupType = AccountGroupType.fromValue(account.groupType),
-                reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
-            )
         }
     }
 

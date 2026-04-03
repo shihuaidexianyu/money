@@ -19,11 +19,11 @@ interface BalanceAdjustmentRecordDao {
     @Query("SELECT * FROM balance_adjustment_records WHERE id = :id LIMIT 1")
     suspend fun queryById(id: Long): BalanceAdjustmentRecordEntity?
 
-    @Query("SELECT * FROM balance_adjustment_records ORDER BY occurredAt DESC, id DESC")
-    suspend fun queryAllActive(): List<BalanceAdjustmentRecordEntity>
+    @Query("DELETE FROM balance_adjustment_records WHERE sourceUpdateRecordId = :sourceUpdateRecordId")
+    suspend fun deleteBySourceUpdateRecordId(sourceUpdateRecordId: Long)
 
     @Query("SELECT * FROM balance_adjustment_records ORDER BY occurredAt DESC, id DESC")
-    fun observeAllActive(): Flow<List<BalanceAdjustmentRecordEntity>>
+    suspend fun queryAllActive(): List<BalanceAdjustmentRecordEntity>
 
     @Query("SELECT COUNT(*) FROM balance_adjustment_records")
     fun observeCount(): Flow<Int>
@@ -32,6 +32,7 @@ interface BalanceAdjustmentRecordDao {
         """
         SELECT * FROM balance_adjustment_records
         WHERE accountId = :accountId
+            AND sourceUpdateRecordId = 0
         ORDER BY occurredAt DESC, id DESC
         """,
     )
@@ -41,6 +42,7 @@ interface BalanceAdjustmentRecordDao {
         """
         SELECT COALESCE(SUM(delta), 0) FROM balance_adjustment_records
         WHERE accountId = :accountId
+            AND sourceUpdateRecordId = 0
             AND occurredAt > :startAt
             AND occurredAt <= :endAt
         """,

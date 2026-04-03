@@ -1,7 +1,6 @@
 package com.shihuaidexianyu.money.util
 
 import java.time.Instant
-import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -16,18 +15,6 @@ object DateTimeTextFormatter {
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): String {
         return Instant.ofEpochMilli(timeMillis).atZone(zoneId).format(formatter)
-    }
-
-    fun parse(
-        value: String,
-        zoneId: ZoneId = ZoneId.systemDefault(),
-    ): Long? {
-        return runCatching {
-            LocalDateTime.parse(value.trim(), formatter)
-                .atZone(zoneId)
-                .toInstant()
-                .toEpochMilli()
-        }.getOrNull()
     }
 
     fun floorToMinute(timeMillis: Long): Long {

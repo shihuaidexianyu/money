@@ -8,10 +8,9 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceResult
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import java.math.BigDecimal
-import java.math.RoundingMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,17 +49,21 @@ class UpdateBalanceViewModel(
 
     init {
         viewModelScope.launch {
-            val accounts = accountRepository.queryActiveAccounts()
-            val selected = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id
-            val systemBalance = selected?.let { calculateCurrentBalanceUseCase(it) } ?: 0L
-            _uiState.value = _uiState.value.copy(
-                accounts = accounts.toAccountOptionUiModels(),
-                selectedAccountId = selected,
-                actualBalanceText = systemBalance.toInputAmountText(),
-                systemBalanceBeforeUpdate = systemBalance,
-                actualBalancePreview = systemBalance,
-                deltaPreview = 0,
-            )
+            try {
+                val accounts = accountRepository.queryActiveAccounts()
+                val selected = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id
+                val systemBalance = selected?.let { calculateCurrentBalanceUseCase(it) } ?: 0L
+                _uiState.value = _uiState.value.copy(
+                    accounts = accounts.toAccountOptionUiModels(),
+                    selectedAccountId = selected,
+                    actualBalanceText = AmountFormatter.formatPlain(systemBalance),
+                    systemBalanceBeforeUpdate = systemBalance,
+                    actualBalancePreview = systemBalance,
+                    deltaPreview = 0,
+                )
+            } catch (_: Exception) {
+                // leave current state as-is
+            }
         }
     }
 
@@ -69,7 +72,7 @@ class UpdateBalanceViewModel(
             val systemBalance = calculateCurrentBalanceUseCase(accountId)
             _uiState.value = _uiState.value.copy(
                 selectedAccountId = accountId,
-                actualBalanceText = systemBalance.toInputAmountText(),
+                actualBalanceText = AmountFormatter.formatPlain(systemBalance),
                 systemBalanceBeforeUpdate = systemBalance,
                 actualBalancePreview = systemBalance,
                 deltaPreview = 0,
@@ -125,7 +128,7 @@ class UpdateBalanceViewModel(
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
                     latestResult = result,
-                    actualBalanceText = result.actualBalance.toInputAmountText(),
+                    actualBalanceText = AmountFormatter.formatPlain(result.actualBalance),
                     systemBalanceBeforeUpdate = result.actualBalance,
                     actualBalancePreview = result.actualBalance,
                     deltaPreview = 0,
@@ -136,11 +139,6 @@ class UpdateBalanceViewModel(
                 effects.emit(UpdateBalanceEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
         }
-    }
-    private fun Long.toInputAmountText(): String {
-        return BigDecimal.valueOf(this, 2)
-            .setScale(2, RoundingMode.DOWN)
-            .toPlainString()
     }
 }
 

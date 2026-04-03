@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.SnackbarHostState

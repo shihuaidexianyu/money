@@ -14,5 +14,11 @@ object AmountFormatter {
         val signed = if (amountInMinor < 0) "-" else ""
         return "${signed}${settings.currencySymbol}$absolute"
     }
+
+    fun formatPlain(amountInMinor: Long): String {
+        return BigDecimal.valueOf(amountInMinor, 2)
+            .setScale(2, RoundingMode.DOWN)
+            .toPlainString()
+    }
 }
 

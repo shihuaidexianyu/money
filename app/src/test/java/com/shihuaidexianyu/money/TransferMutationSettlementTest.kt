@@ -28,9 +28,11 @@ class TransferMutationSettlementTest {
         )
 
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val recalculate = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository)
         val createTransfer = CreateTransferRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
+            recalculateInvestmentSettlementsUseCase = recalculate,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val transferId = createTransfer(

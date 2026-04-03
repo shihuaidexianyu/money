@@ -24,9 +24,11 @@ class DeleteCashFlowBalanceTest {
         )
 
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val recalculate = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository)
         val createCashFlow = CreateCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
+            recalculateInvestmentSettlementsUseCase = recalculate,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         createCashFlow(

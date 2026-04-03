@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class CreateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -34,6 +35,8 @@ class CreateTransferRecordUseCase(
                 updatedAt = now,
             ),
         )
+        recalculateInvestmentSettlementsUseCase(fromAccountId)
+        recalculateInvestmentSettlementsUseCase(toAccountId)
         refreshAccountActivityStateUseCase(fromAccountId)
         refreshAccountActivityStateUseCase(toAccountId)
         return recordId

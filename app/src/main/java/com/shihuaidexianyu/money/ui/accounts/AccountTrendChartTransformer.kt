@@ -80,10 +80,6 @@ object AccountTrendChartTransformer {
             )
         }
 
-        if (points.isEmpty()) {
-            return AccountTrendChartUiModel()
-        }
-
         val rawMinBalance = points.minOf(AccountTrendPointUiModel::balance)
         val rawMaxBalance = points.maxOf(AccountTrendPointUiModel::balance)
         val (paddedMinBalance, paddedMaxBalance) = buildYAxisRange(rawMinBalance, rawMaxBalance)

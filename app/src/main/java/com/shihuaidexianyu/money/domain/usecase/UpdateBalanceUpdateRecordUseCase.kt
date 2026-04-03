@@ -21,14 +21,17 @@ class UpdateBalanceUpdateRecordUseCase(
             occurredAt = occurredAt,
             excludingRecordId = recordId,
         )
-        transactionRepository.updateBalanceUpdateRecord(
-            existing.copy(
-                actualBalance = actualBalance,
-                systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
-                delta = actualBalance - context.systemBalanceBeforeUpdate,
-                occurredAt = occurredAt,
-            ),
-        )
+        transactionRepository.runInTransaction {
+            transactionRepository.deleteBalanceAdjustmentBySourceUpdateRecordId(recordId)
+            transactionRepository.updateBalanceUpdateRecord(
+                existing.copy(
+                    actualBalance = actualBalance,
+                    systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
+                    delta = actualBalance - context.systemBalanceBeforeUpdate,
+                    occurredAt = occurredAt,
+                ),
+            )
+        }
         recalculateInvestmentSettlementsUseCase(existing.accountId)
         refreshAccountActivityStateUseCase(existing.accountId)
     }

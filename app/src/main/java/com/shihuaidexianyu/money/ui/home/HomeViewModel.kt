@@ -29,16 +29,20 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            observeHomeDashboardUseCase().collect { snapshot ->
-                _uiState.value = HomeUiState(
-                    isLoading = false,
-                    settings = snapshot.settings,
-                    totalAssets = snapshot.totalAssets,
-                    periodNetInflow = snapshot.periodNetInflow,
-                    periodNetOutflow = snapshot.periodNetOutflow,
-                    staleAccountCount = snapshot.staleAccountCount,
-                    accountOptions = snapshot.activeAccounts.toAccountOptionUiModels(),
-                )
+            try {
+                observeHomeDashboardUseCase().collect { snapshot ->
+                    _uiState.value = HomeUiState(
+                        isLoading = false,
+                        settings = snapshot.settings,
+                        totalAssets = snapshot.totalAssets,
+                        periodNetInflow = snapshot.periodNetInflow,
+                        periodNetOutflow = snapshot.periodNetOutflow,
+                        staleAccountCount = snapshot.staleAccountCount,
+                        accountOptions = snapshot.activeAccounts.toAccountOptionUiModels(),
+                    )
+                }
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }

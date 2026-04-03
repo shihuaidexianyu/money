@@ -22,9 +22,6 @@ interface InvestmentSettlementDao {
     @Query("SELECT * FROM investment_settlements ORDER BY periodEndAt DESC, id DESC")
     suspend fun queryAllActive(): List<InvestmentSettlementEntity>
 
-    @Query("SELECT * FROM investment_settlements ORDER BY periodEndAt DESC, id DESC")
-    fun observeAllActive(): Flow<List<InvestmentSettlementEntity>>
-
     @Query("SELECT COUNT(*) FROM investment_settlements")
     fun observeCount(): Flow<Int>
 

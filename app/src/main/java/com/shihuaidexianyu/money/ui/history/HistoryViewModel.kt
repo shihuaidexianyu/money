@@ -60,24 +60,28 @@ class HistoryViewModel(
 
     init {
         viewModelScope.launch {
-            combine(
-                settingsRepository.observeSettings(),
-                transactionRepository.observeChangeVersion(),
-            ) { settings, _ ->
-                buildState(settings)
-            }.collect { newState ->
-                allRecords = newState.records
-                _uiState.update { current ->
-                    newState.copy(
-                        keyword = current.keyword,
-                        selectedAccountId = current.selectedAccountId,
-                        dateStartAt = current.dateStartAt,
-                        dateEndAt = current.dateEndAt,
-                        minAmountText = current.minAmountText,
-                        maxAmountText = current.maxAmountText,
-                        records = applyFilters(newState.records, current),
-                    )
+            try {
+                combine(
+                    settingsRepository.observeSettings(),
+                    transactionRepository.observeChangeVersion(),
+                ) { settings, _ ->
+                    buildState(settings)
+                }.collect { newState ->
+                    allRecords = newState.records
+                    _uiState.update { current ->
+                        newState.copy(
+                            keyword = current.keyword,
+                            selectedAccountId = current.selectedAccountId,
+                            dateStartAt = current.dateStartAt,
+                            dateEndAt = current.dateEndAt,
+                            minAmountText = current.minAmountText,
+                            maxAmountText = current.maxAmountText,
+                            records = applyFilters(newState.records, current),
+                        )
+                    }
                 }
+            } catch (_: Exception) {
+                // leave current state as-is
             }
         }
     }
@@ -151,7 +155,9 @@ class HistoryViewModel(
                 keywordSource = record.note,
             )
         }
-        val updateRecords = transactionRepository.queryAllBalanceUpdateRecords().map { record ->
+        val updateRecords = transactionRepository.queryAllBalanceUpdateRecords()
+            .filter { it.delta != 0L }
+            .map { record ->
             HistoryRecordUiModel(
                 id = "balance_update_${record.id}",
                 recordId = record.id,
@@ -164,9 +170,8 @@ class HistoryViewModel(
                 keywordSource = "",
             )
         }
-        val updateRecordIds = updateRecords.mapTo(linkedSetOf()) { it.recordId }
         val adjustmentRecords = transactionRepository.queryAllBalanceAdjustmentRecords()
-            .filterNot { it.sourceUpdateRecordId in updateRecordIds }
+            .filter { it.sourceUpdateRecordId == 0L }
             .map { record ->
             HistoryRecordUiModel(
                 id = "balance_adjustment_${record.id}",

@@ -9,7 +9,10 @@ class DeleteBalanceUpdateRecordUseCase(
 ) {
     suspend operator fun invoke(recordId: Long) {
         val existing = transactionRepository.getBalanceUpdateRecordById(recordId) ?: return
-        transactionRepository.deleteBalanceUpdateRecord(recordId)
+        transactionRepository.runInTransaction {
+            transactionRepository.deleteBalanceAdjustmentBySourceUpdateRecordId(recordId)
+            transactionRepository.deleteBalanceUpdateRecord(recordId)
+        }
         recalculateInvestmentSettlementsUseCase(existing.accountId)
         refreshAccountActivityStateUseCase(existing.accountId)
     }

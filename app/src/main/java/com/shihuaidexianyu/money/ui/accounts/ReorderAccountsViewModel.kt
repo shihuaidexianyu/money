@@ -45,24 +45,28 @@ class ReorderAccountsViewModel(
 
     init {
         viewModelScope.launch {
-            val settings = settingsRepository.observeSettings().first()
-            val groupOrder = settings.accountGroupOrder
-            val accountsByGroup = accountRepository.queryActiveAccounts()
-                .groupBy { AccountGroupType.fromValue(it.groupType) }
-                .mapValues { (_, accounts) ->
-                    accounts.sortedBy { it.displayOrder }.map {
-                        ReorderAccountItemUiModel(
-                            id = it.id,
-                            name = it.name,
-                            groupType = AccountGroupType.fromValue(it.groupType),
-                        )
+            try {
+                val settings = settingsRepository.observeSettings().first()
+                val groupOrder = settings.accountGroupOrder
+                val accountsByGroup = accountRepository.queryActiveAccounts()
+                    .groupBy { AccountGroupType.fromValue(it.groupType) }
+                    .mapValues { (_, accounts) ->
+                        accounts.sortedBy { it.displayOrder }.map {
+                            ReorderAccountItemUiModel(
+                                id = it.id,
+                                name = it.name,
+                                groupType = AccountGroupType.fromValue(it.groupType),
+                            )
+                        }
                     }
-                }
-            _uiState.value = ReorderAccountsUiState(
-                isLoading = false,
-                groupOrder = groupOrder,
-                accountsByGroup = groupOrder.associateWith { group -> accountsByGroup[group].orEmpty() },
-            )
+                _uiState.value = ReorderAccountsUiState(
+                    isLoading = false,
+                    groupOrder = groupOrder,
+                    accountsByGroup = groupOrder.associateWith { group -> accountsByGroup[group].orEmpty() },
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
         }
     }
 

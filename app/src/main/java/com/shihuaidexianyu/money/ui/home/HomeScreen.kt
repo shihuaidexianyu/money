@@ -30,6 +30,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyMetricTile
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 
 @Composable
@@ -103,13 +104,13 @@ fun HomeScreen(
                     label = "${state.settings.homePeriod.displayName}净流入",
                     value = AmountFormatter.format(state.periodNetInflow, state.settings),
                     modifier = Modifier.weight(1f),
-                    accent = Color(0xFFC24A4A),
+                    accent = LocalMoneyColors.current.income,
                 )
                 MoneyMetricTile(
                     label = "${state.settings.homePeriod.displayName}净流出",
                     value = AmountFormatter.format(state.periodNetOutflow, state.settings),
                     modifier = Modifier.weight(1f),
-                    accent = Color(0xFF3F8A63),
+                    accent = LocalMoneyColors.current.expense,
                 )
             }
         }

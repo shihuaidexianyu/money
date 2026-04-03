@@ -25,6 +25,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
@@ -158,8 +159,8 @@ fun UpdateBalanceScreen(
                             else -> "与系统记录一致"
                         },
                         color = when {
-                            it > 0 -> Color(0xFFC24A4A)
-                            it < 0 -> Color(0xFF3F8A63)
+                            it > 0 -> LocalMoneyColors.current.income
+                            it < 0 -> LocalMoneyColors.current.expense
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         style = MaterialTheme.typography.bodyMedium,

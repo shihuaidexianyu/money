@@ -8,10 +8,12 @@ object AmountInputParser {
         if (normalized.isEmpty()) return null
         if (normalized.startsWith("-")) return null
 
-        return normalized.toBigDecimalOrNull()
-            ?.setScale(2, RoundingMode.DOWN)
-            ?.movePointRight(2)
-            ?.longValueExact()
+        return runCatching {
+            normalized.toBigDecimalOrNull()
+                ?.setScale(2, RoundingMode.DOWN)
+                ?.movePointRight(2)
+                ?.longValueExact()
+        }.getOrNull()
     }
 }
 

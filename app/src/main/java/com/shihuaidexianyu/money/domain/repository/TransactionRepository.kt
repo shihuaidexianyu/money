@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface TransactionRepository {
     fun observeChangeVersion(): Flow<Long>
+    suspend fun <T> runInTransaction(block: suspend () -> T): T
     suspend fun insertCashFlowRecord(record: CashFlowRecordEntity): Long
     suspend fun updateCashFlowRecord(record: CashFlowRecordEntity)
     suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long)
@@ -37,6 +38,7 @@ interface TransactionRepository {
     suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity): Long
     suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity)
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecordEntity?
+    suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long)
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity>
 

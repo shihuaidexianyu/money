@@ -23,11 +23,13 @@ internal fun NavGraphBuilder.addAccountsGraph(
     container: MoneyAppContainer,
 ) {
     val closeAccountsFlow = {
-        navController.navigate(MoneyDestination.Accounts.route) {
-            launchSingleTop = true
-            restoreState = true
-            popUpTo(MoneyDestination.Accounts.route) {
-                inclusive = false
+        if (!navController.popBackStack()) {
+            navController.navigate(MoneyDestination.Accounts.route) {
+                launchSingleTop = true
+                restoreState = true
+                popUpTo(navController.graph.startDestinationId) {
+                    saveState = true
+                }
             }
         }
     }

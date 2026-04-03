@@ -15,7 +15,7 @@ class UpdateAccountDisplayOrderUseCase(
         val accountById = activeAccounts.associateBy { it.id }
         orderedAccountIds.forEachIndexed { index, accountId ->
             val account = requireNotNull(accountById[accountId]) { "账户不存在" }
-            if (!account.isArchived && account.displayOrder != index) {
+            if (account.displayOrder != index) {
                 accountRepository.updateAccount(account.copy(displayOrder = index))
             }
         }

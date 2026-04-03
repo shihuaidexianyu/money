@@ -36,35 +36,39 @@ class AccountDetailViewModel(
 
     init {
         viewModelScope.launch {
-            observeAccountDetailUseCase().collect { snapshot ->
-                val account = snapshot.account
-                _uiState.value = if (account == null) {
-                    AccountDetailUiState(
-                        isLoading = false,
-                        isMissing = true,
-                        accountId = accountId,
-                        settings = snapshot.settings,
-                    )
-                } else {
-                    AccountDetailUiState(
-                        isLoading = false,
-                        accountId = account.id,
-                        name = account.name,
-                        groupType = AccountGroupType.fromValue(account.groupType),
-                        currentBalance = snapshot.currentBalance,
-                        lastBalanceUpdateAt = account.lastBalanceUpdateAt,
-                        reminderConfig = snapshot.reminderConfig,
-                        isStale = snapshot.isStale,
-                        settings = snapshot.settings,
-                        latestSettlement = snapshot.latestSettlement,
-                        trendChart = AccountTrendChartTransformer.build(
-                            account = account,
+            try {
+                observeAccountDetailUseCase().collect { snapshot ->
+                    val account = snapshot.account
+                    _uiState.value = if (account == null) {
+                        AccountDetailUiState(
+                            isLoading = false,
+                            isMissing = true,
+                            accountId = accountId,
+                            settings = snapshot.settings,
+                        )
+                    } else {
+                        AccountDetailUiState(
+                            isLoading = false,
+                            accountId = account.id,
+                            name = account.name,
+                            groupType = AccountGroupType.fromValue(account.groupType),
                             currentBalance = snapshot.currentBalance,
-                            balanceUpdates = snapshot.balanceUpdates,
-                            settlements = snapshot.settlements,
-                        ),
-                    )
+                            lastBalanceUpdateAt = account.lastBalanceUpdateAt,
+                            reminderConfig = snapshot.reminderConfig,
+                            isStale = snapshot.isStale,
+                            settings = snapshot.settings,
+                            latestSettlement = snapshot.latestSettlement,
+                            trendChart = AccountTrendChartTransformer.build(
+                                account = account,
+                                currentBalance = snapshot.currentBalance,
+                                balanceUpdates = snapshot.balanceUpdates,
+                                settlements = snapshot.settlements,
+                            ),
+                        )
+                    }
                 }
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, isMissing = true)
             }
         }
     }

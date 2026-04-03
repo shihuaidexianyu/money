@@ -22,9 +22,6 @@ interface TransferRecordDao {
     @Query("SELECT * FROM transfer_records WHERE id = :id AND isDeleted = 0 LIMIT 1")
     suspend fun queryById(id: Long): TransferRecordEntity?
 
-    @Query("SELECT * FROM transfer_records WHERE isDeleted = 0 ORDER BY occurredAt DESC, id DESC")
-    fun observeAllActive(): Flow<List<TransferRecordEntity>>
-
     @Query("SELECT COUNT(*) FROM transfer_records WHERE isDeleted = 0")
     fun observeActiveCount(): Flow<Int>
 
