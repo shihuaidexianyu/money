@@ -3,6 +3,8 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -32,17 +34,27 @@ class CreateAccountUseCaseTest {
             accountRepository = repository,
             accountReminderSettingsRepository = reminderRepository,
         )
-        useCase(name = "现金", groupType = AccountGroupType.PAYMENT, initialBalance = 100, balanceUpdateReminderDays = 7)
+        useCase(
+            name = "现金",
+            groupType = AccountGroupType.PAYMENT,
+            initialBalance = 100,
+            balanceUpdateReminderConfig = BalanceUpdateReminderConfig(weekday = BalanceUpdateReminderWeekday.MONDAY),
+        )
 
         val error = assertFailsWith<IllegalArgumentException> {
-            useCase(name = "现金", groupType = AccountGroupType.BANK, initialBalance = 200, balanceUpdateReminderDays = 7)
+            useCase(
+                name = "现金",
+                groupType = AccountGroupType.BANK,
+                initialBalance = 200,
+                balanceUpdateReminderConfig = BalanceUpdateReminderConfig(weekday = BalanceUpdateReminderWeekday.MONDAY),
+            )
         }
 
         assertEquals("已存在同名账户", error.message)
     }
 
     @Test
-    fun `custom reminder days are persisted alongside account`() = runBlocking {
+    fun `custom reminder config is persisted alongside account`() = runBlocking {
         val repository = InMemoryAccountRepository()
         val reminderRepository = InMemoryAccountReminderSettingsRepository()
         val useCase = CreateAccountUseCase(
@@ -54,9 +66,20 @@ class CreateAccountUseCaseTest {
             name = "信用卡",
             groupType = AccountGroupType.BANK,
             initialBalance = 100,
-            balanceUpdateReminderDays = 3,
+            balanceUpdateReminderConfig = BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.FRIDAY,
+                hour = 21,
+                minute = 30,
+            ),
         )
 
-        assertEquals(3, reminderRepository.getReminderDays(accountId))
+        assertEquals(
+            BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.FRIDAY,
+                hour = 21,
+                minute = 30,
+            ),
+            reminderRepository.getReminderConfig(accountId),
+        )
     }
 }

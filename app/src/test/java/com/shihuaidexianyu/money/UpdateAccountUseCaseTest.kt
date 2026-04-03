@@ -6,6 +6,8 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.RecalculateInvestmentSettlementsUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import kotlin.test.assertEquals
@@ -49,13 +51,24 @@ class UpdateAccountUseCaseTest {
             accountId = accountId,
             name = "理财账户",
             groupType = AccountGroupType.INVESTMENT,
-            balanceUpdateReminderDays = 14,
+            balanceUpdateReminderConfig = BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.THURSDAY,
+                hour = 20,
+                minute = 15,
+            ),
         )
 
         val updated = accountRepository.getAccountById(accountId)
         assertEquals("理财账户", updated?.name)
         assertEquals("investment", updated?.groupType)
-        assertEquals(14, reminderRepository.getReminderDays(accountId))
+        assertEquals(
+            BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.THURSDAY,
+                hour = 20,
+                minute = 15,
+            ),
+            reminderRepository.getReminderConfig(accountId),
+        )
         assertEquals(1, transactionRepository.queryInvestmentSettlementsByAccountId(accountId).size)
     }
 
@@ -96,11 +109,22 @@ class UpdateAccountUseCaseTest {
             accountId = accountId,
             name = "银行卡",
             groupType = AccountGroupType.BANK,
-            balanceUpdateReminderDays = 7,
+            balanceUpdateReminderConfig = BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.MONDAY,
+                hour = 9,
+                minute = 0,
+            ),
         )
 
         assertEquals(0, transactionRepository.queryInvestmentSettlementsByAccountId(accountId).size)
         assertEquals("bank", accountRepository.getAccountById(accountId)?.groupType)
-        assertEquals(7, reminderRepository.getReminderDays(accountId))
+        assertEquals(
+            BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.MONDAY,
+                hour = 9,
+                minute = 0,
+            ),
+            reminderRepository.getReminderConfig(accountId),
+        )
     }
 }

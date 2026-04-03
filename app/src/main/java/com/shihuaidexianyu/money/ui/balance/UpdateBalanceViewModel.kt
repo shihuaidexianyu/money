@@ -10,6 +10,8 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,9 +56,10 @@ class UpdateBalanceViewModel(
             _uiState.value = _uiState.value.copy(
                 accounts = accounts.map { it.toOption() },
                 selectedAccountId = selected,
+                actualBalanceText = systemBalance.toInputAmountText(),
                 systemBalanceBeforeUpdate = systemBalance,
-                actualBalancePreview = AmountInputParser.parseToMinor(_uiState.value.actualBalanceText),
-                deltaPreview = AmountInputParser.parseToMinor(_uiState.value.actualBalanceText)?.minus(systemBalance),
+                actualBalancePreview = systemBalance,
+                deltaPreview = 0,
             )
         }
     }
@@ -64,12 +67,12 @@ class UpdateBalanceViewModel(
     fun updateAccount(accountId: Long) {
         viewModelScope.launch {
             val systemBalance = calculateCurrentBalanceUseCase(accountId)
-            val actual = AmountInputParser.parseToMinor(_uiState.value.actualBalanceText)
             _uiState.value = _uiState.value.copy(
                 selectedAccountId = accountId,
+                actualBalanceText = systemBalance.toInputAmountText(),
                 systemBalanceBeforeUpdate = systemBalance,
-                actualBalancePreview = actual,
-                deltaPreview = actual?.minus(systemBalance),
+                actualBalancePreview = systemBalance,
+                deltaPreview = 0,
                 errorMessage = null,
             )
         }
@@ -122,6 +125,7 @@ class UpdateBalanceViewModel(
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
                     latestResult = result,
+                    actualBalanceText = result.actualBalance.toInputAmountText(),
                     systemBalanceBeforeUpdate = result.actualBalance,
                     actualBalancePreview = result.actualBalance,
                     deltaPreview = 0,
@@ -138,5 +142,11 @@ class UpdateBalanceViewModel(
 
     private fun AccountEntity.toOption(): AccountOptionUiModel {
         return AccountOptionUiModel(id = id, name = name)
+    }
+
+    private fun Long.toInputAmountText(): String {
+        return BigDecimal.valueOf(this, 2)
+            .setScale(2, RoundingMode.DOWN)
+            .toPlainString()
     }
 }

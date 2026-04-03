@@ -16,7 +16,7 @@ import com.shihuaidexianyu.money.data.repository.AccountRepository
 import com.shihuaidexianyu.money.data.repository.SettingsRepository
 import com.shihuaidexianyu.money.data.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter
 
 data class ExportJsonPayload(
     val accounts: List<AccountEntity>,
-    val accountReminderDays: Map<Long, Int>,
+    val accountReminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     val cashFlowRecords: List<CashFlowRecordEntity>,
     val transferRecords: List<TransferRecordEntity>,
     val balanceUpdateRecords: List<BalanceUpdateRecordEntity>,
@@ -48,7 +48,7 @@ data class ExportJsonResult(
 object ExportJsonPayloadFactory {
     fun build(
         accounts: List<AccountEntity>,
-        accountReminderDays: Map<Long, Int> = emptyMap(),
+        accountReminderConfigs: Map<Long, BalanceUpdateReminderConfig> = emptyMap(),
         cashFlowRecords: List<CashFlowRecordEntity>,
         transferRecords: List<TransferRecordEntity>,
         balanceUpdateRecords: List<BalanceUpdateRecordEntity>,
@@ -60,7 +60,7 @@ object ExportJsonPayloadFactory {
     ): ExportJsonPayload {
         return ExportJsonPayload(
             accounts = accounts.sortedWith(compareBy<AccountEntity> { it.isArchived }.thenBy { it.displayOrder }.thenBy { it.id }),
-            accountReminderDays = accountReminderDays,
+            accountReminderConfigs = accountReminderConfigs,
             cashFlowRecords = cashFlowRecords.sortedWith(compareBy<CashFlowRecordEntity> { it.occurredAt }.thenBy { it.id }),
             transferRecords = transferRecords.sortedWith(compareBy<TransferRecordEntity> { it.occurredAt }.thenBy { it.id }),
             balanceUpdateRecords = balanceUpdateRecords.sortedWith(compareBy<BalanceUpdateRecordEntity> { it.occurredAt }.thenBy { it.id }),
@@ -84,7 +84,7 @@ class ExportJsonUseCase(
         val exportedAt = System.currentTimeMillis()
         val payload = ExportJsonPayloadFactory.build(
             accounts = accountRepository.queryActiveAccounts() + accountRepository.queryArchivedAccounts(),
-            accountReminderDays = accountReminderSettingsRepository.observeReminderDays().first(),
+            accountReminderConfigs = accountReminderSettingsRepository.observeReminderConfigs().first(),
             cashFlowRecords = transactionRepository.queryAllCashFlowRecords(),
             transferRecords = transactionRepository.queryAllTransferRecords(),
             balanceUpdateRecords = transactionRepository.queryAllBalanceUpdateRecords(),
@@ -139,7 +139,7 @@ private fun ExportJsonPayload.toJson(): JSONObject {
             "accounts",
             JSONArray().apply {
                 accounts.forEach { account ->
-                    put(account.toJson(accountReminderDays[account.id] ?: DEFAULT_BALANCE_UPDATE_REMINDER_DAYS))
+                    put(account.toJson(accountReminderConfigs[account.id] ?: BalanceUpdateReminderConfig()))
                 }
             },
         )
@@ -163,7 +163,7 @@ private fun AppSettings.toJson(): JSONObject = JSONObject().apply {
     put("accountSortMode", accountSortMode.value)
 }
 
-private fun AccountEntity.toJson(balanceUpdateReminderDays: Int): JSONObject = JSONObject().apply {
+private fun AccountEntity.toJson(balanceUpdateReminderConfig: BalanceUpdateReminderConfig): JSONObject = JSONObject().apply {
     put("id", id)
     put("name", name)
     put("groupType", groupType)
@@ -173,7 +173,8 @@ private fun AccountEntity.toJson(balanceUpdateReminderDays: Int): JSONObject = J
     put("isArchived", isArchived)
     put("lastUsedAt", lastUsedAt ?: JSONObject.NULL)
     put("lastBalanceUpdateAt", lastBalanceUpdateAt ?: JSONObject.NULL)
-    put("balanceUpdateReminderDays", balanceUpdateReminderDays)
+    put("balanceUpdateReminderWeekday", balanceUpdateReminderConfig.weekday.value)
+    put("balanceUpdateReminderTime", balanceUpdateReminderConfig.timeText)
     put("displayOrder", displayOrder)
 }
 

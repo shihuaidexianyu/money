@@ -10,7 +10,7 @@ import com.shihuaidexianyu.money.data.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AccountSortMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.util.AccountStatusUtils
@@ -62,29 +62,29 @@ class HomeViewModel(
         viewModelScope.launch {
             combine(
                 accountRepository.observeActiveAccounts(),
-                accountReminderSettingsRepository.observeReminderDays(),
+                accountReminderSettingsRepository.observeReminderConfigs(),
                 settingsRepository.observeSettings(),
                 transactionRepository.observeChangeVersion(),
-            ) { accounts, reminderDays, settings, _ ->
-                buildUiState(accounts, reminderDays, settings)
+            ) { accounts, reminderConfigs, settings, _ ->
+                buildUiState(accounts, reminderConfigs, settings)
             }.collect { _uiState.value = it }
         }
     }
 
     private suspend fun buildUiState(
         accounts: List<AccountEntity>,
-        reminderDays: Map<Long, Int>,
+        reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: AppSettings,
     ): HomeUiState {
         val range = TimeRangeUtils.currentRange(settings.homePeriod)
         val items = accounts.map { account ->
-            val accountReminderDays = reminderDays[account.id] ?: DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+            val accountReminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()
             HomeAccountUiModel(
                 id = account.id,
                 name = account.name,
                 groupType = AccountGroupType.fromValue(account.groupType),
                 balance = calculateCurrentBalanceUseCase(account.id),
-                isStale = AccountStatusUtils.isStale(account, reminderDays = accountReminderDays),
+                isStale = AccountStatusUtils.isStale(account, reminderConfig = accountReminderConfig),
                 staleDays = AccountStatusUtils.staleDays(account),
                 lastUsedAt = account.lastUsedAt,
                 displayOrder = account.displayOrder,

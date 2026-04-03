@@ -9,6 +9,8 @@ import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.domain.model.AccountSortMode
 import com.shihuaidexianyu.money.domain.model.AmountDisplayStyle
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.WeekStart
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonPayloadFactory
@@ -23,7 +25,13 @@ class ExportJsonPayloadFactoryTest {
                 AccountEntity(id = 2, name = "旧账户", groupType = "bank", initialBalance = 0, createdAt = 1, isArchived = true),
                 AccountEntity(id = 1, name = "主账户", groupType = "payment", initialBalance = 0, createdAt = 1, displayOrder = 2),
             ),
-            accountReminderDays = mapOf(1L to 3),
+            accountReminderConfigs = mapOf(
+                1L to BalanceUpdateReminderConfig(
+                    weekday = BalanceUpdateReminderWeekday.WEDNESDAY,
+                    hour = 18,
+                    minute = 45,
+                ),
+            ),
             cashFlowRecords = listOf(
                 CashFlowRecordEntity(id = 2, accountId = 1, direction = "inflow", amount = 200, purpose = "后", occurredAt = 20, createdAt = 20, updatedAt = 20),
                 CashFlowRecordEntity(id = 1, accountId = 1, direction = "inflow", amount = 100, purpose = "前", occurredAt = 10, createdAt = 10, updatedAt = 10),
@@ -66,7 +74,14 @@ class ExportJsonPayloadFactoryTest {
         )
 
         assertEquals(2, payload.accounts.size)
-        assertEquals(3, payload.accountReminderDays[1L])
+        assertEquals(
+            BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.WEDNESDAY,
+                hour = 18,
+                minute = 45,
+            ),
+            payload.accountReminderConfigs[1L],
+        )
         assertEquals("主账户", payload.accounts.first().name)
         assertEquals(10, payload.cashFlowRecords.first().occurredAt)
         assertEquals(1, payload.balanceUpdateRecords.size)
