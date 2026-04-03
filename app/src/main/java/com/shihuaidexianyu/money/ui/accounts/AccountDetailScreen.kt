@@ -57,7 +57,7 @@ fun AccountDetailScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "提醒周期 每 ${state.reminderDays} 天",
+                    text = "提醒时间 ${state.reminderConfig.displayText}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

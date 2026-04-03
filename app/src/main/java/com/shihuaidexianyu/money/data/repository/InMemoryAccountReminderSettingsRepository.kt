@@ -1,24 +1,23 @@
 package com.shihuaidexianyu.money.data.repository
 
-import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class InMemoryAccountReminderSettingsRepository : AccountReminderSettingsRepository {
-    private val reminderDays = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    private val reminderConfigs = MutableStateFlow<Map<Long, BalanceUpdateReminderConfig>>(emptyMap())
 
-    override fun observeReminderDays(): Flow<Map<Long, Int>> = reminderDays
+    override fun observeReminderConfigs(): Flow<Map<Long, BalanceUpdateReminderConfig>> = reminderConfigs
 
-    override suspend fun getReminderDays(accountId: Long): Int {
-        return reminderDays.value[accountId] ?: DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+    override suspend fun getReminderConfig(accountId: Long): BalanceUpdateReminderConfig {
+        return reminderConfigs.value[accountId] ?: BalanceUpdateReminderConfig()
     }
 
-    override suspend fun updateReminderDays(accountId: Long, days: Int) {
-        val normalizedDays = days.coerceAtLeast(1)
-        reminderDays.value = if (normalizedDays == DEFAULT_BALANCE_UPDATE_REMINDER_DAYS) {
-            reminderDays.value - accountId
+    override suspend fun updateReminderConfig(accountId: Long, config: BalanceUpdateReminderConfig) {
+        reminderConfigs.value = if (config == BalanceUpdateReminderConfig()) {
+            reminderConfigs.value - accountId
         } else {
-            reminderDays.value + (accountId to normalizedDays)
+            reminderConfigs.value + (accountId to config)
         }
     }
 }

@@ -1,9 +1,10 @@
 package com.shihuaidexianyu.money.data.repository
 
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import kotlinx.coroutines.flow.Flow
 
 interface AccountReminderSettingsRepository {
-    fun observeReminderDays(): Flow<Map<Long, Int>>
-    suspend fun getReminderDays(accountId: Long): Int
-    suspend fun updateReminderDays(accountId: Long, days: Int)
+    fun observeReminderConfigs(): Flow<Map<Long, BalanceUpdateReminderConfig>>
+    suspend fun getReminderConfig(accountId: Long): BalanceUpdateReminderConfig
+    suspend fun updateReminderConfig(accountId: Long, config: BalanceUpdateReminderConfig)
 }

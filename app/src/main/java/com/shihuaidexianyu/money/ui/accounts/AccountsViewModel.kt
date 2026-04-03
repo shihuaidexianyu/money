@@ -10,7 +10,7 @@ import com.shihuaidexianyu.money.data.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AccountSortMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,14 +62,14 @@ class AccountsViewModel(
             val snapshotFlow = combine(
                 accountRepository.observeActiveAccounts(),
                 accountRepository.observeArchivedAccounts(),
-                accountReminderSettingsRepository.observeReminderDays(),
+                accountReminderSettingsRepository.observeReminderConfigs(),
                 settingsRepository.observeSettings(),
                 transactionRepository.observeChangeVersion(),
-            ) { active, archived, reminderDays, settings, _ ->
+            ) { active, archived, reminderConfigs, settings, _ ->
                 AccountsSnapshot(
                     settings = settings,
-                    activeAccounts = buildItems(active, reminderDays, settings.accountSortMode),
-                    archivedAccounts = archived.map { mapItem(it, reminderDays[it.id]) },
+                    activeAccounts = buildItems(active, reminderConfigs, settings.accountSortMode),
+                    archivedAccounts = archived.map { mapItem(it, reminderConfigs[it.id]) },
                 )
             }
             combine(snapshotFlow, showArchivedFlow) { snapshot, showArchived ->
@@ -98,10 +98,10 @@ class AccountsViewModel(
 
     private suspend fun buildItems(
         accounts: List<AccountEntity>,
-        reminderDays: Map<Long, Int>,
+        reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         sortMode: AccountSortMode,
     ): List<AccountListItemUiModel> {
-        val items = accounts.map { mapItem(it, reminderDays[it.id]) }
+        val items = accounts.map { mapItem(it, reminderConfigs[it.id]) }
         return when (sortMode) {
             AccountSortMode.RECENT_USED -> items.sortedWith(compareByDescending<AccountListItemUiModel> { it.lastUsedAt ?: 0L }.thenBy { it.displayOrder })
             AccountSortMode.MANUAL -> items.sortedBy { it.displayOrder }
@@ -109,7 +109,10 @@ class AccountsViewModel(
         }
     }
 
-    private suspend fun mapItem(account: AccountEntity, reminderDays: Int?): AccountListItemUiModel {
+    private suspend fun mapItem(
+        account: AccountEntity,
+        reminderConfig: BalanceUpdateReminderConfig?,
+    ): AccountListItemUiModel {
         return AccountListItemUiModel(
             id = account.id,
             name = account.name,
@@ -118,7 +121,7 @@ class AccountsViewModel(
             isArchived = account.isArchived,
             isStale = AccountStatusUtils.isStale(
                 account,
-                reminderDays = reminderDays ?: DEFAULT_BALANCE_UPDATE_REMINDER_DAYS,
+                reminderConfig = reminderConfig ?: BalanceUpdateReminderConfig(),
             ),
             lastUsedAt = account.lastUsedAt,
             archivedAt = account.archivedAt,

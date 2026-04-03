@@ -9,7 +9,7 @@ import com.shihuaidexianyu.money.data.repository.SettingsRepository
 import com.shihuaidexianyu.money.data.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.InvestmentSettlementSummary
 import com.shihuaidexianyu.money.util.AccountStatusUtils
@@ -32,7 +32,7 @@ data class AccountDetailUiState(
     val groupType: AccountGroupType = AccountGroupType.PAYMENT,
     val currentBalance: Long = 0,
     val lastBalanceUpdateAt: Long? = null,
-    val reminderDays: Int = DEFAULT_BALANCE_UPDATE_REMINDER_DAYS,
+    val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isStale: Boolean = false,
     val settings: AppSettings = AppSettings(),
     val latestSettlement: InvestmentSettlementSummary? = null,
@@ -56,12 +56,12 @@ class AccountDetailViewModel(
             combine(
                 accountRepository.observeActiveAccounts(),
                 accountRepository.observeArchivedAccounts(),
-                accountReminderSettingsRepository.observeReminderDays(),
+                accountReminderSettingsRepository.observeReminderConfigs(),
                 settingsRepository.observeSettings(),
                 transactionRepository.observeChangeVersion(),
-            ) { active, archived, reminderDays, settings, _ ->
+            ) { active, archived, reminderConfigs, settings, _ ->
                 val account = (active + archived).firstOrNull { it.id == accountId }
-                buildState(account, settings, reminderDays)
+                buildState(account, settings, reminderConfigs)
             }.collect { state ->
                 _uiState.value = state
             }
@@ -77,7 +77,7 @@ class AccountDetailViewModel(
     private suspend fun buildState(
         account: AccountEntity?,
         settings: AppSettings,
-        reminderDays: Map<Long, Int>,
+        reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): AccountDetailUiState {
         if (account == null) {
             return AccountDetailUiState(
@@ -102,10 +102,10 @@ class AccountDetailViewModel(
             groupType = AccountGroupType.fromValue(account.groupType),
             currentBalance = currentBalance,
             lastBalanceUpdateAt = account.lastBalanceUpdateAt,
-            reminderDays = reminderDays[account.id] ?: DEFAULT_BALANCE_UPDATE_REMINDER_DAYS,
+            reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
             isStale = AccountStatusUtils.isStale(
                 account,
-                reminderDays = reminderDays[account.id] ?: DEFAULT_BALANCE_UPDATE_REMINDER_DAYS,
+                reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
             ),
             settings = settings,
             latestSettlement = latestSettlement?.let { settlement ->

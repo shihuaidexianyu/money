@@ -2,8 +2,9 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderInterval
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlinx.coroutines.channels.Channel
@@ -16,7 +17,7 @@ import kotlinx.coroutines.launch
 data class CreateAccountUiState(
     val name: String = "",
     val groupType: AccountGroupType = AccountGroupType.PAYMENT,
-    val reminderInterval: BalanceUpdateReminderInterval = BalanceUpdateReminderInterval.EVERY_WEEK,
+    val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val amountText: String = "",
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
@@ -43,8 +44,18 @@ class CreateAccountViewModel(
         _uiState.value = _uiState.value.copy(groupType = value, errorMessage = null)
     }
 
-    fun updateReminderInterval(value: BalanceUpdateReminderInterval) {
-        _uiState.value = _uiState.value.copy(reminderInterval = value, errorMessage = null)
+    fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
+        _uiState.value = _uiState.value.copy(
+            reminderConfig = _uiState.value.reminderConfig.copy(weekday = value),
+            errorMessage = null,
+        )
+    }
+
+    fun updateReminderTime(hour: Int, minute: Int) {
+        _uiState.value = _uiState.value.copy(
+            reminderConfig = _uiState.value.reminderConfig.copy(hour = hour, minute = minute),
+            errorMessage = null,
+        )
     }
 
     fun updateAmountText(value: String) {
@@ -65,7 +76,7 @@ class CreateAccountViewModel(
                     name = _uiState.value.name,
                     groupType = _uiState.value.groupType,
                     initialBalance = amount,
-                    balanceUpdateReminderDays = _uiState.value.reminderInterval.days,
+                    balanceUpdateReminderConfig = _uiState.value.reminderConfig,
                 )
             }.onSuccess {
                 events.send(CreateAccountEvent.Saved)

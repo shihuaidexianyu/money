@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.accounts
 
+import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,11 +20,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
-import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderInterval
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
@@ -35,6 +37,7 @@ fun CreateAccountScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var showTypeDialog by remember { mutableStateOf(false) }
     var showReminderDialog by remember { mutableStateOf(false) }
@@ -80,18 +83,18 @@ fun CreateAccountScreen(
     if (showReminderDialog) {
         AlertDialog(
             onDismissRequest = { showReminderDialog = false },
-            title = { Text("提醒周期") },
+            title = { Text("每周提醒日") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    BalanceUpdateReminderInterval.entries.forEach { interval ->
+                    BalanceUpdateReminderWeekday.entries.forEach { weekday ->
                         TextButton(
                             onClick = {
-                                viewModel.updateReminderInterval(interval)
+                                viewModel.updateReminderWeekday(weekday)
                                 showReminderDialog = false
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(text = interval.displayName, modifier = Modifier.fillMaxWidth())
+                            Text(text = weekday.displayName, modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
@@ -134,10 +137,23 @@ fun CreateAccountScreen(
                         modifier = Modifier.clickable { showTypeDialog = true },
                     )
                     MoneySelectionField(
-                        label = "提醒周期",
-                        value = state.reminderInterval.displayName,
-                        subtitle = "超过这个周期后标记为待更新",
+                        label = "每周提醒日",
+                        value = state.reminderConfig.weekday.displayName,
+                        subtitle = "到了提醒时间后未更新会标记为待更新",
                         modifier = Modifier.clickable { showReminderDialog = true },
+                    )
+                    MoneySelectionField(
+                        label = "提醒时间",
+                        value = state.reminderConfig.timeText,
+                        modifier = Modifier.clickable {
+                            TimePickerDialog(
+                                context,
+                                { _, hour, minute -> viewModel.updateReminderTime(hour, minute) },
+                                state.reminderConfig.hour,
+                                state.reminderConfig.minute,
+                                true,
+                            ).show()
+                        },
                     )
                     Button(
                         onClick = viewModel::save,

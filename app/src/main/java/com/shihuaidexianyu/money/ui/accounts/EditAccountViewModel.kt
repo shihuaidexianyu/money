@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
-import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderInterval
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.data.repository.AccountRepository
 import kotlinx.coroutines.channels.Channel
@@ -18,7 +19,7 @@ data class EditAccountUiState(
     val isLoading: Boolean = true,
     val name: String = "",
     val groupType: AccountGroupType = AccountGroupType.PAYMENT,
-    val reminderInterval: BalanceUpdateReminderInterval = BalanceUpdateReminderInterval.EVERY_WEEK,
+    val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
 )
@@ -47,9 +48,7 @@ class EditAccountViewModel(
                 isLoading = false,
                 name = account.name,
                 groupType = AccountGroupType.fromValue(account.groupType),
-                reminderInterval = BalanceUpdateReminderInterval.fromDays(
-                    accountReminderSettingsRepository.getReminderDays(accountId),
-                ),
+                reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
             )
         }
     }
@@ -62,8 +61,18 @@ class EditAccountViewModel(
         _uiState.value = _uiState.value.copy(groupType = value, errorMessage = null)
     }
 
-    fun updateReminderInterval(value: BalanceUpdateReminderInterval) {
-        _uiState.value = _uiState.value.copy(reminderInterval = value, errorMessage = null)
+    fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
+        _uiState.value = _uiState.value.copy(
+            reminderConfig = _uiState.value.reminderConfig.copy(weekday = value),
+            errorMessage = null,
+        )
+    }
+
+    fun updateReminderTime(hour: Int, minute: Int) {
+        _uiState.value = _uiState.value.copy(
+            reminderConfig = _uiState.value.reminderConfig.copy(hour = hour, minute = minute),
+            errorMessage = null,
+        )
     }
 
     fun save() {
@@ -75,7 +84,7 @@ class EditAccountViewModel(
                     accountId = accountId,
                     name = state.name,
                     groupType = state.groupType,
-                    balanceUpdateReminderDays = state.reminderInterval.days,
+                    balanceUpdateReminderConfig = state.reminderConfig,
                 )
             }.onSuccess {
                 events.send(EditAccountEvent.Saved)
