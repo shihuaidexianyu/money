@@ -4,7 +4,8 @@ import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
+import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -26,11 +27,11 @@ class UpdateBalanceUseCaseTest {
                 createdAt = 1_000,
             ),
         )
-        val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+            resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
+            refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
         )
 
         val result = updateBalanceUseCase(
@@ -69,11 +70,11 @@ class UpdateBalanceUseCaseTest {
             ),
         )
 
-        val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+            resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
+            refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
         )
 
         val result = updateBalanceUseCase(

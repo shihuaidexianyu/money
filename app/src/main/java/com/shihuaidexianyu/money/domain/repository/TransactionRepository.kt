@@ -27,6 +27,7 @@ interface TransactionRepository {
 
     suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long
     suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecordEntity)
+    suspend fun deleteBalanceUpdateRecord(id: Long)
     suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecordEntity?
     suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecordEntity>
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecordEntity>

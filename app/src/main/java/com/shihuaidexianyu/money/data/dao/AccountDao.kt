@@ -35,7 +35,7 @@ interface AccountDao {
     suspend fun updateLastUsedAt(accountId: Long, timestamp: Long)
 
     @Query("UPDATE accounts SET lastBalanceUpdateAt = :timestamp WHERE id = :accountId")
-    suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long)
+    suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long?)
 
     @Query(
         """

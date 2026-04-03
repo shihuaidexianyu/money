@@ -30,6 +30,8 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.max
 
 private val axisFormatter = DateTimeFormatter.ofPattern("MM-dd HH:mm")
+private val settlementMarkerColor = Color(0xFFB45309)
+private val currentMarkerColor = Color(0xFF0F766E)
 
 @Composable
 fun AccountTrendChartCard(
@@ -97,7 +99,6 @@ private fun AccountTrendCanvas(
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
-    val tertiary = MaterialTheme.colorScheme.tertiary
     val outline = MaterialTheme.colorScheme.outline
     val grid = MaterialTheme.colorScheme.outlineVariant
 
@@ -166,8 +167,8 @@ private fun AccountTrendCanvas(
             val color = when (point.markerType) {
                 AccountTrendMarkerType.INITIAL -> outline
                 AccountTrendMarkerType.UPDATE -> secondary
-                AccountTrendMarkerType.SETTLEMENT -> tertiary
-                AccountTrendMarkerType.CURRENT -> primary
+                AccountTrendMarkerType.SETTLEMENT -> settlementMarkerColor
+                AccountTrendMarkerType.CURRENT -> currentMarkerColor
             }
             val radius = when (point.markerType) {
                 AccountTrendMarkerType.SETTLEMENT -> 5.dp.toPx()
@@ -228,8 +229,8 @@ private fun colorForMarker(type: AccountTrendMarkerType): Color {
     return when (type) {
         AccountTrendMarkerType.INITIAL -> MaterialTheme.colorScheme.outline
         AccountTrendMarkerType.UPDATE -> MaterialTheme.colorScheme.secondary
-        AccountTrendMarkerType.SETTLEMENT -> MaterialTheme.colorScheme.tertiary
-        AccountTrendMarkerType.CURRENT -> MaterialTheme.colorScheme.primary
+        AccountTrendMarkerType.SETTLEMENT -> settlementMarkerColor
+        AccountTrendMarkerType.CURRENT -> currentMarkerColor
     }
 }
 

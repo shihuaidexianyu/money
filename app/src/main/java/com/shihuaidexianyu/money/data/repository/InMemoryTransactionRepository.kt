@@ -105,6 +105,12 @@ class InMemoryTransactionRepository : TransactionRepository {
         bumpVersion()
     }
 
+    override suspend fun deleteBalanceUpdateRecord(id: Long) {
+        if (balanceUpdates.removeAll { it.id == id }) {
+            bumpVersion()
+        }
+    }
+
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecordEntity? {
         return balanceUpdates.firstOrNull { it.id == id }
     }

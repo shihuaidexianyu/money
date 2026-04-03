@@ -16,6 +16,9 @@ interface BalanceUpdateRecordDao {
     @Update
     suspend fun update(record: BalanceUpdateRecordEntity)
 
+    @Query("DELETE FROM balance_update_records WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("SELECT * FROM balance_update_records WHERE id = :id LIMIT 1")
     suspend fun queryById(id: Long): BalanceUpdateRecordEntity?
 

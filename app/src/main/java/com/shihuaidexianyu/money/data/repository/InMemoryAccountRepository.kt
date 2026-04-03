@@ -64,7 +64,7 @@ class InMemoryAccountRepository : AccountRepository {
         }
     }
 
-    override suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long) {
+    override suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long?) {
         accounts.value = accounts.value.map { existing ->
             if (existing.id == accountId) existing.copy(lastBalanceUpdateAt = timestamp) else existing
         }

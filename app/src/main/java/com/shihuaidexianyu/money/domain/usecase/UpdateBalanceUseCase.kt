@@ -29,7 +29,8 @@ data class UpdateBalanceResult(
 class UpdateBalanceUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val resolveBalanceUpdateContextUseCase: ResolveBalanceUpdateContextUseCase,
+    private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -39,11 +40,9 @@ class UpdateBalanceUseCase(
         require(occurredAt <= System.currentTimeMillis()) { "时间不能晚于当前时间" }
 
         val account = requireNotNull(accountRepository.getAccountById(accountId))
-        val previousUpdate = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
-            .filter { it.occurredAt <= occurredAt }
-            .maxWithOrNull(compareBy({ it.occurredAt }, { it.id }))
-
-        val systemBalanceBeforeUpdate = calculateCurrentBalanceUseCase(accountId, occurredAt)
+        val context = resolveBalanceUpdateContextUseCase(accountId, occurredAt)
+        val previousUpdate = context.previousUpdate
+        val systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate
         val delta = actualBalance - systemBalanceBeforeUpdate
         val now = System.currentTimeMillis()
 
@@ -97,11 +96,7 @@ class UpdateBalanceUseCase(
             null
         }
 
-        accountRepository.updateLastBalanceUpdateAt(accountId, occurredAt)
-        val lastUsedAt = account.lastUsedAt ?: Long.MIN_VALUE
-        if (occurredAt > lastUsedAt) {
-            accountRepository.updateLastUsedAt(accountId, occurredAt)
-        }
+        refreshAccountActivityStateUseCase(accountId)
 
         return UpdateBalanceResult(
             accountId = accountId,

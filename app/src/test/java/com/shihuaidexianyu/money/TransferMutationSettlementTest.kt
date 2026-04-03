@@ -1,11 +1,12 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.RecalculateInvestmentSettlementsUseCase
+import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import kotlin.test.assertEquals
@@ -33,8 +34,12 @@ class TransferMutationSettlementTest {
             occurredAt = 2_000,
         )
 
-        val calculateBalance = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
-        val updateBalance = UpdateBalanceUseCase(accountRepository, transactionRepository, calculateBalance)
+        val updateBalance = UpdateBalanceUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
+            refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+        )
         updateBalance(
             accountId = investmentId,
             actualBalance = 130_000,

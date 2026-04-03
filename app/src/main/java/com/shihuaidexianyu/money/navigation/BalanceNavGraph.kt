@@ -14,6 +14,8 @@ import com.shihuaidexianyu.money.ui.balance.BalanceAdjustmentDetailViewModel
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateDetailScreen
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateDetailViewModel
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateResultScreen
+import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateScreen
+import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateViewModel
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceScreen
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceViewModel
 
@@ -33,6 +35,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
+                    deleteBalanceUpdateRecordUseCase = container.deleteBalanceUpdateRecordUseCase,
                 )
             },
         )
@@ -43,7 +46,39 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         BalanceUpdateDetailScreen(
+            viewModel = viewModel,
             state = state,
+            settings = settingsState.settings,
+            onEdit = { navController.navigate(MoneyDestination.editBalanceUpdateRoute(recordId)) },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(
+        route = MoneyDestination.EditBalanceUpdateRoute,
+        arguments = listOf(navArgument("recordId") { type = NavType.LongType }),
+    ) { entry ->
+        val recordId = entry.arguments?.getLong("recordId") ?: return@composable
+        val viewModel = viewModel<EditBalanceUpdateViewModel>(
+            key = "edit_balance_update_$recordId",
+            factory = moneyViewModelFactory {
+                EditBalanceUpdateViewModel(
+                    recordId = recordId,
+                    accountRepository = container.accountRepository,
+                    transactionRepository = container.transactionRepository,
+                    resolveBalanceUpdateContextUseCase = container.resolveBalanceUpdateContextUseCase,
+                    updateBalanceUpdateRecordUseCase = container.updateBalanceUpdateRecordUseCase,
+                    deleteBalanceUpdateRecordUseCase = container.deleteBalanceUpdateRecordUseCase,
+                )
+            },
+        )
+        val settingsViewModel = rememberSettingsViewModel(
+            container = container,
+            key = "settings_for_edit_balance_update",
+        )
+        val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+        EditBalanceUpdateScreen(
+            viewModel = viewModel,
             settings = settingsState.settings,
             onBack = { navController.popBackStack() },
         )

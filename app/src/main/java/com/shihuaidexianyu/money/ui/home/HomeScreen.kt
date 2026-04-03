@@ -114,7 +114,7 @@ fun HomeScreen(
             }
         }
         item {
-            MoneySectionHeader(title = "快捷操作")
+            MoneySectionHeader(title = "操作")
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

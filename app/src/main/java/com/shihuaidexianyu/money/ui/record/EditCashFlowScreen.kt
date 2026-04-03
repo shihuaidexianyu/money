@@ -25,6 +25,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
+import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
@@ -138,12 +139,10 @@ fun EditCashFlowScreen(
         }
         item {
             MoneyCard {
-                OutlinedTextField(
+                MoneySingleLineField(
                     value = state.purpose,
                     onValueChange = viewModel::updatePurpose,
-                    label = { Text("用途") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
+                    label = "用途",
                 )
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,

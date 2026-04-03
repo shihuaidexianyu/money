@@ -20,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
@@ -87,11 +88,11 @@ fun MoneyTextInputDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
+            MoneySingleLineField(
                 value = value,
                 onValueChange = onValueChange,
+                label = null,
                 modifier = modifier.fillMaxWidth(),
-                singleLine = true,
             )
         },
         confirmButton = {
@@ -100,6 +101,28 @@ fun MoneyTextInputDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(dismissLabel) }
         },
+    )
+}
+
+@Composable
+fun MoneySingleLineField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String?,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    enabled: Boolean = true,
+    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label?.let { { Text(it) } },
+        placeholder = placeholder?.let { { Text(it) } },
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
+        singleLine = true,
+        textStyle = textStyle,
     )
 }
 

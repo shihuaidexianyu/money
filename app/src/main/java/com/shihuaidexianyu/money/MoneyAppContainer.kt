@@ -15,16 +15,20 @@ import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.RecalculateInvestmentSettlementsUseCase
+import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
+import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountOrderingUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import kotlinx.coroutines.runBlocking
@@ -61,6 +65,16 @@ class MoneyAppContainer(context: Context) {
         AccountReminderSettingsRepositoryImpl(appContext)
 
     val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
+        accountRepository = accountRepository,
+        transactionRepository = transactionRepository,
+    )
+
+    val resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(
+        accountRepository = accountRepository,
+        transactionRepository = transactionRepository,
+    )
+
+    val refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
     )
@@ -129,7 +143,21 @@ class MoneyAppContainer(context: Context) {
     val updateBalanceUseCase = UpdateBalanceUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
-        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+        resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+    )
+
+    val updateBalanceUpdateRecordUseCase = UpdateBalanceUpdateRecordUseCase(
+        transactionRepository = transactionRepository,
+        resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
+        recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+    )
+
+    val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
+        transactionRepository = transactionRepository,
+        recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateAccountUseCase = UpdateAccountUseCase(
