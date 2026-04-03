@@ -33,7 +33,7 @@ class AccountRepositoryImpl(
         accountDao.updateLastUsedAt(accountId, timestamp)
     }
 
-    override suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long) {
+    override suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long?) {
         accountDao.updateLastBalanceUpdateAt(accountId, timestamp)
     }
 

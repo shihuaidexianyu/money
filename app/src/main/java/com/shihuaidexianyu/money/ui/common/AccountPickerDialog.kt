@@ -34,8 +34,10 @@ fun AccountPickerDialog(
     accounts: List<AccountOptionUiModel>,
     selectedAccountId: Long? = null,
     disabledAccountIds: Set<Long> = emptySet(),
+    noSelectionLabel: String? = null,
     onDismiss: () -> Unit,
     onPick: (Long) -> Unit,
+    onClearSelection: (() -> Unit)? = null,
 ) {
     val groupedAccounts = AccountGroupType.entries.mapNotNull { groupType ->
         accounts.filter { it.groupType == groupType }
@@ -57,6 +59,27 @@ fun AccountPickerDialog(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+
+            if (noSelectionLabel != null && onClearSelection != null) {
+                item {
+                    MoneyListSection {
+                        MoneyListRow(
+                            title = noSelectionLabel,
+                            showChevron = false,
+                            modifier = Modifier.clickable { onClearSelection() },
+                            accessory = {
+                                if (selectedAccountId == null) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            },
+                        )
+                    }
                 }
             }
 

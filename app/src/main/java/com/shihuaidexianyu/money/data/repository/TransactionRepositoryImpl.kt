@@ -68,6 +68,8 @@ class TransactionRepositoryImpl(
 
     override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecordEntity) = balanceUpdateRecordDao.update(record)
 
+    override suspend fun deleteBalanceUpdateRecord(id: Long) = balanceUpdateRecordDao.deleteById(id)
+
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecordEntity? = balanceUpdateRecordDao.queryById(id)
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecordEntity> = balanceUpdateRecordDao.queryAllActive()

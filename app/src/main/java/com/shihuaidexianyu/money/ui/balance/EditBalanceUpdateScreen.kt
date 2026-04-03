@@ -1,9 +1,9 @@
-package com.shihuaidexianyu.money.ui.record
+package com.shihuaidexianyu.money.ui.balance
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -22,42 +22,39 @@ import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
-import com.shihuaidexianyu.money.ui.common.MoneySelectionField
-import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
+import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
+import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
-fun RecordCashFlowScreen(
-    viewModel: RecordCashFlowViewModel,
+fun EditBalanceUpdateScreen(
+    viewModel: EditBalanceUpdateViewModel,
+    settings: AppSettings,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAccountPicker by remember { mutableStateOf(false) }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
-    val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
 
     LaunchedEffect(viewModel) {
         viewModel.effectFlow.collect { effect ->
             when (effect) {
-                RecordCashFlowEffect.Saved -> onBack()
-                is RecordCashFlowEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+                EditBalanceUpdateEffect.Finished -> onBack()
+                is EditBalanceUpdateEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
             }
         }
     }
 
-    if (showAccountPicker) {
-        AccountPickerDialog(
-            title = "选择账户",
-            accounts = state.accounts,
-            selectedAccountId = state.selectedAccountId,
-            onDismiss = { showAccountPicker = false },
-            onPick = {
-                viewModel.updateAccount(it)
-                showAccountPicker = false
-            },
+    if (state.showDeleteConfirm) {
+        MoneyConfirmDialog(
+            title = "撤销余额更新",
+            message = "撤销后会重新计算该账户当前余额和投资结算，确认继续？",
+            onConfirm = viewModel::delete,
+            onDismiss = viewModel::dismissDeleteConfirm,
+            confirmLabel = "确认撤销",
+            dismissLabel = "取消",
         )
     }
 
@@ -100,62 +97,69 @@ fun RecordCashFlowScreen(
         }
     }
 
-    if (state.showPurposeConfirm) {
-        MoneyConfirmDialog(
-            title = "未填写用途",
-            message = "仍要保存吗？",
-            onConfirm = { viewModel.save(confirmBlankPurpose = true) },
-            onDismiss = viewModel::dismissPurposeConfirm,
-            confirmLabel = "保存",
-            dismissLabel = "返回",
-        )
-    }
-
     MoneyFormPage(
-        title = state.direction.displayName,
+        title = "修改余额更新",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
     ) {
         item {
             MoneyCard {
-                MoneySelectionField(
-                    label = "账户",
-                    value = selectedAccount?.name ?: "请选择",
-                    subtitle = selectedAccount?.groupType?.displayName,
-                    modifier = Modifier.clickable { showAccountPicker = true },
-                )
+                if (state.isLoading) {
+                    Text("加载中...", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    Text(
+                        text = "这次修改会影响当前余额和后续投资结算",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    MoneyInlineLabelValue(label = "账户", value = state.accountName)
+                    MoneyInlineLabelValue(
+                        label = "系统余额",
+                        value = AmountFormatter.format(state.systemBalanceBeforeUpdate, settings),
+                    )
+                    MoneyAmountField(
+                        value = state.actualBalanceText,
+                        onValueChange = viewModel::updateActualBalance,
+                        label = "实际余额",
+                    )
+                }
             }
         }
         item {
             MoneyCard {
-                MoneyAmountField(
-                    value = state.amountText,
-                    onValueChange = viewModel::updateAmount,
-                )
-            }
-        }
-        item {
-            MoneyCard {
-                MoneySingleLineField(
-                    value = state.purpose,
-                    onValueChange = viewModel::updatePurpose,
-                    label = "用途",
-                )
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "默认当前时间",
+                    timeSubtitle = "修改本次更新的发生时间",
+                )
+                MoneyInlineLabelValue(
+                    label = "实际余额",
+                    value = state.actualBalancePreview?.let { AmountFormatter.format(it, settings) } ?: "-",
+                )
+                MoneyInlineLabelValue(
+                    label = "差额",
+                    value = state.deltaPreview?.let { AmountFormatter.format(it, settings) } ?: "-",
                 )
                 Button(
-                    onClick = { viewModel.save() },
+                    onClick = viewModel::save,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isSaving,
+                    enabled = !state.isLoading && !state.isSaving,
                 ) {
-                    Text(if (state.isSaving) "保存中..." else "保存")
+                    Text(if (state.isSaving) "保存中..." else "保存修改")
+                }
+            }
+        }
+        item {
+            MoneyCard {
+                OutlinedButton(
+                    onClick = viewModel::showDeleteConfirm,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isLoading && !state.isSaving,
+                ) {
+                    Text("撤销这次更新")
                 }
             }
         }
     }
 }
-

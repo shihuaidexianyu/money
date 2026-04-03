@@ -14,7 +14,7 @@ interface AccountRepository {
     suspend fun updateAccount(account: AccountEntity)
     suspend fun archiveAccount(accountId: Long, archivedAt: Long)
     suspend fun updateLastUsedAt(accountId: Long, timestamp: Long)
-    suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long)
+    suspend fun updateLastBalanceUpdateAt(accountId: Long, timestamp: Long?)
     suspend fun nextDisplayOrder(): Int
 }
 

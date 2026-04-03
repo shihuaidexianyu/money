@@ -14,10 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,11 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
+import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -65,6 +65,24 @@ fun HistoryScreen(
     var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
 
+    if (sheet == HistoryFilterSheet.ACCOUNT) {
+        AccountPickerDialog(
+            title = "筛选账户",
+            accounts = state.accountOptions,
+            selectedAccountId = state.selectedAccountId,
+            noSelectionLabel = "全部账户",
+            onDismiss = { sheet = null },
+            onPick = { accountId ->
+                onAccountChange(accountId)
+                sheet = null
+            },
+            onClearSelection = {
+                onAccountChange(null)
+                sheet = null
+            },
+        )
+    }
+
     dateField?.let { currentField ->
         val initialSelection = when (currentField) {
             HistoryDateField.START -> state.dateStartAt ?: state.dateEndAt
@@ -93,89 +111,73 @@ fun HistoryScreen(
         )
     }
 
-    sheet?.let { current ->
-        ModalBottomSheet(onDismissRequest = { sheet = null }) {
+    sheet?.takeIf { it != HistoryFilterSheet.ACCOUNT }?.let { current ->
+        HistoryFilterSheetContent(
+            title = when (current) {
+                HistoryFilterSheet.ACCOUNT -> "账户"
+                HistoryFilterSheet.DATE -> "日期"
+                HistoryFilterSheet.AMOUNT -> "金额"
+            },
+            onDismiss = { sheet = null },
+        ) {
             when (current) {
-                HistoryFilterSheet.ACCOUNT -> {
-                    HistoryFilterSheetContent(title = "账户") {
-                        FilterChip(
-                            selected = state.selectedAccountId == null,
-                            onClick = { onAccountChange(null) },
-                            label = { Text("全部账户") },
-                        )
-                        state.accountOptions.forEach { account ->
-                            FilterChip(
-                                selected = state.selectedAccountId == account.id,
-                                onClick = { onAccountChange(account.id) },
-                                label = { Text(account.name) },
-                            )
-                        }
-                    }
-                }
+                HistoryFilterSheet.ACCOUNT -> Unit
                 HistoryFilterSheet.DATE -> {
-                    HistoryFilterSheetContent(title = "日期") {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            QuickDateChip(
-                                label = "今天",
-                                onClick = {
-                                    val todayStart = DateTimeTextFormatter.startOfDayMillis(System.currentTimeMillis())
-                                    val todayEnd = DateTimeTextFormatter.endOfDayMillis(System.currentTimeMillis())
-                                    onDateRangeChange(todayStart, todayEnd)
-                                },
-                            )
-                            QuickDateChip(
-                                label = "最近 7 天",
-                                onClick = {
-                                    val today = LocalDate.now()
-                                    val start = today.minusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                                    val end = DateTimeTextFormatter.endOfDayMillis(System.currentTimeMillis())
-                                    onDateRangeChange(start, end)
-                                },
-                            )
-                            QuickDateChip(
-                                label = "本月",
-                                onClick = {
-                                    val range = TimeRangeUtils.currentMonthRange()
-                                    onDateRangeChange(range.startAtMillis, range.endAtMillis)
-                                },
-                            )
-                            QuickDateChip(
-                                label = "清除",
-                                onClick = { onDateRangeChange(null, null) },
-                            )
-                        }
-                        MoneySelectionField(
-                            label = "开始日期",
-                            value = state.dateStartAt?.let(DateTimeTextFormatter::formatDateOnly) ?: "不限",
-                            modifier = Modifier.clickable { dateField = HistoryDateField.START },
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        QuickDateChip(
+                            label = "今天",
+                            onClick = {
+                                val todayStart = DateTimeTextFormatter.startOfDayMillis(System.currentTimeMillis())
+                                val todayEnd = DateTimeTextFormatter.endOfDayMillis(System.currentTimeMillis())
+                                onDateRangeChange(todayStart, todayEnd)
+                            },
                         )
-                        MoneySelectionField(
-                            label = "结束日期",
-                            value = state.dateEndAt?.let(DateTimeTextFormatter::formatDateOnly) ?: "不限",
-                            modifier = Modifier.clickable { dateField = HistoryDateField.END },
+                        QuickDateChip(
+                            label = "最近 7 天",
+                            onClick = {
+                                val today = LocalDate.now()
+                                val start = today.minusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                                val end = DateTimeTextFormatter.endOfDayMillis(System.currentTimeMillis())
+                                onDateRangeChange(start, end)
+                            },
+                        )
+                        QuickDateChip(
+                            label = "本月",
+                            onClick = {
+                                val range = TimeRangeUtils.currentMonthRange()
+                                onDateRangeChange(range.startAtMillis, range.endAtMillis)
+                            },
+                        )
+                        QuickDateChip(
+                            label = "清除",
+                            onClick = { onDateRangeChange(null, null) },
                         )
                     }
+                    MoneySelectionField(
+                        label = "开始日期",
+                        value = state.dateStartAt?.let(DateTimeTextFormatter::formatDateOnly) ?: "不限",
+                        modifier = Modifier.clickable { dateField = HistoryDateField.START },
+                    )
+                    MoneySelectionField(
+                        label = "结束日期",
+                        value = state.dateEndAt?.let(DateTimeTextFormatter::formatDateOnly) ?: "不限",
+                        modifier = Modifier.clickable { dateField = HistoryDateField.END },
+                    )
                 }
                 HistoryFilterSheet.AMOUNT -> {
-                    HistoryFilterSheetContent(title = "金额") {
-                        OutlinedTextField(
-                            value = state.minAmountText,
-                            onValueChange = onMinAmountChange,
-                            label = { Text("最小金额") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                        )
-                        OutlinedTextField(
-                            value = state.maxAmountText,
-                            onValueChange = onMaxAmountChange,
-                            label = { Text("最大金额") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                        )
-                    }
+                    MoneySingleLineField(
+                        value = state.minAmountText,
+                        onValueChange = onMinAmountChange,
+                        label = "最小金额",
+                    )
+                    MoneySingleLineField(
+                        value = state.maxAmountText,
+                        onValueChange = onMaxAmountChange,
+                        label = "最大金额",
+                    )
                 }
             }
         }
@@ -195,13 +197,11 @@ fun HistoryScreen(
             )
         }
         item {
-            OutlinedTextField(
+            MoneySingleLineField(
                 value = state.keyword,
                 onValueChange = onKeywordChange,
-                label = { Text("搜索") },
-                placeholder = { Text("搜索用途或备注") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
+                label = "搜索",
+                placeholder = "搜索用途或备注",
             )
         }
         item {
@@ -245,20 +245,23 @@ fun HistoryScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryFilterSheetContent(
     title: String,
+    onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        MoneySectionHeader(title = title)
-        content()
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MoneySectionHeader(title = title)
+            content()
+        }
     }
 }
 

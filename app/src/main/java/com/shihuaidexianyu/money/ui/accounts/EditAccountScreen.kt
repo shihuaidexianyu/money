@@ -12,24 +12,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
-import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
-import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
-import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 
 private sealed interface EditAccountDialog {
     data object Name : EditAccountDialog
-    data object AccountType : EditAccountDialog
-    data object ReminderWeekday : EditAccountDialog
-    data object ReminderTime : EditAccountDialog
     data object ArchiveConfirm : EditAccountDialog
 }
 
@@ -42,6 +34,7 @@ fun EditAccountScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<EditAccountDialog?>(null) }
+    var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
     var nameDraft by remember(state.name) { mutableStateOf(state.name) }
 
     LaunchedEffect(viewModel) {
@@ -71,34 +64,6 @@ fun EditAccountScreen(
                 )
             }
 
-            EditAccountDialog.AccountType -> {
-                MoneyChoiceDialog(
-                    title = "账户类型",
-                    options = AccountGroupType.entries,
-                    selected = state.groupType,
-                    label = { it.displayName },
-                    onSelect = {
-                        viewModel.updateGroupType(it)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                )
-            }
-
-            EditAccountDialog.ReminderWeekday -> {
-                MoneyChoiceDialog(
-                    title = "每周提醒日",
-                    options = BalanceUpdateReminderWeekday.entries,
-                    selected = state.reminderConfig.weekday,
-                    label = { it.displayName },
-                    onSelect = {
-                        viewModel.updateReminderWeekday(it)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                )
-            }
-
             EditAccountDialog.ArchiveConfirm -> {
                 MoneyConfirmDialog(
                     title = "归档账户",
@@ -111,24 +76,18 @@ fun EditAccountScreen(
                     confirmLabel = "确认归档",
                 )
             }
-
-            EditAccountDialog.ReminderTime -> {
-                val initialTimeMillis = java.time.LocalDate.now()
-                    .atTime(state.reminderConfig.hour, state.reminderConfig.minute)
-                    .atZone(java.time.ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli()
-                MoneyTimePickerDialogHost(
-                    initialTimeMillis = initialTimeMillis,
-                    onDismiss = { dialog = null },
-                    onConfirm = { hour, minute ->
-                        viewModel.updateReminderTime(hour, minute)
-                        dialog = null
-                    },
-                )
-            }
         }
     }
+
+    AccountSettingsPickerDialog(
+        picker = picker,
+        groupType = state.groupType,
+        reminderConfig = state.reminderConfig,
+        onDismiss = { picker = null },
+        onGroupTypeSelected = viewModel::updateGroupType,
+        onReminderWeekdaySelected = viewModel::updateReminderWeekday,
+        onReminderTimeSelected = viewModel::updateReminderTime,
+    )
 
     MoneyFormPage(
         title = "账户管理",
@@ -146,26 +105,16 @@ fun EditAccountScreen(
                         dialog = EditAccountDialog.Name
                     },
                 )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = "账户类型",
-                    trailing = state.groupType.displayName,
-                    modifier = Modifier.clickable { dialog = EditAccountDialog.AccountType },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = "每周提醒日",
-                    subtitle = "到了提醒时间后未更新会标记为待更新",
-                    trailing = state.reminderConfig.weekday.displayName,
-                    modifier = Modifier.clickable { dialog = EditAccountDialog.ReminderWeekday },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = "提醒时间",
-                    trailing = state.reminderConfig.timeText,
-                    modifier = Modifier.clickable { dialog = EditAccountDialog.ReminderTime },
-                )
             }
+        }
+        item {
+            AccountTypeReminderListSection(
+                groupType = state.groupType,
+                reminderConfig = state.reminderConfig,
+                onAccountTypeClick = { picker = AccountSettingsPicker.ACCOUNT_TYPE },
+                onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
+                onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
+            )
         }
         item {
             MoneyCard {
