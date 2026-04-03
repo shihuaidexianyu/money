@@ -9,6 +9,7 @@ import com.shihuaidexianyu.money.data.db.appSettingsDataStore
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -31,6 +32,10 @@ class SettingsRepositoryImpl(
         context.appSettingsDataStore.edit { it[Keys.ShowStaleMark] = show }
     }
 
+    override suspend fun updateThemeMode(themeMode: ThemeMode) {
+        context.appSettingsDataStore.edit { it[Keys.ThemeMode] = themeMode.value }
+    }
+
     override suspend fun updateAccountGroupOrder(order: List<AccountGroupType>) {
         context.appSettingsDataStore.edit {
             it[Keys.AccountGroupOrder] = AccountGroupType.toStoredOrder(order)
@@ -42,6 +47,7 @@ class SettingsRepositoryImpl(
             homePeriod = HomePeriod.fromValue(preferences[Keys.HomePeriod]),
             currencySymbol = preferences[Keys.CurrencySymbol] ?: "¥",
             showStaleMark = preferences[Keys.ShowStaleMark] ?: true,
+            themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             accountGroupOrder = AccountGroupType.fromStoredOrder(preferences[Keys.AccountGroupOrder]),
         )
     }
@@ -50,6 +56,7 @@ class SettingsRepositoryImpl(
         val HomePeriod = stringPreferencesKey("home_period")
         val CurrencySymbol = stringPreferencesKey("currency_symbol")
         val ShowStaleMark = booleanPreferencesKey("show_stale_mark")
+        val ThemeMode = stringPreferencesKey("theme_mode")
         val AccountGroupOrder = stringPreferencesKey("account_group_order")
     }
 }

@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class CreateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
         fromAccountId: Long,
@@ -33,10 +34,8 @@ class CreateTransferRecordUseCase(
                 updatedAt = now,
             ),
         )
-
-        val lastUsed = maxOf(occurredAt, now)
-        accountRepository.updateLastUsedAt(fromAccountId, lastUsed)
-        accountRepository.updateLastUsedAt(toAccountId, lastUsed)
+        refreshAccountActivityStateUseCase(fromAccountId)
+        refreshAccountActivityStateUseCase(toAccountId)
         return recordId
     }
 }

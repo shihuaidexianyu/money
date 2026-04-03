@@ -47,6 +47,7 @@ private enum class EditTransferPickerTarget {
 fun EditTransferScreen(
     viewModel: EditTransferViewModel,
     onBack: () -> Unit,
+    onDeleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -59,7 +60,8 @@ fun EditTransferScreen(
     LaunchedEffect(viewModel) {
         viewModel.effectFlow.collect { effect ->
             when (effect) {
-                EditTransferEffect.Finished -> onBack()
+                EditTransferEffect.Saved -> onBack()
+                EditTransferEffect.Deleted -> onDeleted()
                 is EditTransferEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
             }
         }

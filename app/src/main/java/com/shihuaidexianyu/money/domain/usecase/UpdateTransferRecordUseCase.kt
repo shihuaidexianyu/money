@@ -7,6 +7,7 @@ class UpdateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
+    private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
         recordId: Long,
@@ -22,7 +23,7 @@ class UpdateTransferRecordUseCase(
         requireNotNull(accountRepository.getAccountById(fromAccountId))
         requireNotNull(accountRepository.getAccountById(toAccountId))
 
-        val existing = requireNotNull(transactionRepository.queryTransferRecordById(recordId))
+        val existing = requireNotNull(transactionRepository.queryTransferRecordById(recordId)) { "记录不存在或已删除" }
         val updated = existing.copy(
             fromAccountId = fromAccountId,
             toAccountId = toAccountId,
@@ -32,11 +33,9 @@ class UpdateTransferRecordUseCase(
             updatedAt = System.currentTimeMillis(),
         )
         transactionRepository.updateTransferRecord(updated)
-        val lastUsed = maxOf(occurredAt, System.currentTimeMillis())
-        accountRepository.updateLastUsedAt(fromAccountId, lastUsed)
-        accountRepository.updateLastUsedAt(toAccountId, lastUsed)
         setOf(existing.fromAccountId, existing.toAccountId, fromAccountId, toAccountId).forEach {
             recalculateInvestmentSettlementsUseCase(it)
+            refreshAccountActivityStateUseCase(it)
         }
     }
 }

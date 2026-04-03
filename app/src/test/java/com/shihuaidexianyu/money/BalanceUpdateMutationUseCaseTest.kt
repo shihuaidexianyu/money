@@ -122,4 +122,54 @@ class BalanceUpdateMutationUseCaseTest {
                 .firstOrNull { it.balanceUpdateRecordId == latestRecordId },
         )
     }
+
+    @Test
+    fun `deleting balance update removes it and restores current balance`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
+        val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val updateBalanceUseCase = UpdateBalanceUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            resolveBalanceUpdateContextUseCase = resolveContext,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
+            transactionRepository = transactionRepository,
+            recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
+        val accountId = accountRepository.createAccount(
+            AccountEntity(
+                name = "活期",
+                groupType = "bank",
+                initialBalance = 10_000,
+                createdAt = 1_000,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecordEntity(
+                accountId = accountId,
+                direction = "inflow",
+                amount = 2_000,
+                purpose = "工资",
+                occurredAt = 2_000,
+                createdAt = 2_000,
+                updatedAt = 2_000,
+            ),
+        )
+
+        updateBalanceUseCase(accountId = accountId, actualBalance = 11_000, occurredAt = 3_000)
+        val recordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
+
+        deleteBalanceUpdateRecordUseCase(recordId)
+        deleteBalanceUpdateRecordUseCase(recordId)
+
+        assertNull(transactionRepository.getBalanceUpdateRecordById(recordId))
+        assertEquals(emptyList(), transactionRepository.queryAllBalanceUpdateRecords())
+        assertNull(accountRepository.getAccountById(accountId)?.lastBalanceUpdateAt)
+        assertEquals(12_000, calculateCurrentBalanceUseCase(accountId))
+    }
 }

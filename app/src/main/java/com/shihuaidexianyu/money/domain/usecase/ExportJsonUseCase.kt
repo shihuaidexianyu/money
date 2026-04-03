@@ -158,6 +158,7 @@ private fun AppSettings.toJson(): JSONObject = JSONObject().apply {
     put("homePeriod", homePeriod.value)
     put("currencySymbol", currencySymbol)
     put("showStaleMark", showStaleMark)
+    put("themeMode", themeMode.value)
     put("accountGroupOrder", JSONArray().apply { accountGroupOrder.forEach { put(it.value) } })
 }
 

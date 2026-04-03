@@ -21,6 +21,16 @@ internal fun NavGraphBuilder.addRecordGraph(
     navController: NavHostController,
     container: MoneyAppContainer,
 ) {
+    val closeHistoryEditFlow = {
+        navController.navigate(MoneyDestination.History.route) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(MoneyDestination.History.route) {
+                inclusive = false
+            }
+        }
+    }
+
     composable(
         route = MoneyDestination.RecordCashFlowRoute,
         arguments = listOf(
@@ -85,7 +95,11 @@ internal fun NavGraphBuilder.addRecordGraph(
                 )
             },
         )
-        EditCashFlowScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+        EditCashFlowScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onDeleted = closeHistoryEditFlow,
+        )
     }
 
     composable(
@@ -105,6 +119,10 @@ internal fun NavGraphBuilder.addRecordGraph(
                 )
             },
         )
-        EditTransferScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+        EditTransferScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onDeleted = closeHistoryEditFlow,
+        )
     }
 }

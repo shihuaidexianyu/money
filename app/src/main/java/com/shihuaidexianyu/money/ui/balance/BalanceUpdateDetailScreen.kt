@@ -27,6 +27,7 @@ fun BalanceUpdateDetailScreen(
     state: BalanceUpdateDetailUiState,
     settings: AppSettings,
     onEdit: () -> Unit,
+    onDeleted: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -36,7 +37,7 @@ fun BalanceUpdateDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.effectFlow.collect { effect ->
             when (effect) {
-                BalanceUpdateDetailEffect.Finished -> onBack()
+                BalanceUpdateDetailEffect.Deleted -> onDeleted()
                 is BalanceUpdateDetailEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
             }
         }

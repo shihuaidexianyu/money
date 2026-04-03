@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonPayloadFactory
 import kotlin.test.assertEquals
 import org.junit.Test
@@ -62,6 +63,7 @@ class ExportJsonPayloadFactoryTest {
                 homePeriod = HomePeriod.MONTH,
                 currencySymbol = "$",
                 showStaleMark = false,
+                themeMode = ThemeMode.DARK,
             ),
             exportedAt = 99,
             appVersion = "1.0",
@@ -82,6 +84,7 @@ class ExportJsonPayloadFactoryTest {
         assertEquals(1, payload.balanceAdjustmentRecords.size)
         assertEquals(1, payload.investmentSettlements.size)
         assertEquals("$", payload.settings.currencySymbol)
+        assertEquals(ThemeMode.DARK, payload.settings.themeMode)
         assertEquals(99, payload.exportedAt)
         assertEquals("1.0", payload.appVersion)
     }

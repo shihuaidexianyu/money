@@ -31,7 +31,8 @@ data class EditTransferUiState(
 )
 
 sealed interface EditTransferEffect {
-    data object Finished : EditTransferEffect
+    data object Saved : EditTransferEffect
+    data object Deleted : EditTransferEffect
     data class ShowMessage(val message: String) : EditTransferEffect
 }
 
@@ -47,10 +48,15 @@ class EditTransferViewModel(
 
     private val effects = MutableSharedFlow<EditTransferEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var closed = false
 
     init {
         viewModelScope.launch {
-            val record = requireNotNull(transactionRepository.queryTransferRecordById(recordId))
+            val record = transactionRepository.queryTransferRecordById(recordId)
+            if (record == null) {
+                emitDeletedOnce()
+                return@launch
+            }
             val accounts = accountRepository.queryActiveAccounts()
             _uiState.value = EditTransferUiState(
                 isLoading = false,
@@ -110,8 +116,12 @@ class EditTransferViewModel(
                     note = state.note,
                     occurredAt = occurredAt,
                 )
-            }.onSuccess { effects.emit(EditTransferEffect.Finished) }
+            }.onSuccess { effects.emit(EditTransferEffect.Saved) }
                 .onFailure {
+                    if (transactionRepository.queryTransferRecordById(recordId) == null) {
+                        emitDeletedOnce()
+                        return@onFailure
+                    }
                     updateState { copy(isSaving = false) }
                     effects.emit(EditTransferEffect.ShowMessage(it.message ?: "保存失败"))
                 }
@@ -121,7 +131,7 @@ class EditTransferViewModel(
     fun delete() {
         viewModelScope.launch {
             runCatching { deleteTransferRecordUseCase(recordId) }
-                .onSuccess { effects.emit(EditTransferEffect.Finished) }
+                .onSuccess { emitDeletedOnce() }
                 .onFailure {
                     updateState { copy(showDeleteConfirm = false) }
                     effects.emit(EditTransferEffect.ShowMessage(it.message ?: "删除失败"))
@@ -134,6 +144,12 @@ class EditTransferViewModel(
     }
     private fun Long.toAmountText(): String {
         return BigDecimal.valueOf(this, 2).setScale(2, RoundingMode.DOWN).toPlainString()
+    }
+
+    private suspend fun emitDeletedOnce() {
+        if (closed) return
+        closed = true
+        effects.emit(EditTransferEffect.Deleted)
     }
 }
 

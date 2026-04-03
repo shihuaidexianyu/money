@@ -43,7 +43,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecordEntity? {
-        return cashFlowRecords.firstOrNull { it.id == id }
+        return cashFlowRecords.firstOrNull { it.id == id && !it.isDeleted }
     }
 
     override suspend fun queryAllCashFlowRecords(): List<CashFlowRecordEntity> {
@@ -76,7 +76,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun queryTransferRecordById(id: Long): TransferRecordEntity? {
-        return transferRecords.firstOrNull { it.id == id }
+        return transferRecords.firstOrNull { it.id == id && !it.isDeleted }
     }
 
     override suspend fun queryAllTransferRecords(): List<TransferRecordEntity> {

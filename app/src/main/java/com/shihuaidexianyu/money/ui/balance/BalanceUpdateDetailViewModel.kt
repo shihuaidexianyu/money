@@ -27,7 +27,7 @@ data class BalanceUpdateDetailUiState(
 )
 
 sealed interface BalanceUpdateDetailEffect {
-    data object Finished : BalanceUpdateDetailEffect
+    data object Deleted : BalanceUpdateDetailEffect
     data class ShowMessage(val message: String) : BalanceUpdateDetailEffect
 }
 
@@ -42,6 +42,7 @@ class BalanceUpdateDetailViewModel(
 
     private val effects = MutableSharedFlow<BalanceUpdateDetailEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var closed = false
 
     init {
         viewModelScope.launch {
@@ -59,7 +60,7 @@ class BalanceUpdateDetailViewModel(
             runCatching {
                 deleteBalanceUpdateRecordUseCase(recordId)
             }.onSuccess {
-                effects.emit(BalanceUpdateDetailEffect.Finished)
+                emitDeletedOnce()
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(isDeleting = false)
                 effects.emit(BalanceUpdateDetailEffect.ShowMessage(throwable.message ?: "撤销失败"))
@@ -70,7 +71,7 @@ class BalanceUpdateDetailViewModel(
     private suspend fun loadRecord() {
         val record = transactionRepository.getBalanceUpdateRecordById(recordId)
         if (record == null) {
-            effects.emit(BalanceUpdateDetailEffect.Finished)
+            emitDeletedOnce()
             return
         }
 
@@ -101,5 +102,11 @@ class BalanceUpdateDetailViewModel(
             settlementSummary = settlement,
             isLoading = false,
         )
+    }
+
+    private suspend fun emitDeletedOnce() {
+        if (closed) return
+        closed = true
+        effects.emit(BalanceUpdateDetailEffect.Deleted)
     }
 }

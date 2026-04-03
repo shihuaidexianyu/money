@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
@@ -23,6 +24,7 @@ fun AccountDetailScreen(
     state: AccountDetailUiState,
     onManageAccount: () -> Unit,
     onStartUpdateBalance: () -> Unit,
+    onBackToAccounts: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -33,12 +35,33 @@ fun AccountDetailScreen(
         item {
             MoneyPageTitle(
                 title = state.name.ifEmpty { "账户详情" },
-                trailing = {
-                    TextButton(onClick = onManageAccount) {
-                        Text("管理")
+                trailing = if (state.isMissing) {
+                    null
+                } else {
+                    {
+                        TextButton(onClick = onManageAccount) {
+                            Text("管理")
+                        }
                     }
                 },
             )
+        }
+        if (state.isMissing) {
+            item {
+                MoneyEmptyStateCard(
+                    title = "账户不存在",
+                    subtitle = "这个账户可能已经失效，或者当前路由里的账户 ID 不可用。",
+                    action = {
+                        Button(
+                            onClick = onBackToAccounts,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("返回账户列表")
+                        }
+                    },
+                )
+            }
+            return@LazyColumn
         }
         item {
             MoneyCard {

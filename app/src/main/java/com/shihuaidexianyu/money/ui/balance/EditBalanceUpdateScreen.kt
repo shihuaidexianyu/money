@@ -32,6 +32,7 @@ fun EditBalanceUpdateScreen(
     viewModel: EditBalanceUpdateViewModel,
     settings: AppSettings,
     onBack: () -> Unit,
+    onDeleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -41,7 +42,8 @@ fun EditBalanceUpdateScreen(
     LaunchedEffect(viewModel) {
         viewModel.effectFlow.collect { effect ->
             when (effect) {
-                EditBalanceUpdateEffect.Finished -> onBack()
+                EditBalanceUpdateEffect.Saved -> onBack()
+                EditBalanceUpdateEffect.Deleted -> onDeleted()
                 is EditBalanceUpdateEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
             }
         }

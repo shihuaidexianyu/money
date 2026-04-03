@@ -23,6 +23,16 @@ internal fun NavGraphBuilder.addBalanceGraph(
     navController: NavHostController,
     container: MoneyAppContainer,
 ) {
+    val closeBalanceUpdateFlow = {
+        navController.navigate(MoneyDestination.History.route) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(MoneyDestination.History.route) {
+                inclusive = false
+            }
+        }
+    }
+
     composable(
         route = MoneyDestination.BalanceUpdateDetailRoute,
         arguments = listOf(navArgument("recordId") { type = NavType.LongType }),
@@ -50,6 +60,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
             state = state,
             settings = settingsState.settings,
             onEdit = { navController.navigate(MoneyDestination.editBalanceUpdateRoute(recordId)) },
+            onDeleted = closeBalanceUpdateFlow,
             onBack = { navController.popBackStack() },
         )
     }
@@ -81,6 +92,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
             viewModel = viewModel,
             settings = settingsState.settings,
             onBack = { navController.popBackStack() },
+            onDeleted = closeBalanceUpdateFlow,
         )
     }
 
@@ -106,8 +118,10 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         BalanceAdjustmentDetailScreen(
+            viewModel = viewModel,
             state = state,
             settings = settingsState.settings,
+            onClosed = closeBalanceUpdateFlow,
             onBack = { navController.popBackStack() },
         )
     }

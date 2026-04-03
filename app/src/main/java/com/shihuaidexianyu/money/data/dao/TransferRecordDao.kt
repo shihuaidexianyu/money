@@ -19,7 +19,7 @@ interface TransferRecordDao {
     @Query("UPDATE transfer_records SET isDeleted = 1, updatedAt = :updatedAt WHERE id = :id")
     suspend fun softDelete(id: Long, updatedAt: Long)
 
-    @Query("SELECT * FROM transfer_records WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM transfer_records WHERE id = :id AND isDeleted = 0 LIMIT 1")
     suspend fun queryById(id: Long): TransferRecordEntity?
 
     @Query("SELECT * FROM transfer_records WHERE isDeleted = 0 ORDER BY occurredAt DESC, id DESC")
