@@ -1,0 +1,41 @@
+package com.shihuaidexianyu.money.domain.usecase
+
+import com.shihuaidexianyu.money.data.repository.AccountRepository
+import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepository
+import com.shihuaidexianyu.money.data.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.model.AccountGroupType
+import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_DAYS
+
+class UpdateAccountUseCase(
+    private val accountRepository: AccountRepository,
+    private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
+    private val transactionRepository: TransactionRepository,
+    private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
+) {
+    suspend operator fun invoke(
+        accountId: Long,
+        name: String,
+        groupType: AccountGroupType,
+        balanceUpdateReminderDays: Int = DEFAULT_BALANCE_UPDATE_REMINDER_DAYS,
+    ) {
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        val normalizedName = name.trim()
+        require(normalizedName.isNotEmpty()) { "账户名称不能为空" }
+        require(accountRepository.isActiveNameAvailable(normalizedName, excludeId = accountId)) { "已存在同名账户" }
+        require(balanceUpdateReminderDays > 0) { "提醒周期必须大于 0 天" }
+
+        accountRepository.updateAccount(
+            account.copy(
+                name = normalizedName,
+                groupType = groupType.value,
+            ),
+        )
+        accountReminderSettingsRepository.updateReminderDays(accountId, balanceUpdateReminderDays)
+
+        if (groupType == AccountGroupType.INVESTMENT) {
+            recalculateInvestmentSettlementsUseCase(accountId)
+        } else {
+            transactionRepository.deleteInvestmentSettlementsByAccountId(accountId)
+        }
+    }
+}

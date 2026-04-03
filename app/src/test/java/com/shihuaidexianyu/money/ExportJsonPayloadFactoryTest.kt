@@ -1,0 +1,79 @@
+package com.shihuaidexianyu.money
+
+import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
+import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
+import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
+import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import com.shihuaidexianyu.money.domain.model.AccountSortMode
+import com.shihuaidexianyu.money.domain.model.AmountDisplayStyle
+import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.WeekStart
+import com.shihuaidexianyu.money.domain.usecase.ExportJsonPayloadFactory
+import kotlin.test.assertEquals
+import org.junit.Test
+
+class ExportJsonPayloadFactoryTest {
+    @Test
+    fun `payload factory keeps all required sections and sorts records by time`() {
+        val payload = ExportJsonPayloadFactory.build(
+            accounts = listOf(
+                AccountEntity(id = 2, name = "旧账户", groupType = "bank", initialBalance = 0, createdAt = 1, isArchived = true),
+                AccountEntity(id = 1, name = "主账户", groupType = "payment", initialBalance = 0, createdAt = 1, displayOrder = 2),
+            ),
+            accountReminderDays = mapOf(1L to 3),
+            cashFlowRecords = listOf(
+                CashFlowRecordEntity(id = 2, accountId = 1, direction = "inflow", amount = 200, purpose = "后", occurredAt = 20, createdAt = 20, updatedAt = 20),
+                CashFlowRecordEntity(id = 1, accountId = 1, direction = "inflow", amount = 100, purpose = "前", occurredAt = 10, createdAt = 10, updatedAt = 10),
+            ),
+            transferRecords = listOf(
+                TransferRecordEntity(id = 1, fromAccountId = 1, toAccountId = 2, amount = 100, note = "", occurredAt = 30, createdAt = 30, updatedAt = 30),
+            ),
+            balanceUpdateRecords = listOf(
+                BalanceUpdateRecordEntity(id = 1, accountId = 1, actualBalance = 100, systemBalanceBeforeUpdate = 90, delta = 10, occurredAt = 40, createdAt = 40),
+            ),
+            balanceAdjustmentRecords = listOf(
+                BalanceAdjustmentRecordEntity(id = 1, accountId = 1, delta = 10, sourceUpdateRecordId = 1, occurredAt = 40, createdAt = 40),
+            ),
+            investmentSettlements = listOf(
+                InvestmentSettlementEntity(
+                    id = 1,
+                    accountId = 2,
+                    balanceUpdateRecordId = 1,
+                    previousBalance = 100,
+                    currentBalance = 120,
+                    netTransferIn = 10,
+                    netTransferOut = 0,
+                    pnl = 10,
+                    returnRate = 0.1,
+                    periodStartAt = 1,
+                    periodEndAt = 50,
+                    createdAt = 50,
+                ),
+            ),
+            settings = AppSettings(
+                homePeriod = HomePeriod.MONTH,
+                weekStart = WeekStart.MONDAY,
+                currencySymbol = "$",
+                amountDisplayStyle = AmountDisplayStyle.SYMBOL_AFTER,
+                showStaleMark = false,
+                accountSortMode = AccountSortMode.BALANCE_DESC,
+            ),
+            exportedAt = 99,
+            appVersion = "1.0",
+        )
+
+        assertEquals(2, payload.accounts.size)
+        assertEquals(3, payload.accountReminderDays[1L])
+        assertEquals("主账户", payload.accounts.first().name)
+        assertEquals(10, payload.cashFlowRecords.first().occurredAt)
+        assertEquals(1, payload.balanceUpdateRecords.size)
+        assertEquals(1, payload.balanceAdjustmentRecords.size)
+        assertEquals(1, payload.investmentSettlements.size)
+        assertEquals("$", payload.settings.currencySymbol)
+        assertEquals(99, payload.exportedAt)
+        assertEquals("1.0", payload.appVersion)
+    }
+}

@@ -1,0 +1,62 @@
+package com.shihuaidexianyu.money
+
+import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
+import com.shihuaidexianyu.money.domain.model.AccountGroupType
+import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlinx.coroutines.runBlocking
+import org.junit.Test
+
+class CreateAccountUseCaseTest {
+    @Test
+    fun `blank name is rejected`() = runBlocking {
+        val useCase = CreateAccountUseCase(
+            accountRepository = InMemoryAccountRepository(),
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+        )
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            useCase(name = "   ", groupType = AccountGroupType.PAYMENT, initialBalance = 0)
+        }
+
+        assertEquals("账户名称不能为空", error.message)
+    }
+
+    @Test
+    fun `duplicate active name is rejected`() = runBlocking {
+        val repository = InMemoryAccountRepository()
+        val reminderRepository = InMemoryAccountReminderSettingsRepository()
+        val useCase = CreateAccountUseCase(
+            accountRepository = repository,
+            accountReminderSettingsRepository = reminderRepository,
+        )
+        useCase(name = "现金", groupType = AccountGroupType.PAYMENT, initialBalance = 100, balanceUpdateReminderDays = 7)
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            useCase(name = "现金", groupType = AccountGroupType.BANK, initialBalance = 200, balanceUpdateReminderDays = 7)
+        }
+
+        assertEquals("已存在同名账户", error.message)
+    }
+
+    @Test
+    fun `custom reminder days are persisted alongside account`() = runBlocking {
+        val repository = InMemoryAccountRepository()
+        val reminderRepository = InMemoryAccountReminderSettingsRepository()
+        val useCase = CreateAccountUseCase(
+            accountRepository = repository,
+            accountReminderSettingsRepository = reminderRepository,
+        )
+
+        val accountId = useCase(
+            name = "信用卡",
+            groupType = AccountGroupType.BANK,
+            initialBalance = 100,
+            balanceUpdateReminderDays = 3,
+        )
+
+        assertEquals(3, reminderRepository.getReminderDays(accountId))
+    }
+}

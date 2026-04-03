@@ -1,0 +1,114 @@
+package com.shihuaidexianyu.money.data.repository
+
+import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
+import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
+import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
+import com.shihuaidexianyu.money.data.dao.InvestmentSettlementDao
+import com.shihuaidexianyu.money.data.dao.TransferRecordDao
+import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
+import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
+import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
+import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+
+class TransactionRepositoryImpl(
+    private val cashFlowRecordDao: CashFlowRecordDao,
+    private val transferRecordDao: TransferRecordDao,
+    private val balanceUpdateRecordDao: BalanceUpdateRecordDao,
+    private val balanceAdjustmentRecordDao: BalanceAdjustmentRecordDao,
+    private val investmentSettlementDao: InvestmentSettlementDao,
+) : TransactionRepository {
+    override fun observeChangeVersion(): Flow<Long> {
+        return combine(
+            cashFlowRecordDao.observeAllActive(),
+            transferRecordDao.observeAllActive(),
+            balanceUpdateRecordDao.observeAllActive(),
+            balanceAdjustmentRecordDao.observeAllActive(),
+            investmentSettlementDao.observeAllActive(),
+        ) { _, _, _, _, _ ->
+            System.currentTimeMillis()
+        }
+    }
+
+    override suspend fun insertCashFlowRecord(record: CashFlowRecordEntity): Long = cashFlowRecordDao.insert(record)
+
+    override suspend fun updateCashFlowRecord(record: CashFlowRecordEntity) = cashFlowRecordDao.update(record)
+
+    override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) = cashFlowRecordDao.softDelete(id, updatedAt)
+
+    override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecordEntity? = cashFlowRecordDao.queryById(id)
+
+    override suspend fun queryAllCashFlowRecords(): List<CashFlowRecordEntity> = cashFlowRecordDao.queryAll()
+
+    override suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecordEntity> = cashFlowRecordDao.queryAllActive()
+
+    override suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecordEntity> = cashFlowRecordDao.queryByAccountId(accountId)
+
+    override suspend fun insertTransferRecord(record: TransferRecordEntity): Long = transferRecordDao.insert(record)
+
+    override suspend fun updateTransferRecord(record: TransferRecordEntity) = transferRecordDao.update(record)
+
+    override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) = transferRecordDao.softDelete(id, updatedAt)
+
+    override suspend fun queryTransferRecordById(id: Long): TransferRecordEntity? = transferRecordDao.queryById(id)
+
+    override suspend fun queryAllTransferRecords(): List<TransferRecordEntity> = transferRecordDao.queryAll()
+
+    override suspend fun queryAllActiveTransferRecords(): List<TransferRecordEntity> = transferRecordDao.queryAllActive()
+
+    override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecordEntity> = transferRecordDao.queryByAccountId(accountId)
+
+    override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long = balanceUpdateRecordDao.insert(record)
+
+    override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecordEntity) = balanceUpdateRecordDao.update(record)
+
+    override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecordEntity? = balanceUpdateRecordDao.queryById(id)
+
+    override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecordEntity> = balanceUpdateRecordDao.queryAllActive()
+
+    override suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecordEntity> = balanceUpdateRecordDao.queryByAccountId(accountId)
+
+    override suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecordEntity? = balanceUpdateRecordDao.getLatestForAccount(accountId)
+
+    override suspend fun getLatestBalanceUpdateAtOrBefore(accountId: Long, occurredAt: Long): BalanceUpdateRecordEntity? {
+        return balanceUpdateRecordDao.getLatestForAccountAtOrBefore(accountId, occurredAt)
+    }
+
+    override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity): Long = balanceAdjustmentRecordDao.insert(record)
+
+    override suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity) = balanceAdjustmentRecordDao.update(record)
+
+    override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecordEntity? = balanceAdjustmentRecordDao.queryById(id)
+
+    override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity> = balanceAdjustmentRecordDao.queryAllActive()
+
+    override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity> = balanceAdjustmentRecordDao.queryByAccountId(accountId)
+
+    override suspend fun insertInvestmentSettlement(record: InvestmentSettlementEntity): Long = investmentSettlementDao.insert(record)
+
+    override suspend fun updateInvestmentSettlement(record: InvestmentSettlementEntity) = investmentSettlementDao.update(record)
+
+    override suspend fun getInvestmentSettlementById(id: Long): InvestmentSettlementEntity? = investmentSettlementDao.queryById(id)
+
+    override suspend fun queryAllInvestmentSettlements(): List<InvestmentSettlementEntity> = investmentSettlementDao.queryAllActive()
+
+    override suspend fun queryInvestmentSettlementsByAccountId(accountId: Long): List<InvestmentSettlementEntity> = investmentSettlementDao.queryByAccountId(accountId)
+
+    override suspend fun getLatestInvestmentSettlement(accountId: Long): InvestmentSettlementEntity? = investmentSettlementDao.getLatestForAccount(accountId)
+
+    override suspend fun deleteInvestmentSettlementsByAccountId(accountId: Long) {
+        investmentSettlementDao.deleteByAccountId(accountId)
+    }
+
+    override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumInflowBetween(accountId, startAt, endAt)
+
+    override suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumOutflowBetween(accountId, startAt, endAt)
+
+    override suspend fun sumTransferInBetween(accountId: Long, startAt: Long, endAt: Long): Long = transferRecordDao.sumTransferInBetween(accountId, startAt, endAt)
+
+    override suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long = transferRecordDao.sumTransferOutBetween(accountId, startAt, endAt)
+
+    override suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long = balanceAdjustmentRecordDao.sumAdjustmentBetween(accountId, startAt, endAt)
+}
