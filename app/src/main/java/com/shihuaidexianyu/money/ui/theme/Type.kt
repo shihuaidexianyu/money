@@ -64,3 +64,4 @@ val MoneyTypography = Typography(
         lineHeight = 18.sp,
     ),
 )
+

@@ -24,3 +24,4 @@ data class AccountEntity(
     val lastBalanceUpdateAt: Long? = null,
     val displayOrder: Int = 0,
 )
+

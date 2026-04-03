@@ -110,3 +110,4 @@ object AccountTrendChartTransformer {
         return minBalance - padding to maxBalance + padding
     }
 }
+

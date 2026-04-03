@@ -10,10 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -31,9 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
+import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
-import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -72,43 +70,27 @@ fun HistoryScreen(
             HistoryDateField.START -> state.dateStartAt ?: state.dateEndAt
             HistoryDateField.END -> state.dateEndAt ?: state.dateStartAt
         }
-        val pickerState = androidx.compose.material3.rememberDatePickerState(
+        MoneyDatePickerDialogHost(
             initialSelectedDateMillis = initialSelection,
+            onDismiss = { dateField = null },
+            onConfirm = { selected ->
+                when (currentField) {
+                    HistoryDateField.START -> {
+                        onDateRangeChange(
+                            selected?.let { DateTimeTextFormatter.startOfDayMillis(it) },
+                            state.dateEndAt,
+                        )
+                    }
+                    HistoryDateField.END -> {
+                        onDateRangeChange(
+                            state.dateStartAt,
+                            selected?.let { DateTimeTextFormatter.endOfDayMillis(it) },
+                        )
+                    }
+                }
+                dateField = null
+            },
         )
-        DatePickerDialog(
-            onDismissRequest = { dateField = null },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val selected = pickerState.selectedDateMillis
-                        when (currentField) {
-                            HistoryDateField.START -> {
-                                onDateRangeChange(
-                                    selected?.let { DateTimeTextFormatter.startOfDayMillis(it) },
-                                    state.dateEndAt,
-                                )
-                            }
-                            HistoryDateField.END -> {
-                                onDateRangeChange(
-                                    state.dateStartAt,
-                                    selected?.let { DateTimeTextFormatter.endOfDayMillis(it) },
-                                )
-                            }
-                        }
-                        dateField = null
-                    },
-                ) {
-                    Text("确定")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { dateField = null }) {
-                    Text("取消")
-                }
-            },
-        ) {
-            DatePicker(state = pickerState)
-        }
     }
 
     sheet?.let { current ->
@@ -199,14 +181,12 @@ fun HistoryScreen(
         }
     }
 
-    LazyColumn(
+    MoneyFormPage(
+        title = "历史",
         modifier = modifier,
         contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item {
-            MoneyPageTitle(title = "历史")
-        }
         item {
             Text(
                 text = "${state.records.size} 条记录",
@@ -372,3 +352,4 @@ private fun QuickDateChip(
         label = { Text(label) },
     )
 }
+

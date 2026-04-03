@@ -49,3 +49,4 @@ class DeleteCashFlowBalanceTest {
         assertEquals(12_000, calculate(accountId))
     }
 }
+

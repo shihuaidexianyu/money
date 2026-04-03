@@ -39,3 +39,4 @@ class AccountRepositoryImpl(
 
     override suspend fun nextDisplayOrder(): Int = accountDao.nextDisplayOrder()
 }
+

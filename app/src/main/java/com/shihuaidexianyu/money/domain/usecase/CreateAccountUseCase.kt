@@ -1,8 +1,8 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -36,3 +36,4 @@ class CreateAccountUseCase(
         return accountId
     }
 }
+

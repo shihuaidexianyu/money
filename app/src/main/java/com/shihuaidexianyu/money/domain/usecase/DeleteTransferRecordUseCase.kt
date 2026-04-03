@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 
 class DeleteTransferRecordUseCase(
     private val transactionRepository: TransactionRepository,
@@ -13,3 +13,4 @@ class DeleteTransferRecordUseCase(
         recalculateInvestmentSettlementsUseCase(existing.toAccountId)
     }
 }
+

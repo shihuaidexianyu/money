@@ -16,3 +16,4 @@ class AmountInputParserTest {
         assertNull(AmountInputParser.parseToMinor("-12.34"))
     }
 }
+

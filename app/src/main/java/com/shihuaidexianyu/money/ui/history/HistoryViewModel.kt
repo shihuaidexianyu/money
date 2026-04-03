@@ -3,11 +3,12 @@ package com.shihuaidexianyu.money.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import com.shihuaidexianyu.money.data.repository.SettingsRepository
-import com.shihuaidexianyu.money.data.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,7 +113,7 @@ class HistoryViewModel(
             settings = settings,
             accountOptions = accounts.values
                 .sortedBy { it.name }
-                .map { AccountOptionUiModel(id = it.id, name = it.name) },
+                .map { it.toAccountOptionUiModel() },
             records = records,
         )
     }
@@ -163,7 +164,10 @@ class HistoryViewModel(
                 keywordSource = "",
             )
         }
-        val adjustmentRecords = transactionRepository.queryAllBalanceAdjustmentRecords().map { record ->
+        val updateRecordIds = updateRecords.mapTo(linkedSetOf()) { it.recordId }
+        val adjustmentRecords = transactionRepository.queryAllBalanceAdjustmentRecords()
+            .filterNot { it.sourceUpdateRecordId in updateRecordIds }
+            .map { record ->
             HistoryRecordUiModel(
                 id = "balance_adjustment_${record.id}",
                 recordId = record.id,
@@ -175,7 +179,7 @@ class HistoryViewModel(
                 accountIds = setOf(record.accountId),
                 keywordSource = "",
             )
-        }
+            }
         return (cashFlowRecords + transferRecords + updateRecords + adjustmentRecords)
             .sortedByDescending { it.occurredAt }
     }
@@ -202,3 +206,4 @@ class HistoryViewModel(
         }
     }
 }
+

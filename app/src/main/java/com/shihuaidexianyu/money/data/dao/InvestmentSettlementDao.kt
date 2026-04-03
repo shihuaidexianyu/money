@@ -25,6 +25,9 @@ interface InvestmentSettlementDao {
     @Query("SELECT * FROM investment_settlements ORDER BY periodEndAt DESC, id DESC")
     fun observeAllActive(): Flow<List<InvestmentSettlementEntity>>
 
+    @Query("SELECT COUNT(*) FROM investment_settlements")
+    fun observeCount(): Flow<Int>
+
     @Query(
         """
         SELECT * FROM investment_settlements
@@ -47,3 +50,4 @@ interface InvestmentSettlementDao {
     @Query("DELETE FROM investment_settlements WHERE accountId = :accountId")
     suspend fun deleteByAccountId(accountId: Long)
 }
+

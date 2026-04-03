@@ -6,13 +6,10 @@ import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
-import com.shihuaidexianyu.money.domain.model.AccountSortMode
-import com.shihuaidexianyu.money.domain.model.AmountDisplayStyle
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
-import com.shihuaidexianyu.money.domain.model.WeekStart
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonPayloadFactory
 import kotlin.test.assertEquals
 import org.junit.Test
@@ -63,11 +60,8 @@ class ExportJsonPayloadFactoryTest {
             ),
             settings = AppSettings(
                 homePeriod = HomePeriod.MONTH,
-                weekStart = WeekStart.MONDAY,
                 currencySymbol = "$",
-                amountDisplayStyle = AmountDisplayStyle.SYMBOL_AFTER,
                 showStaleMark = false,
-                accountSortMode = AccountSortMode.BALANCE_DESC,
             ),
             exportedAt = 99,
             appVersion = "1.0",
@@ -92,3 +86,4 @@ class ExportJsonPayloadFactoryTest {
         assertEquals("1.0", payload.appVersion)
     }
 }
+

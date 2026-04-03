@@ -10,19 +10,19 @@ class InMemoryAccountRepository : AccountRepository {
     private var nextId = 1L
 
     override fun observeActiveAccounts(): Flow<List<AccountEntity>> {
-        return accounts.map { list -> list.filterNot(AccountEntity::isArchived) }
+        return accounts.map(::activeAccounts)
     }
 
     override fun observeArchivedAccounts(): Flow<List<AccountEntity>> {
-        return accounts.map { list -> list.filter(AccountEntity::isArchived) }
+        return accounts.map(::archivedAccounts)
     }
 
     override suspend fun queryActiveAccounts(): List<AccountEntity> {
-        return accounts.value.filterNot(AccountEntity::isArchived)
+        return activeAccounts(accounts.value)
     }
 
     override suspend fun queryArchivedAccounts(): List<AccountEntity> {
-        return accounts.value.filter(AccountEntity::isArchived)
+        return archivedAccounts(accounts.value)
     }
 
     override suspend fun getAccountById(id: Long): AccountEntity? {
@@ -30,8 +30,9 @@ class InMemoryAccountRepository : AccountRepository {
     }
 
     override suspend fun isActiveNameAvailable(name: String, excludeId: Long): Boolean {
+        val normalizedName = name.trim()
         return accounts.value.none {
-            !it.isArchived && it.name == name && (excludeId < 0 || it.id != excludeId)
+            !it.isArchived && it.name == normalizedName && (excludeId < 0 || it.id != excludeId)
         }
     }
 
@@ -70,6 +71,17 @@ class InMemoryAccountRepository : AccountRepository {
     }
 
     override suspend fun nextDisplayOrder(): Int {
-        return (accounts.value.maxOfOrNull { it.displayOrder } ?: -1) + 1
+        return (accounts.value.filterNot(AccountEntity::isArchived).maxOfOrNull { it.displayOrder } ?: -1) + 1
+    }
+
+    private fun activeAccounts(list: List<AccountEntity>): List<AccountEntity> {
+        return list.filterNot(AccountEntity::isArchived)
+            .sortedWith(compareBy<AccountEntity> { it.displayOrder }.thenBy { it.createdAt })
+    }
+
+    private fun archivedAccounts(list: List<AccountEntity>): List<AccountEntity> {
+        return list.filter(AccountEntity::isArchived)
+            .sortedWith(compareByDescending<AccountEntity> { it.archivedAt }.thenByDescending { it.createdAt })
     }
 }
+

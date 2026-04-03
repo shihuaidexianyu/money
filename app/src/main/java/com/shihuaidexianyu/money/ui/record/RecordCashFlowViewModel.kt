@@ -2,18 +2,18 @@ package com.shihuaidexianyu.money.ui.record
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 data class RecordCashFlowUiState(
@@ -24,12 +24,12 @@ data class RecordCashFlowUiState(
     val purpose: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     val isSaving: Boolean = false,
-    val errorMessage: String? = null,
     val showPurposeConfirm: Boolean = false,
 )
 
-sealed interface RecordCashFlowEvent {
-    data object Saved : RecordCashFlowEvent
+sealed interface RecordCashFlowEffect {
+    data object Saved : RecordCashFlowEffect
+    data class ShowMessage(val message: String) : RecordCashFlowEffect
 }
 
 class RecordCashFlowViewModel(
@@ -46,35 +46,34 @@ class RecordCashFlowViewModel(
     )
     val uiState: StateFlow<RecordCashFlowUiState> = _uiState.asStateFlow()
 
-    private val events = Channel<RecordCashFlowEvent>(Channel.BUFFERED)
-    val eventFlow = events.receiveAsFlow()
+    private val effects = MutableSharedFlow<RecordCashFlowEffect>(extraBufferCapacity = 1)
+    val effectFlow = effects.asSharedFlow()
 
     init {
         viewModelScope.launch {
             val accounts = accountRepository.queryActiveAccounts()
             _uiState.value = _uiState.value.copy(
-                accounts = accounts.map { it.toOption() },
+                accounts = accounts.toAccountOptionUiModels(),
                 selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
             )
         }
     }
 
     fun updateAccount(accountId: Long) {
-        _uiState.value = _uiState.value.copy(selectedAccountId = accountId, errorMessage = null)
+        _uiState.value = _uiState.value.copy(selectedAccountId = accountId)
     }
 
     fun updateAmount(value: String) {
-        _uiState.value = _uiState.value.copy(amountText = value, errorMessage = null)
+        _uiState.value = _uiState.value.copy(amountText = value)
     }
 
     fun updatePurpose(value: String) {
-        _uiState.value = _uiState.value.copy(purpose = value, errorMessage = null)
+        _uiState.value = _uiState.value.copy(purpose = value)
     }
 
     fun updateOccurredAt(value: Long) {
         _uiState.value = _uiState.value.copy(
             occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
-            errorMessage = null,
         )
     }
 
@@ -92,27 +91,27 @@ class RecordCashFlowViewModel(
         viewModelScope.launch {
             val accountId = state.selectedAccountId
             if (accountId == null) {
-                _uiState.value = state.copy(errorMessage = "请选择账户")
+                effects.emit(RecordCashFlowEffect.ShowMessage("请选择账户"))
                 return@launch
             }
 
             val amount = AmountInputParser.parseToMinor(state.amountText)
             if (amount == null) {
-                _uiState.value = state.copy(errorMessage = "金额不能为空")
+                effects.emit(RecordCashFlowEffect.ShowMessage("金额不能为空"))
                 return@launch
             }
             if (amount <= 0) {
-                _uiState.value = state.copy(errorMessage = "金额必须大于 0")
+                effects.emit(RecordCashFlowEffect.ShowMessage("金额必须大于 0"))
                 return@launch
             }
 
             val occurredAt = state.occurredAtMillis
             if (occurredAt > System.currentTimeMillis()) {
-                _uiState.value = state.copy(errorMessage = "时间不能晚于当前时间")
+                effects.emit(RecordCashFlowEffect.ShowMessage("时间不能晚于当前时间"))
                 return@launch
             }
 
-            _uiState.value = state.copy(isSaving = true, errorMessage = null, showPurposeConfirm = false)
+            _uiState.value = state.copy(isSaving = true, showPurposeConfirm = false)
             runCatching {
                 createCashFlowRecordUseCase(
                     accountId = accountId,
@@ -122,17 +121,12 @@ class RecordCashFlowViewModel(
                     occurredAt = occurredAt,
                 )
             }.onSuccess {
-                events.send(RecordCashFlowEvent.Saved)
+                effects.emit(RecordCashFlowEffect.Saved)
             }.onFailure { throwable ->
-                _uiState.value = _uiState.value.copy(
-                    isSaving = false,
-                    errorMessage = throwable.message ?: "保存失败",
-                )
+                _uiState.value = _uiState.value.copy(isSaving = false)
+                effects.emit(RecordCashFlowEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
         }
     }
-
-    private fun AccountEntity.toOption(): AccountOptionUiModel {
-        return AccountOptionUiModel(id = id, name = name)
-    }
 }
+

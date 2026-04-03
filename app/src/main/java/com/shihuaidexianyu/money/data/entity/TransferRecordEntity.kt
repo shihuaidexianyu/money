@@ -25,3 +25,4 @@ data class TransferRecordEntity(
     val updatedAt: Long,
     val isDeleted: Boolean = false,
 )
+

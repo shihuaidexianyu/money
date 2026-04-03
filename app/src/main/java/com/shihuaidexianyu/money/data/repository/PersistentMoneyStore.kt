@@ -270,3 +270,4 @@ private fun InvestmentSettlementEntity.toJson(): JSONObject = JSONObject().apply
     put("periodEndAt", periodEndAt)
     put("createdAt", createdAt)
 }
+

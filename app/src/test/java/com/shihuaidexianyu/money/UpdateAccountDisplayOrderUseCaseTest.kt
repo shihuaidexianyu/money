@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
@@ -29,4 +30,24 @@ class UpdateAccountDisplayOrderUseCaseTest {
         assertEquals(2, repository.getAccountById(secondId)?.displayOrder)
         assertEquals(0, repository.getAccountById(thirdId)?.displayOrder)
     }
+
+    @Test
+    fun `rejects incomplete account ids to avoid inconsistent display orders`() = runBlocking {
+        val repository = InMemoryAccountRepository()
+        val firstId = repository.createAccount(
+            AccountEntity(name = "A", groupType = "payment", initialBalance = 0, createdAt = 1, displayOrder = 0),
+        )
+        repository.createAccount(
+            AccountEntity(name = "B", groupType = "bank", initialBalance = 0, createdAt = 1, displayOrder = 1),
+        )
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            UpdateAccountDisplayOrderUseCase(repository)(
+                orderedAccountIds = listOf(firstId),
+            )
+        }
+
+        assertEquals("账户顺序必须覆盖全部活跃账户", error.message)
+    }
 }
+

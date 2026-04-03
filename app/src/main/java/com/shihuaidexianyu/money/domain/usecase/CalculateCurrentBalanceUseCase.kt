@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import com.shihuaidexianyu.money.data.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 class CalculateCurrentBalanceUseCase(
@@ -28,3 +28,4 @@ class CalculateCurrentBalanceUseCase(
         return anchorBalance + inflow - outflow + transferIn - transferOut + adjustment
     }
 }
+

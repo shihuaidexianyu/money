@@ -53,3 +53,4 @@ class RecalculateInvestmentSettlementsUseCaseTest {
         assertEquals(110_000, settlements[1].previousBalance)
     }
 }
+

@@ -85,7 +85,7 @@ fun HomeScreen(
                 val statusText = if (state.staleAccountCount > 0 && state.settings.showStaleMark) {
                     "${state.staleAccountCount} 个账户待更新"
                 } else {
-                    "${state.groupSections.sumOf { it.accounts.size }} 个账户"
+                    "${state.accountOptions.size} 个账户"
                 }
                 MoneyStatusPill(
                     text = statusText,
@@ -172,3 +172,4 @@ private fun HomeActionButton(
         Text(text = label, modifier = Modifier.padding(start = 8.dp))
     }
 }
+

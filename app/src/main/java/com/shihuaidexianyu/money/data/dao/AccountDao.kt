@@ -57,3 +57,4 @@ interface AccountDao {
     @Query("SELECT COALESCE(MAX(displayOrder), -1) + 1 FROM accounts WHERE isArchived = 0")
     suspend fun nextDisplayOrder(): Int
 }
+

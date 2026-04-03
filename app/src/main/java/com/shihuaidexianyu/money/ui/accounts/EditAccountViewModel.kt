@@ -2,17 +2,17 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import kotlinx.coroutines.channels.Channel
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 data class EditAccountUiState(
@@ -21,12 +21,12 @@ data class EditAccountUiState(
     val groupType: AccountGroupType = AccountGroupType.PAYMENT,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
-    val errorMessage: String? = null,
 )
 
-sealed interface EditAccountEvent {
-    data object Saved : EditAccountEvent
-    data object Archived : EditAccountEvent
+sealed interface EditAccountEffect {
+    data object Saved : EditAccountEffect
+    data object Archived : EditAccountEffect
+    data class ShowMessage(val message: String) : EditAccountEffect
 }
 
 class EditAccountViewModel(
@@ -38,8 +38,8 @@ class EditAccountViewModel(
     private val _uiState = MutableStateFlow(EditAccountUiState())
     val uiState: StateFlow<EditAccountUiState> = _uiState.asStateFlow()
 
-    private val events = Channel<EditAccountEvent>(Channel.BUFFERED)
-    val eventFlow = events.receiveAsFlow()
+    private val effects = MutableSharedFlow<EditAccountEffect>(extraBufferCapacity = 1)
+    val effectFlow = effects.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -54,31 +54,29 @@ class EditAccountViewModel(
     }
 
     fun updateName(value: String) {
-        _uiState.value = _uiState.value.copy(name = value, errorMessage = null)
+        _uiState.value = _uiState.value.copy(name = value)
     }
 
     fun updateGroupType(value: AccountGroupType) {
-        _uiState.value = _uiState.value.copy(groupType = value, errorMessage = null)
+        _uiState.value = _uiState.value.copy(groupType = value)
     }
 
     fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
         _uiState.value = _uiState.value.copy(
             reminderConfig = _uiState.value.reminderConfig.copy(weekday = value),
-            errorMessage = null,
         )
     }
 
     fun updateReminderTime(hour: Int, minute: Int) {
         _uiState.value = _uiState.value.copy(
             reminderConfig = _uiState.value.reminderConfig.copy(hour = hour, minute = minute),
-            errorMessage = null,
         )
     }
 
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            _uiState.value = state.copy(isSaving = true, errorMessage = null)
+            _uiState.value = state.copy(isSaving = true)
             runCatching {
                 updateAccountUseCase(
                     accountId = accountId,
@@ -87,12 +85,10 @@ class EditAccountViewModel(
                     balanceUpdateReminderConfig = state.reminderConfig,
                 )
             }.onSuccess {
-                events.send(EditAccountEvent.Saved)
+                effects.emit(EditAccountEffect.Saved)
             }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(
-                    isSaving = false,
-                    errorMessage = error.message ?: "保存失败",
-                )
+                _uiState.value = _uiState.value.copy(isSaving = false)
+                effects.emit(EditAccountEffect.ShowMessage(error.message ?: "保存失败"))
             }
         }
     }
@@ -102,12 +98,11 @@ class EditAccountViewModel(
             runCatching {
                 accountRepository.archiveAccount(accountId, System.currentTimeMillis())
             }.onSuccess {
-                events.send(EditAccountEvent.Archived)
+                effects.emit(EditAccountEffect.Archived)
             }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = error.message ?: "归档失败",
-                )
+                effects.emit(EditAccountEffect.ShowMessage(error.message ?: "归档失败"))
             }
         }
     }
 }
+
