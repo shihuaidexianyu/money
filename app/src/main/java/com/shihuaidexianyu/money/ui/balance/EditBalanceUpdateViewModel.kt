@@ -31,7 +31,8 @@ data class EditBalanceUpdateUiState(
 )
 
 sealed interface EditBalanceUpdateEffect {
-    data object Finished : EditBalanceUpdateEffect
+    data object Saved : EditBalanceUpdateEffect
+    data object Deleted : EditBalanceUpdateEffect
     data class ShowMessage(val message: String) : EditBalanceUpdateEffect
 }
 
@@ -50,10 +51,15 @@ class EditBalanceUpdateViewModel(
     val effectFlow = effects.asSharedFlow()
 
     private var accountId: Long = 0
+    private var closed = false
 
     init {
         viewModelScope.launch {
-            val record = requireNotNull(transactionRepository.getBalanceUpdateRecordById(recordId))
+            val record = transactionRepository.getBalanceUpdateRecordById(recordId)
+            if (record == null) {
+                emitDeletedOnce()
+                return@launch
+            }
             val account = accountRepository.getAccountById(record.accountId)
             accountId = record.accountId
             _uiState.value = EditBalanceUpdateUiState(
@@ -126,7 +132,7 @@ class EditBalanceUpdateViewModel(
                     occurredAt = state.occurredAtMillis,
                 )
             }.onSuccess {
-                effects.emit(EditBalanceUpdateEffect.Finished)
+                effects.emit(EditBalanceUpdateEffect.Saved)
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(EditBalanceUpdateEffect.ShowMessage(throwable.message ?: "保存失败"))
@@ -139,7 +145,7 @@ class EditBalanceUpdateViewModel(
             runCatching {
                 deleteBalanceUpdateRecordUseCase(recordId)
             }.onSuccess {
-                effects.emit(EditBalanceUpdateEffect.Finished)
+                emitDeletedOnce()
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(showDeleteConfirm = false)
                 effects.emit(EditBalanceUpdateEffect.ShowMessage(throwable.message ?: "撤销失败"))
@@ -151,5 +157,11 @@ class EditBalanceUpdateViewModel(
         return BigDecimal.valueOf(this, 2)
             .setScale(2, RoundingMode.DOWN)
             .toPlainString()
+    }
+
+    private suspend fun emitDeletedOnce() {
+        if (closed) return
+        closed = true
+        effects.emit(EditBalanceUpdateEffect.Deleted)
     }
 }

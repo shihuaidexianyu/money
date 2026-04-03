@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -26,6 +27,7 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private sealed interface SettingsDialog {
     data object HomePeriod : SettingsDialog
+    data object ThemeMode : SettingsDialog
     data object CurrencySymbol : SettingsDialog
 }
 
@@ -33,6 +35,7 @@ private sealed interface SettingsDialog {
 fun SettingsScreen(
     state: SettingsUiState,
     onHomePeriodChange: (HomePeriod) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
     onShowStaleMarkChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
@@ -54,6 +57,20 @@ fun SettingsScreen(
                     label = { it.displayName },
                     onSelect = {
                         onHomePeriodChange(it)
+                        dialog = null
+                    },
+                    onDismiss = { dialog = null },
+                )
+            }
+
+            SettingsDialog.ThemeMode -> {
+                MoneyChoiceDialog(
+                    title = "主题模式",
+                    options = ThemeMode.entries,
+                    selected = settings.themeMode,
+                    label = { it.displayName },
+                    onSelect = {
+                        onThemeModeChange(it)
                         dialog = null
                     },
                     onDismiss = { dialog = null },
@@ -87,6 +104,12 @@ fun SettingsScreen(
                     title = "首页默认周期",
                     trailing = settings.homePeriod.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.HomePeriod },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "主题模式",
+                    trailing = settings.themeMode.displayName,
+                    modifier = Modifier.clickable { dialog = SettingsDialog.ThemeMode },
                 )
                 MoneySectionDivider()
                 MoneyListRow(

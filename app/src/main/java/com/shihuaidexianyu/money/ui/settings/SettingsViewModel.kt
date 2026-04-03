@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonResult
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,10 @@ class SettingsViewModel(
 
     fun updateShowStaleMark(show: Boolean) {
         viewModelScope.launch { settingsRepository.updateShowStaleMark(show) }
+    }
+
+    fun updateThemeMode(themeMode: ThemeMode) {
+        viewModelScope.launch { settingsRepository.updateThemeMode(themeMode) }
     }
 
     fun exportJson() {

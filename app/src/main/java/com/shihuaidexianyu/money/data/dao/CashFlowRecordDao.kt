@@ -19,7 +19,7 @@ interface CashFlowRecordDao {
     @Query("UPDATE cash_flow_records SET isDeleted = 1, updatedAt = :updatedAt WHERE id = :id")
     suspend fun softDelete(id: Long, updatedAt: Long)
 
-    @Query("SELECT * FROM cash_flow_records WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM cash_flow_records WHERE id = :id AND isDeleted = 0 LIMIT 1")
     suspend fun queryById(id: Long): CashFlowRecordEntity?
 
     @Query("SELECT * FROM cash_flow_records WHERE isDeleted = 0 ORDER BY occurredAt DESC, id DESC")

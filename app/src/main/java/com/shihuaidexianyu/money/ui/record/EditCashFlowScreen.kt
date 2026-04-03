@@ -33,6 +33,7 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 fun EditCashFlowScreen(
     viewModel: EditCashFlowViewModel,
     onBack: () -> Unit,
+    onDeleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -44,7 +45,8 @@ fun EditCashFlowScreen(
     LaunchedEffect(viewModel) {
         viewModel.effectFlow.collect { effect ->
             when (effect) {
-                EditCashFlowEffect.Finished -> onBack()
+                EditCashFlowEffect.Saved -> onBack()
+                EditCashFlowEffect.Deleted -> onDeleted()
                 is EditCashFlowEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
             }
         }

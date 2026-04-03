@@ -106,11 +106,13 @@ class MoneyAppContainer(context: Context) {
     val createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val createTransferRecordUseCase = CreateTransferRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(
@@ -122,22 +124,26 @@ class MoneyAppContainer(context: Context) {
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
         recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteCashFlowRecordUseCase = DeleteCashFlowRecordUseCase(
         transactionRepository = transactionRepository,
         recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateTransferRecordUseCase = UpdateTransferRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
         recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteTransferRecordUseCase = DeleteTransferRecordUseCase(
         transactionRepository = transactionRepository,
         recalculateInvestmentSettlementsUseCase = recalculateInvestmentSettlementsUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateBalanceUseCase = UpdateBalanceUseCase(

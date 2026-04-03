@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 data class AccountDetailUiState(
     val isLoading: Boolean = true,
+    val isMissing: Boolean = false,
     val accountId: Long = 0,
     val name: String = "",
     val groupType: AccountGroupType = AccountGroupType.PAYMENT,
@@ -40,6 +41,7 @@ class AccountDetailViewModel(
                 _uiState.value = if (account == null) {
                     AccountDetailUiState(
                         isLoading = false,
+                        isMissing = true,
                         accountId = accountId,
                         settings = snapshot.settings,
                     )

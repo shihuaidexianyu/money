@@ -7,8 +7,10 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.RecalculateInvestmentSettlementsUseCase
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
@@ -21,7 +23,12 @@ class DeleteCashFlowBalanceTest {
             AccountEntity(name = "现金", groupType = "payment", initialBalance = 10_000, createdAt = 1_000),
         )
 
-        val createCashFlow = CreateCashFlowRecordUseCase(accountRepository, transactionRepository)
+        val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val createCashFlow = CreateCashFlowRecordUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
         createCashFlow(
             accountId = accountId,
             direction = CashFlowDirection.INFLOW,
@@ -39,14 +46,19 @@ class DeleteCashFlowBalanceTest {
 
         val calculate = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         assertEquals(11_500, calculate(accountId))
+        assertEquals(3_000, accountRepository.getAccountById(accountId)?.lastUsedAt)
 
         val delete = DeleteCashFlowRecordUseCase(
             transactionRepository = transactionRepository,
             recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
+            refreshAccountActivityStateUseCase = refreshActivity,
         )
+        delete(outflowId)
         delete(outflowId)
 
         assertEquals(12_000, calculate(accountId))
+        assertEquals(2_000, accountRepository.getAccountById(accountId)?.lastUsedAt)
+        assertNull(transactionRepository.queryCashFlowRecordById(outflowId))
     }
 }
 

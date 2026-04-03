@@ -22,6 +22,16 @@ internal fun NavGraphBuilder.addAccountsGraph(
     navController: NavHostController,
     container: MoneyAppContainer,
 ) {
+    val closeAccountsFlow = {
+        navController.navigate(MoneyDestination.Accounts.route) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(MoneyDestination.Accounts.route) {
+                inclusive = false
+            }
+        }
+    }
+
     composable(MoneyDestination.CreateAccountRoute) {
         val viewModel = viewModel<CreateAccountViewModel>(
             factory = moneyViewModelFactory {
@@ -69,6 +79,7 @@ internal fun NavGraphBuilder.addAccountsGraph(
             state = state,
             onManageAccount = { navController.navigate(MoneyDestination.editAccountRoute(accountId)) },
             onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(accountId)) },
+            onBackToAccounts = closeAccountsFlow,
         )
     }
 
@@ -91,6 +102,7 @@ internal fun NavGraphBuilder.addAccountsGraph(
         EditAccountScreen(
             viewModel = viewModel,
             onBack = { navController.popBackStack() },
+            onClosed = closeAccountsFlow,
         )
     }
 }

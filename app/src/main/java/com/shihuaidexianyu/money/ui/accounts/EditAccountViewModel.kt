@@ -26,6 +26,7 @@ data class EditAccountUiState(
 sealed interface EditAccountEffect {
     data object Saved : EditAccountEffect
     data object Archived : EditAccountEffect
+    data object Closed : EditAccountEffect
     data class ShowMessage(val message: String) : EditAccountEffect
 }
 
@@ -40,10 +41,15 @@ class EditAccountViewModel(
 
     private val effects = MutableSharedFlow<EditAccountEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var closed = false
 
     init {
         viewModelScope.launch {
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            val account = accountRepository.getAccountById(accountId)
+            if (account == null) {
+                emitClosedOnce()
+                return@launch
+            }
             _uiState.value = EditAccountUiState(
                 isLoading = false,
                 name = account.name,
@@ -87,6 +93,10 @@ class EditAccountViewModel(
             }.onSuccess {
                 effects.emit(EditAccountEffect.Saved)
             }.onFailure { error ->
+                if (accountRepository.getAccountById(accountId) == null) {
+                    emitClosedOnce()
+                    return@onFailure
+                }
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(EditAccountEffect.ShowMessage(error.message ?: "保存失败"))
             }
@@ -100,9 +110,19 @@ class EditAccountViewModel(
             }.onSuccess {
                 effects.emit(EditAccountEffect.Archived)
             }.onFailure { error ->
+                if (accountRepository.getAccountById(accountId) == null) {
+                    emitClosedOnce()
+                    return@onFailure
+                }
                 effects.emit(EditAccountEffect.ShowMessage(error.message ?: "归档失败"))
             }
         }
+    }
+
+    private suspend fun emitClosedOnce() {
+        if (closed) return
+        closed = true
+        effects.emit(EditAccountEffect.Closed)
     }
 }
 

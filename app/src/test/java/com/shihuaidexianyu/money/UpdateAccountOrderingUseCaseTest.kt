@@ -6,6 +6,7 @@ import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountOrderingUseCase
 import kotlin.test.assertEquals
@@ -61,6 +62,10 @@ class UpdateAccountOrderingUseCaseTest {
 
         override suspend fun updateShowStaleMark(show: Boolean) {
             state.value = state.value.copy(showStaleMark = show)
+        }
+
+        override suspend fun updateThemeMode(themeMode: ThemeMode) {
+            state.value = state.value.copy(themeMode = themeMode)
         }
 
         override suspend fun updateAccountGroupOrder(order: List<AccountGroupType>) {

@@ -29,6 +29,7 @@ private sealed interface EditAccountDialog {
 fun EditAccountScreen(
     viewModel: EditAccountViewModel,
     onBack: () -> Unit,
+    onClosed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -43,6 +44,7 @@ fun EditAccountScreen(
                 EditAccountEffect.Saved,
                 EditAccountEffect.Archived,
                 -> onBack()
+                EditAccountEffect.Closed -> onClosed()
 
                 is EditAccountEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
             }

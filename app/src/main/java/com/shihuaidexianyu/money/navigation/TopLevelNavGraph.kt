@@ -100,6 +100,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         SettingsScreen(
             state = state,
             onHomePeriodChange = viewModel::updateHomePeriod,
+            onThemeModeChange = viewModel::updateThemeMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onShowStaleMarkChange = viewModel::updateShowStaleMark,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },

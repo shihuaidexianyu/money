@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 class CreateCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -32,8 +33,7 @@ class CreateCashFlowRecordUseCase(
                 updatedAt = now,
             ),
         )
-
-        accountRepository.updateLastUsedAt(accountId, maxOf(occurredAt, now))
+        refreshAccountActivityStateUseCase(accountId)
         return recordId
     }
 }

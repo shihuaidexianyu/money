@@ -8,6 +8,7 @@ class UpdateCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
+    private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
         recordId: Long,
@@ -21,7 +22,7 @@ class UpdateCashFlowRecordUseCase(
         require(occurredAt <= System.currentTimeMillis()) { "时间不能晚于当前时间" }
         requireNotNull(accountRepository.getAccountById(accountId))
 
-        val existing = requireNotNull(transactionRepository.queryCashFlowRecordById(recordId))
+        val existing = requireNotNull(transactionRepository.queryCashFlowRecordById(recordId)) { "记录不存在或已删除" }
         val updated = existing.copy(
             accountId = accountId,
             direction = direction.value,
@@ -31,9 +32,12 @@ class UpdateCashFlowRecordUseCase(
             updatedAt = System.currentTimeMillis(),
         )
         transactionRepository.updateCashFlowRecord(updated)
-        accountRepository.updateLastUsedAt(accountId, maxOf(occurredAt, System.currentTimeMillis()))
         recalculateInvestmentSettlementsUseCase(existing.accountId)
         if (existing.accountId != accountId) recalculateInvestmentSettlementsUseCase(accountId)
+        refreshAccountActivityStateUseCase(existing.accountId)
+        if (existing.accountId != accountId) {
+            refreshAccountActivityStateUseCase(accountId)
+        }
     }
 }
 

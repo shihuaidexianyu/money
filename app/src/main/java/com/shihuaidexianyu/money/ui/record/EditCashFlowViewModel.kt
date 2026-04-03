@@ -32,7 +32,8 @@ data class EditCashFlowUiState(
 )
 
 sealed interface EditCashFlowEffect {
-    data object Finished : EditCashFlowEffect
+    data object Saved : EditCashFlowEffect
+    data object Deleted : EditCashFlowEffect
     data class ShowMessage(val message: String) : EditCashFlowEffect
 }
 
@@ -48,10 +49,15 @@ class EditCashFlowViewModel(
 
     private val effects = MutableSharedFlow<EditCashFlowEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var closed = false
 
     init {
         viewModelScope.launch {
-            val record = requireNotNull(transactionRepository.queryCashFlowRecordById(recordId))
+            val record = transactionRepository.queryCashFlowRecordById(recordId)
+            if (record == null) {
+                emitDeletedOnce()
+                return@launch
+            }
             val accounts = accountRepository.queryActiveAccounts()
             _uiState.value = EditCashFlowUiState(
                 isLoading = false,
@@ -108,8 +114,12 @@ class EditCashFlowViewModel(
                     occurredAt = occurredAt,
                 )
             }.onSuccess {
-                effects.emit(EditCashFlowEffect.Finished)
+                effects.emit(EditCashFlowEffect.Saved)
             }.onFailure {
+                if (transactionRepository.queryCashFlowRecordById(recordId) == null) {
+                    emitDeletedOnce()
+                    return@onFailure
+                }
                 updateState { copy(isSaving = false) }
                 effects.emit(EditCashFlowEffect.ShowMessage(it.message ?: "保存失败"))
             }
@@ -121,7 +131,7 @@ class EditCashFlowViewModel(
             runCatching {
                 deleteCashFlowRecordUseCase(recordId)
             }.onSuccess {
-                effects.emit(EditCashFlowEffect.Finished)
+                emitDeletedOnce()
             }.onFailure {
                 updateState { copy(showDeleteConfirm = false) }
                 effects.emit(EditCashFlowEffect.ShowMessage(it.message ?: "删除失败"))
@@ -134,6 +144,12 @@ class EditCashFlowViewModel(
     }
     private fun Long.toAmountText(): String {
         return BigDecimal.valueOf(this, 2).setScale(2, RoundingMode.DOWN).toPlainString()
+    }
+
+    private suspend fun emitDeletedOnce() {
+        if (closed) return
+        closed = true
+        effects.emit(EditCashFlowEffect.Deleted)
     }
 }
 
