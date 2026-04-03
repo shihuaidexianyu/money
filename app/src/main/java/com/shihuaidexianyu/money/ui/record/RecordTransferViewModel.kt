@@ -2,17 +2,17 @@ package com.shihuaidexianyu.money.ui.record
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 data class RecordTransferUiState(
@@ -23,11 +23,11 @@ data class RecordTransferUiState(
     val note: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     val isSaving: Boolean = false,
-    val errorMessage: String? = null,
 )
 
-sealed interface RecordTransferEvent {
-    data object Saved : RecordTransferEvent
+sealed interface RecordTransferEffect {
+    data object Saved : RecordTransferEffect
+    data class ShowMessage(val message: String) : RecordTransferEffect
 }
 
 class RecordTransferViewModel(
@@ -38,14 +38,14 @@ class RecordTransferViewModel(
     private val _uiState = MutableStateFlow(RecordTransferUiState(fromAccountId = initialFromAccountId))
     val uiState: StateFlow<RecordTransferUiState> = _uiState.asStateFlow()
 
-    private val events = Channel<RecordTransferEvent>(Channel.BUFFERED)
-    val eventFlow = events.receiveAsFlow()
+    private val effects = MutableSharedFlow<RecordTransferEffect>(extraBufferCapacity = 1)
+    val effectFlow = effects.asSharedFlow()
 
     init {
         viewModelScope.launch {
             val accounts = accountRepository.queryActiveAccounts()
             _uiState.value = _uiState.value.copy(
-                accounts = accounts.map { it.toOption() },
+                accounts = accounts.toAccountOptionUiModels(),
                 fromAccountId = _uiState.value.fromAccountId ?: accounts.firstOrNull()?.id,
                 toAccountId = accounts.firstOrNull { it.id != _uiState.value.fromAccountId }?.id,
             )
@@ -53,11 +53,11 @@ class RecordTransferViewModel(
     }
 
     fun updateFromAccount(accountId: Long) {
-        _uiState.value = _uiState.value.copy(fromAccountId = accountId, errorMessage = null)
+        _uiState.value = _uiState.value.copy(fromAccountId = accountId)
     }
 
     fun updateToAccount(accountId: Long) {
-        _uiState.value = _uiState.value.copy(toAccountId = accountId, errorMessage = null)
+        _uiState.value = _uiState.value.copy(toAccountId = accountId)
     }
 
     fun swapAccounts() {
@@ -65,22 +65,20 @@ class RecordTransferViewModel(
         _uiState.value = state.copy(
             fromAccountId = state.toAccountId,
             toAccountId = state.fromAccountId,
-            errorMessage = null,
         )
     }
 
     fun updateAmount(value: String) {
-        _uiState.value = _uiState.value.copy(amountText = value, errorMessage = null)
+        _uiState.value = _uiState.value.copy(amountText = value)
     }
 
     fun updateNote(value: String) {
-        _uiState.value = _uiState.value.copy(note = value, errorMessage = null)
+        _uiState.value = _uiState.value.copy(note = value)
     }
 
     fun updateOccurredAt(value: Long) {
         _uiState.value = _uiState.value.copy(
             occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
-            errorMessage = null,
         )
     }
 
@@ -90,27 +88,27 @@ class RecordTransferViewModel(
             val fromId = state.fromAccountId
             val toId = state.toAccountId
             if (fromId == null || toId == null) {
-                _uiState.value = state.copy(errorMessage = "请选择账户")
+                effects.emit(RecordTransferEffect.ShowMessage("请选择账户"))
                 return@launch
             }
 
             val amount = AmountInputParser.parseToMinor(state.amountText)
             if (amount == null) {
-                _uiState.value = state.copy(errorMessage = "金额不能为空")
+                effects.emit(RecordTransferEffect.ShowMessage("金额不能为空"))
                 return@launch
             }
             if (amount <= 0) {
-                _uiState.value = state.copy(errorMessage = "金额必须大于 0")
+                effects.emit(RecordTransferEffect.ShowMessage("金额必须大于 0"))
                 return@launch
             }
 
             val occurredAt = state.occurredAtMillis
             if (occurredAt > System.currentTimeMillis()) {
-                _uiState.value = state.copy(errorMessage = "时间不能晚于当前时间")
+                effects.emit(RecordTransferEffect.ShowMessage("时间不能晚于当前时间"))
                 return@launch
             }
 
-            _uiState.value = state.copy(isSaving = true, errorMessage = null)
+            _uiState.value = state.copy(isSaving = true)
             runCatching {
                 createTransferRecordUseCase(
                     fromAccountId = fromId,
@@ -120,17 +118,12 @@ class RecordTransferViewModel(
                     occurredAt = occurredAt,
                 )
             }.onSuccess {
-                events.send(RecordTransferEvent.Saved)
+                effects.emit(RecordTransferEffect.Saved)
             }.onFailure { throwable ->
-                _uiState.value = _uiState.value.copy(
-                    isSaving = false,
-                    errorMessage = throwable.message ?: "保存失败",
-                )
+                _uiState.value = _uiState.value.copy(isSaving = false)
+                effects.emit(RecordTransferEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
         }
     }
-
-    private fun AccountEntity.toOption(): AccountOptionUiModel {
-        return AccountOptionUiModel(id = id, name = name)
-    }
 }
+

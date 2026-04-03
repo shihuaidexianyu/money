@@ -21,3 +21,4 @@ data class BalanceAdjustmentRecordEntity(
     val occurredAt: Long,
     val createdAt: Long,
 )
+

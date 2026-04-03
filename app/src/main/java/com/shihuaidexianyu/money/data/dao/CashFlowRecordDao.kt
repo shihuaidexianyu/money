@@ -25,6 +25,9 @@ interface CashFlowRecordDao {
     @Query("SELECT * FROM cash_flow_records WHERE isDeleted = 0 ORDER BY occurredAt DESC, id DESC")
     fun observeAllActive(): Flow<List<CashFlowRecordEntity>>
 
+    @Query("SELECT COUNT(*) FROM cash_flow_records WHERE isDeleted = 0")
+    fun observeActiveCount(): Flow<Int>
+
     @Query("SELECT * FROM cash_flow_records ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAll(): List<CashFlowRecordEntity>
 
@@ -63,4 +66,27 @@ interface CashFlowRecordDao {
         """,
     )
     suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
+        WHERE direction = 'inflow'
+            AND isDeleted = 0
+            AND occurredAt >= :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
+        WHERE direction = 'outflow'
+            AND isDeleted = 0
+            AND occurredAt >= :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long
 }
+

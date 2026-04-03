@@ -98,3 +98,4 @@ class AccountTrendChartTransformerTest {
         assertEquals(10_500.0, chart.paddedMaxBalance)
     }
 }
+

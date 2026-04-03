@@ -2,18 +2,18 @@ package com.shihuaidexianyu.money.ui.record
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import com.shihuaidexianyu.money.data.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -25,14 +25,14 @@ data class EditTransferUiState(
     val toAccountId: Long? = null,
     val amountText: String = "",
     val note: String = "",
-    val occurredAtText: String = "",
+    val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     val isSaving: Boolean = false,
-    val errorMessage: String? = null,
     val showDeleteConfirm: Boolean = false,
 )
 
-sealed interface EditTransferEvent {
-    data object Finished : EditTransferEvent
+sealed interface EditTransferEffect {
+    data object Finished : EditTransferEffect
+    data class ShowMessage(val message: String) : EditTransferEffect
 }
 
 class EditTransferViewModel(
@@ -45,8 +45,8 @@ class EditTransferViewModel(
     private val _uiState = MutableStateFlow(EditTransferUiState())
     val uiState: StateFlow<EditTransferUiState> = _uiState.asStateFlow()
 
-    private val events = Channel<EditTransferEvent>(Channel.BUFFERED)
-    val eventFlow = events.receiveAsFlow()
+    private val effects = MutableSharedFlow<EditTransferEffect>(extraBufferCapacity = 1)
+    val effectFlow = effects.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -54,42 +54,53 @@ class EditTransferViewModel(
             val accounts = accountRepository.queryActiveAccounts()
             _uiState.value = EditTransferUiState(
                 isLoading = false,
-                accounts = accounts.map { it.toOption() },
+                accounts = accounts.toAccountOptionUiModels(),
                 fromAccountId = record.fromAccountId,
                 toAccountId = record.toAccountId,
                 amountText = record.amount.toAmountText(),
                 note = record.note,
-                occurredAtText = DateTimeTextFormatter.format(record.occurredAt),
+                occurredAtMillis = record.occurredAt,
             )
         }
     }
 
-    fun updateFromAccount(accountId: Long) = updateState { copy(fromAccountId = accountId, errorMessage = null) }
-    fun updateToAccount(accountId: Long) = updateState { copy(toAccountId = accountId, errorMessage = null) }
-    fun updateAmount(value: String) = updateState { copy(amountText = value, errorMessage = null) }
-    fun updateNote(value: String) = updateState { copy(note = value, errorMessage = null) }
-    fun updateOccurredAt(value: String) = updateState { copy(occurredAtText = value, errorMessage = null) }
+    fun updateFromAccount(accountId: Long) = updateState { copy(fromAccountId = accountId) }
+    fun updateToAccount(accountId: Long) = updateState { copy(toAccountId = accountId) }
+    fun swapAccounts() = updateState {
+        copy(
+            fromAccountId = toAccountId,
+            toAccountId = fromAccountId,
+        )
+    }
+    fun updateAmount(value: String) = updateState { copy(amountText = value) }
+    fun updateNote(value: String) = updateState { copy(note = value) }
+    fun updateOccurredAt(value: Long) = updateState {
+        copy(
+            occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
+        )
+    }
     fun showDeleteConfirm() = updateState { copy(showDeleteConfirm = true) }
     fun dismissDeleteConfirm() = updateState { copy(showDeleteConfirm = false) }
 
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val fromId = state.fromAccountId ?: run { updateState { copy(errorMessage = "请选择账户") }; return@launch }
-            val toId = state.toAccountId ?: run { updateState { copy(errorMessage = "请选择账户") }; return@launch }
+            val fromId = state.fromAccountId ?: run { effects.emit(EditTransferEffect.ShowMessage("请选择账户")); return@launch }
+            val toId = state.toAccountId ?: run { effects.emit(EditTransferEffect.ShowMessage("请选择账户")); return@launch }
             val amount = com.shihuaidexianyu.money.util.AmountInputParser.parseToMinor(state.amountText) ?: run {
-                updateState { copy(errorMessage = "金额不能为空") }
+                effects.emit(EditTransferEffect.ShowMessage("金额不能为空"))
                 return@launch
             }
             if (amount <= 0) {
-                updateState { copy(errorMessage = "金额必须大于 0") }
+                effects.emit(EditTransferEffect.ShowMessage("金额必须大于 0"))
                 return@launch
             }
-            val occurredAt = DateTimeTextFormatter.parse(state.occurredAtText) ?: run {
-                updateState { copy(errorMessage = "请输入正确的时间，格式如 2026-04-02 16:30") }
+            val occurredAt = state.occurredAtMillis
+            if (occurredAt > System.currentTimeMillis()) {
+                effects.emit(EditTransferEffect.ShowMessage("时间不能晚于当前时间"))
                 return@launch
             }
-            updateState { copy(isSaving = true, errorMessage = null) }
+            updateState { copy(isSaving = true) }
             runCatching {
                 updateTransferRecordUseCase(
                     recordId = recordId,
@@ -99,26 +110,30 @@ class EditTransferViewModel(
                     note = state.note,
                     occurredAt = occurredAt,
                 )
-            }.onSuccess { events.send(EditTransferEvent.Finished) }
-                .onFailure { updateState { copy(isSaving = false, errorMessage = it.message ?: "保存失败") } }
+            }.onSuccess { effects.emit(EditTransferEffect.Finished) }
+                .onFailure {
+                    updateState { copy(isSaving = false) }
+                    effects.emit(EditTransferEffect.ShowMessage(it.message ?: "保存失败"))
+                }
         }
     }
 
     fun delete() {
         viewModelScope.launch {
             runCatching { deleteTransferRecordUseCase(recordId) }
-                .onSuccess { events.send(EditTransferEvent.Finished) }
-                .onFailure { updateState { copy(errorMessage = it.message ?: "删除失败", showDeleteConfirm = false) } }
+                .onSuccess { effects.emit(EditTransferEffect.Finished) }
+                .onFailure {
+                    updateState { copy(showDeleteConfirm = false) }
+                    effects.emit(EditTransferEffect.ShowMessage(it.message ?: "删除失败"))
+                }
         }
     }
 
     private fun updateState(transform: EditTransferUiState.() -> EditTransferUiState) {
         _uiState.value = _uiState.value.transform()
     }
-
-    private fun AccountEntity.toOption() = AccountOptionUiModel(id = id, name = name)
-
     private fun Long.toAmountText(): String {
         return BigDecimal.valueOf(this, 2).setScale(2, RoundingMode.DOWN).toPlainString()
     }
 }
+

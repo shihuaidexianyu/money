@@ -22,13 +22,17 @@ class TransactionRepositoryImpl(
 ) : TransactionRepository {
     override fun observeChangeVersion(): Flow<Long> {
         return combine(
-            cashFlowRecordDao.observeAllActive(),
-            transferRecordDao.observeAllActive(),
-            balanceUpdateRecordDao.observeAllActive(),
-            balanceAdjustmentRecordDao.observeAllActive(),
-            investmentSettlementDao.observeAllActive(),
-        ) { _, _, _, _, _ ->
-            System.currentTimeMillis()
+            cashFlowRecordDao.observeActiveCount(),
+            transferRecordDao.observeActiveCount(),
+            balanceUpdateRecordDao.observeCount(),
+            balanceAdjustmentRecordDao.observeCount(),
+            investmentSettlementDao.observeCount(),
+        ) { cashFlowCount, transferCount, balanceUpdateCount, adjustmentCount, settlementCount ->
+            cashFlowCount.toLong() +
+                transferCount.toLong() +
+                balanceUpdateCount.toLong() +
+                adjustmentCount.toLong() +
+                settlementCount.toLong()
         }
     }
 
@@ -111,4 +115,9 @@ class TransactionRepositoryImpl(
     override suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long = transferRecordDao.sumTransferOutBetween(accountId, startAt, endAt)
 
     override suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long = balanceAdjustmentRecordDao.sumAdjustmentBetween(accountId, startAt, endAt)
+
+    override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumAllInflowBetween(startAt, endAt)
+
+    override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumAllOutflowBetween(startAt, endAt)
 }
+

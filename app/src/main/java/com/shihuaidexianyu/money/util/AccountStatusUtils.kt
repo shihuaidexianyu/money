@@ -19,11 +19,6 @@ object AccountStatusUtils {
         return anchor < latestReminderAt
     }
 
-    fun staleDays(account: AccountEntity, nowMillis: Long = System.currentTimeMillis()): Long {
-        val anchor = account.lastBalanceUpdateAt ?: account.createdAt
-        return java.util.concurrent.TimeUnit.MILLISECONDS.toDays((nowMillis - anchor).coerceAtLeast(0))
-    }
-
     private fun latestReminderAt(
         nowMillis: Long,
         reminderConfig: BalanceUpdateReminderConfig,
@@ -53,3 +48,4 @@ object AccountStatusUtils {
             .toEpochMilli()
     }
 }
+

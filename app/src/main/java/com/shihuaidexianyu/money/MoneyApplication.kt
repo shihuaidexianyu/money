@@ -12,3 +12,4 @@ MoneyApplication : Application() {
         container = MoneyAppContainer(this)
     }
 }
+

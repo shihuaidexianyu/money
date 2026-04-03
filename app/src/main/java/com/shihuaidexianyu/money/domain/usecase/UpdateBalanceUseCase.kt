@@ -1,10 +1,9 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import com.shihuaidexianyu.money.data.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 
 data class InvestmentSettlementSummary(
@@ -24,7 +23,6 @@ data class UpdateBalanceResult(
     val systemBalanceBeforeUpdate: Long,
     val actualBalance: Long,
     val delta: Long,
-    val adjustmentCreated: Boolean,
     val settlementSummary: InvestmentSettlementSummary? = null,
 )
 
@@ -59,21 +57,6 @@ class UpdateBalanceUseCase(
                 createdAt = now,
             ),
         )
-
-        val adjustmentCreated = if (delta != 0L) {
-            transactionRepository.insertBalanceAdjustmentRecord(
-                BalanceAdjustmentRecordEntity(
-                    accountId = accountId,
-                    delta = delta,
-                    sourceUpdateRecordId = updateRecordId,
-                    occurredAt = occurredAt,
-                    createdAt = now,
-                ),
-            )
-            true
-        } else {
-            false
-        }
 
         val settlementSummary = if (AccountGroupType.fromValue(account.groupType) == AccountGroupType.INVESTMENT) {
             val previousBalance = previousUpdate?.actualBalance ?: account.initialBalance
@@ -126,8 +109,8 @@ class UpdateBalanceUseCase(
             systemBalanceBeforeUpdate = systemBalanceBeforeUpdate,
             actualBalance = actualBalance,
             delta = delta,
-            adjustmentCreated = adjustmentCreated,
             settlementSummary = settlementSummary,
         )
     }
 }
+

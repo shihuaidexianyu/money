@@ -3,12 +3,9 @@ package com.shihuaidexianyu.money.ui.settings
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.repository.SettingsRepository
-import com.shihuaidexianyu.money.domain.model.AccountSortMode
-import com.shihuaidexianyu.money.domain.model.AmountDisplayStyle
+import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
-import com.shihuaidexianyu.money.domain.model.WeekStart
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonResult
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,24 +46,12 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.updateHomePeriod(period) }
     }
 
-    fun updateWeekStart(weekStart: WeekStart) {
-        viewModelScope.launch { settingsRepository.updateWeekStart(weekStart) }
-    }
-
     fun updateCurrencySymbol(symbol: String) {
         viewModelScope.launch { settingsRepository.updateCurrencySymbol(symbol) }
     }
 
-    fun updateAmountDisplayStyle(style: AmountDisplayStyle) {
-        viewModelScope.launch { settingsRepository.updateAmountDisplayStyle(style) }
-    }
-
     fun updateShowStaleMark(show: Boolean) {
         viewModelScope.launch { settingsRepository.updateShowStaleMark(show) }
-    }
-
-    fun updateAccountSortMode(mode: AccountSortMode) {
-        viewModelScope.launch { settingsRepository.updateAccountSortMode(mode) }
     }
 
     fun exportJson() {
@@ -100,3 +85,4 @@ class SettingsViewModel(
         )
     }
 }
+

@@ -21,3 +21,4 @@ data class BalanceUpdateRecordEntity(
     val occurredAt: Long,
     val createdAt: Long,
 )
+

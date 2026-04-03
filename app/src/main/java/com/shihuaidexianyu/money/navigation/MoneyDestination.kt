@@ -50,3 +50,4 @@ sealed class MoneyDestination(
         fun balanceUpdateResultRoute(accountId: Long): String = "balance/update/$accountId/result"
     }
 }
+

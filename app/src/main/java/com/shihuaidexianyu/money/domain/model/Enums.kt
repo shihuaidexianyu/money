@@ -13,6 +13,23 @@ enum class AccountGroupType(
         fun fromValue(value: String?): AccountGroupType {
             return entries.firstOrNull { it.value == value } ?: PAYMENT
         }
+
+        fun normalizeOrder(values: List<AccountGroupType>): List<AccountGroupType> {
+            val deduped = values.distinct()
+            return deduped + entries.filterNot { it in deduped }
+        }
+
+        fun fromStoredOrder(value: String?): List<AccountGroupType> {
+            val parsed = value
+                ?.split(",")
+                ?.mapNotNull { raw -> entries.firstOrNull { it.value == raw.trim() } }
+                .orEmpty()
+            return normalizeOrder(parsed)
+        }
+
+        fun toStoredOrder(values: List<AccountGroupType>): String {
+            return normalizeOrder(values).joinToString(",") { it.value }
+        }
     }
 }
 
@@ -87,47 +104,3 @@ enum class HomePeriod(
     }
 }
 
-enum class WeekStart(
-    val value: String,
-    val displayName: String,
-) {
-    MONDAY("monday", "周一"),
-    ;
-
-    companion object {
-        fun fromValue(value: String?): WeekStart {
-            return entries.firstOrNull { it.value == value } ?: MONDAY
-        }
-    }
-}
-
-enum class AmountDisplayStyle(
-    val value: String,
-    val displayName: String,
-) {
-    SYMBOL_BEFORE("symbol_before", "符号前置"),
-    SYMBOL_AFTER("symbol_after", "符号后置"),
-    ;
-
-    companion object {
-        fun fromValue(value: String?): AmountDisplayStyle {
-            return entries.firstOrNull { it.value == value } ?: SYMBOL_BEFORE
-        }
-    }
-}
-
-enum class AccountSortMode(
-    val value: String,
-    val displayName: String,
-) {
-    RECENT_USED("recent_used", "最近使用"),
-    MANUAL("manual", "手动排序"),
-    BALANCE_DESC("balance_desc", "余额降序"),
-    ;
-
-    companion object {
-        fun fromValue(value: String?): AccountSortMode {
-            return entries.firstOrNull { it.value == value } ?: RECENT_USED
-        }
-    }
-}

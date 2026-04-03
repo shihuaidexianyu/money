@@ -14,3 +14,4 @@ object AmountInputParser {
             ?.longValueExact()
     }
 }
+

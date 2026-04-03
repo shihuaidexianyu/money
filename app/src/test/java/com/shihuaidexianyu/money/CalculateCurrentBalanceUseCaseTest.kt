@@ -155,3 +155,4 @@ class CalculateCurrentBalanceUseCaseTest {
         assertEquals(8_000, useCase(accountId))
     }
 }
+

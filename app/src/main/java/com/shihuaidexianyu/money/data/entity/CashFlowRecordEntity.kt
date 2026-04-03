@@ -24,3 +24,4 @@ data class CashFlowRecordEntity(
     val updatedAt: Long,
     val isDeleted: Boolean = false,
 )
+

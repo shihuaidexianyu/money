@@ -25,6 +25,9 @@ interface BalanceUpdateRecordDao {
     @Query("SELECT * FROM balance_update_records ORDER BY occurredAt DESC, id DESC")
     fun observeAllActive(): Flow<List<BalanceUpdateRecordEntity>>
 
+    @Query("SELECT COUNT(*) FROM balance_update_records")
+    fun observeCount(): Flow<Int>
+
     @Query(
         """
         SELECT * FROM balance_update_records
@@ -57,3 +60,4 @@ interface BalanceUpdateRecordDao {
     )
     suspend fun getLatestForAccount(accountId: Long): BalanceUpdateRecordEntity?
 }
+

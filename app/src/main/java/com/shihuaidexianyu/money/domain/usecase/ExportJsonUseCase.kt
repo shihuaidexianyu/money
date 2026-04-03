@@ -11,10 +11,10 @@ import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
-import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepository
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import com.shihuaidexianyu.money.data.repository.SettingsRepository
-import com.shihuaidexianyu.money.data.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import kotlinx.coroutines.flow.first
@@ -156,11 +156,9 @@ private fun ExportJsonPayload.toJson(): JSONObject {
 
 private fun AppSettings.toJson(): JSONObject = JSONObject().apply {
     put("homePeriod", homePeriod.value)
-    put("weekStart", weekStart.value)
     put("currencySymbol", currencySymbol)
-    put("amountDisplayStyle", amountDisplayStyle.value)
     put("showStaleMark", showStaleMark)
-    put("accountSortMode", accountSortMode.value)
+    put("accountGroupOrder", JSONArray().apply { accountGroupOrder.forEach { put(it.value) } })
 }
 
 private fun AccountEntity.toJson(balanceUpdateReminderConfig: BalanceUpdateReminderConfig): JSONObject = JSONObject().apply {
@@ -235,3 +233,4 @@ private fun InvestmentSettlementEntity.toJson(): JSONObject = JSONObject().apply
     put("periodEndAt", periodEndAt)
     put("createdAt", createdAt)
 }
+

@@ -7,8 +7,8 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -40,7 +40,7 @@ class UpdateBalanceUseCaseTest {
         )
 
         assertEquals(0, result.delta)
-        assertFalse(result.adjustmentCreated)
+        assertNull(result.settlementSummary)
         assertEquals(1, transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId).size)
         assertTrue(transactionRepository.queryBalanceAdjustmentRecordsByAccountId(accountId).isEmpty())
     }
@@ -83,12 +83,12 @@ class UpdateBalanceUseCaseTest {
         )
 
         assertEquals(10_000, result.delta)
-        assertTrue(result.adjustmentCreated)
         val settlement = assertNotNull(result.settlementSummary)
         assertEquals(100_000, settlement.previousBalance)
         assertEquals(20_000, settlement.netTransferIn)
         assertEquals(10_000, settlement.pnl)
-        assertEquals(1, transactionRepository.queryBalanceAdjustmentRecordsByAccountId(accountId).size)
+        assertEquals(0, transactionRepository.queryBalanceAdjustmentRecordsByAccountId(accountId).size)
         assertEquals(1, transactionRepository.queryInvestmentSettlementsByAccountId(accountId).size)
     }
 }
+

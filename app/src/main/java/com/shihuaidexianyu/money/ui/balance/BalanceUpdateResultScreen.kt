@@ -40,7 +40,7 @@ fun BalanceUpdateResultScreen(
                     Text("更新前系统余额：${AmountFormatter.format(result.systemBalanceBeforeUpdate, settings)}")
                     Text("本次确认余额：${AmountFormatter.format(result.actualBalance, settings)}")
                     Text("差额：${AmountFormatter.format(result.delta, settings)}")
-                    Text(if (result.adjustmentCreated) "已生成余额矫正记录" else "本次无需生成余额矫正")
+                    Text("本次已保存为一条余额更新记录")
                 }
             }
         }
@@ -70,3 +70,4 @@ fun BalanceUpdateResultScreen(
         }
     }
 }
+

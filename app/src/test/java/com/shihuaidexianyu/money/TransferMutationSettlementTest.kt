@@ -57,3 +57,4 @@ class TransferMutationSettlementTest {
         assertEquals(20_000, settlement?.pnl)
     }
 }
+

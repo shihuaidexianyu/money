@@ -219,6 +219,18 @@ class InMemoryTransactionRepository : TransactionRepository {
             .sumOf { it.delta }
     }
 
+    override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long {
+        return queryAllActiveCashFlowRecords()
+            .filter { it.direction == "inflow" && it.occurredAt in startAt..endAt }
+            .sumOf { it.amount }
+    }
+
+    override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long {
+        return queryAllActiveCashFlowRecords()
+            .filter { it.direction == "outflow" && it.occurredAt in startAt..endAt }
+            .sumOf { it.amount }
+    }
+
     private fun <T> replaceById(target: MutableList<T>, id: Long, replacement: T) {
         val index = target.indexOfFirst {
             when (it) {
@@ -237,3 +249,4 @@ class InMemoryTransactionRepository : TransactionRepository {
         changeVersion.value = changeVersion.value + 1
     }
 }
+

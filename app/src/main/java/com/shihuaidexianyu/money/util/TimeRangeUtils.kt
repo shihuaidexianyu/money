@@ -49,3 +49,4 @@ object TimeRangeUtils {
         return TimeRange(startMillis, endMillis)
     }
 }
+

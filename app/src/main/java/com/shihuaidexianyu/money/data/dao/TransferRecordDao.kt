@@ -25,6 +25,9 @@ interface TransferRecordDao {
     @Query("SELECT * FROM transfer_records WHERE isDeleted = 0 ORDER BY occurredAt DESC, id DESC")
     fun observeAllActive(): Flow<List<TransferRecordEntity>>
 
+    @Query("SELECT COUNT(*) FROM transfer_records WHERE isDeleted = 0")
+    fun observeActiveCount(): Flow<Int>
+
     @Query("SELECT * FROM transfer_records ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAll(): List<TransferRecordEntity>
 
@@ -63,3 +66,4 @@ interface TransferRecordDao {
     )
     suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long
 }
+

@@ -2,28 +2,15 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepository
-import com.shihuaidexianyu.money.data.repository.AccountRepository
-import com.shihuaidexianyu.money.data.repository.SettingsRepository
-import com.shihuaidexianyu.money.data.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.InvestmentSettlementSummary
-import com.shihuaidexianyu.money.util.AccountStatusUtils
+import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-
-private data class AccountRecordLine(
-    val occurredAt: Long,
-    val recordId: Long,
-    val text: String,
-)
 
 data class AccountDetailUiState(
     val isLoading: Boolean = true,
@@ -37,131 +24,47 @@ data class AccountDetailUiState(
     val settings: AppSettings = AppSettings(),
     val latestSettlement: InvestmentSettlementSummary? = null,
     val trendChart: AccountTrendChartUiModel = AccountTrendChartUiModel(),
-    val records: List<String> = emptyList(),
 )
 
 class AccountDetailViewModel(
     private val accountId: Long,
-    private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
-    private val accountRepository: AccountRepository,
-    private val settingsRepository: SettingsRepository,
-    private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val observeAccountDetailUseCase: ObserveAccountDetailUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountDetailUiState(accountId = accountId))
     val uiState: StateFlow<AccountDetailUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            combine(
-                accountRepository.observeActiveAccounts(),
-                accountRepository.observeArchivedAccounts(),
-                accountReminderSettingsRepository.observeReminderConfigs(),
-                settingsRepository.observeSettings(),
-                transactionRepository.observeChangeVersion(),
-            ) { active, archived, reminderConfigs, settings, _ ->
-                val account = (active + archived).firstOrNull { it.id == accountId }
-                buildState(account, settings, reminderConfigs)
-            }.collect { state ->
-                _uiState.value = state
+            observeAccountDetailUseCase().collect { snapshot ->
+                val account = snapshot.account
+                _uiState.value = if (account == null) {
+                    AccountDetailUiState(
+                        isLoading = false,
+                        accountId = accountId,
+                        settings = snapshot.settings,
+                    )
+                } else {
+                    AccountDetailUiState(
+                        isLoading = false,
+                        accountId = account.id,
+                        name = account.name,
+                        groupType = AccountGroupType.fromValue(account.groupType),
+                        currentBalance = snapshot.currentBalance,
+                        lastBalanceUpdateAt = account.lastBalanceUpdateAt,
+                        reminderConfig = snapshot.reminderConfig,
+                        isStale = snapshot.isStale,
+                        settings = snapshot.settings,
+                        latestSettlement = snapshot.latestSettlement,
+                        trendChart = AccountTrendChartTransformer.build(
+                            account = account,
+                            currentBalance = snapshot.currentBalance,
+                            balanceUpdates = snapshot.balanceUpdates,
+                            settlements = snapshot.settlements,
+                        ),
+                    )
+                }
             }
         }
     }
-
-    fun archiveAccount() {
-        viewModelScope.launch {
-            accountRepository.archiveAccount(accountId, System.currentTimeMillis())
-        }
-    }
-
-    private suspend fun buildState(
-        account: AccountEntity?,
-        settings: AppSettings,
-        reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
-    ): AccountDetailUiState {
-        if (account == null) {
-            return AccountDetailUiState(
-                isLoading = false,
-                accountId = accountId,
-                settings = settings,
-            )
-        }
-
-        val balanceUpdates = transactionRepository.queryBalanceUpdateRecordsByAccountId(account.id)
-        val settlements = transactionRepository.queryInvestmentSettlementsByAccountId(account.id)
-        val currentBalance = calculateCurrentBalanceUseCase(account.id)
-        val latestSettlement = settlements.maxWithOrNull(
-            compareBy<com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity> { it.periodEndAt }
-                .thenBy { it.id },
-        )
-
-        return AccountDetailUiState(
-            isLoading = false,
-            accountId = account.id,
-            name = account.name,
-            groupType = AccountGroupType.fromValue(account.groupType),
-            currentBalance = currentBalance,
-            lastBalanceUpdateAt = account.lastBalanceUpdateAt,
-            reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
-            isStale = AccountStatusUtils.isStale(
-                account,
-                reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
-            ),
-            settings = settings,
-            latestSettlement = latestSettlement?.let { settlement ->
-                InvestmentSettlementSummary(
-                    previousBalance = settlement.previousBalance,
-                    currentBalance = settlement.currentBalance,
-                    netTransferIn = settlement.netTransferIn,
-                    netTransferOut = settlement.netTransferOut,
-                    pnl = settlement.pnl,
-                    returnRate = settlement.returnRate,
-                    periodStartAt = settlement.periodStartAt,
-                    periodEndAt = settlement.periodEndAt,
-                )
-            },
-            trendChart = AccountTrendChartTransformer.build(
-                account = account,
-                currentBalance = currentBalance,
-                balanceUpdates = balanceUpdates,
-                settlements = settlements,
-            ),
-            records = buildRecordLines(account.id),
-        )
-    }
-
-    private suspend fun buildRecordLines(accountId: Long): List<String> {
-        val cash = transactionRepository.queryCashFlowRecordsByAccountId(accountId).map {
-            AccountRecordLine(
-                occurredAt = it.occurredAt,
-                recordId = it.id,
-                text = "${if (it.direction == "inflow") "入账" else "出账"} · ${it.purpose.ifBlank { "未填写用途" }}",
-            )
-        }
-        val transfers = transactionRepository.queryTransferRecordsByAccountId(accountId).map {
-            AccountRecordLine(
-                occurredAt = it.occurredAt,
-                recordId = it.id,
-                text = "转账 · ${it.note.ifBlank { "账户间转移" }}",
-            )
-        }
-        val updates = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId).map {
-            AccountRecordLine(
-                occurredAt = it.occurredAt,
-                recordId = it.id,
-                text = "更新余额 · 差额 ${it.delta}",
-            )
-        }
-        val adjustments = transactionRepository.queryBalanceAdjustmentRecordsByAccountId(accountId).map {
-            AccountRecordLine(
-                occurredAt = it.occurredAt,
-                recordId = it.id,
-                text = "余额矫正 · ${it.delta}",
-            )
-        }
-        return (cash + transfers + updates + adjustments)
-            .sortedWith(compareByDescending<AccountRecordLine> { it.occurredAt }.thenByDescending { it.recordId })
-            .take(10)
-            .map(AccountRecordLine::text)
-    }
 }
+

@@ -7,3 +7,4 @@ import com.shihuaidexianyu.money.navigation.MoneyNavGraph
 fun MoneyApp(container: MoneyAppContainer) {
     MoneyNavGraph(container = container)
 }
+
