@@ -1,9 +1,5 @@
 package com.shihuaidexianyu.money.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
@@ -25,8 +21,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.ui.common.MoneyGradientBackground
-
-private const val NAV_ANIM_DURATION = 300
 
 @Composable
 fun MoneyNavGraph(container: MoneyAppContainer) {
@@ -80,34 +74,10 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                 navController = navController,
                 startDestination = MoneyDestination.Home.route,
                 modifier = Modifier.padding(innerPadding),
-                enterTransition = {
-                    if (isTopLevelSwitch()) {
-                        EnterTransition.None
-                    } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(NAV_ANIM_DURATION))
-                    }
-                },
-                exitTransition = {
-                    if (isTopLevelSwitch()) {
-                        ExitTransition.None
-                    } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(NAV_ANIM_DURATION))
-                    }
-                },
-                popEnterTransition = {
-                    if (isTopLevelSwitch() || isPopToTopLevelDestination()) {
-                        EnterTransition.None
-                    } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(NAV_ANIM_DURATION))
-                    }
-                },
-                popExitTransition = {
-                    if (isTopLevelSwitch() || isPopToTopLevelDestination()) {
-                        ExitTransition.None
-                    } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(NAV_ANIM_DURATION))
-                    }
-                },
+                enterTransition = { androidx.compose.animation.EnterTransition.None },
+                exitTransition = { androidx.compose.animation.ExitTransition.None },
+                popEnterTransition = { androidx.compose.animation.EnterTransition.None },
+                popExitTransition = { androidx.compose.animation.ExitTransition.None },
             ) {
                 addTopLevelGraph(navController = navController, container = container)
                 addAccountsGraph(navController = navController, container = container)
@@ -116,18 +86,4 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
             }
         }
     }
-}
-
-private fun AnimatedContentTransitionScope<*>.isTopLevelSwitch(): Boolean {
-    val topLevel = MoneyDestination.topLevel.map { it.route }.toSet()
-    val initial = (initialState as? androidx.navigation.NavBackStackEntry)?.destination?.route
-    val target = (targetState as? androidx.navigation.NavBackStackEntry)?.destination?.route
-    return initial in topLevel && target in topLevel
-}
-
-private fun AnimatedContentTransitionScope<*>.isPopToTopLevelDestination(): Boolean {
-    val topLevel = MoneyDestination.topLevel.map { it.route }.toSet()
-    val initial = (initialState as? androidx.navigation.NavBackStackEntry)?.destination?.route
-    val target = (targetState as? androidx.navigation.NavBackStackEntry)?.destination?.route
-    return initial !in topLevel && target in topLevel
 }
