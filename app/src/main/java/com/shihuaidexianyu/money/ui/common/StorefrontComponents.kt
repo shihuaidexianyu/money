@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,12 +30,16 @@ fun MoneyGradientBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        content = content,
-    )
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            content = content,
+        )
+    }
 }
 
 @Composable
@@ -291,6 +294,7 @@ fun MoneySelectionField(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
         shape = RoundedCornerShape(16.dp),
     ) {
         Row(
