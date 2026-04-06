@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-class InMemoryRecurringReminderRepository : RecurringReminderRepository {
+class InMemoryRecurringReminderRepository(
+    private val tickerFlow: Flow<Long> = minuteTickerFlow(),
+) : RecurringReminderRepository {
     private val reminders = MutableStateFlow<Map<Long, RecurringReminderEntity>>(emptyMap())
     private var nextId = 1L
 
@@ -19,7 +21,7 @@ class InMemoryRecurringReminderRepository : RecurringReminderRepository {
     override fun observeDueReminders(): Flow<List<RecurringReminderEntity>> =
         combine(
             reminders,
-            minuteTickerFlow(),
+            tickerFlow,
         ) { map, now ->
             map.values
                 .filter { it.isEnabled && it.nextDueAt <= now }

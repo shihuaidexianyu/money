@@ -34,6 +34,16 @@ interface TransferRecordDao {
     @Query(
         """
         SELECT * FROM transfer_records
+        WHERE isDeleted = 0
+            AND occurredAt BETWEEN :startAt AND :endAt
+        ORDER BY occurredAt ASC, id ASC
+        """,
+    )
+    suspend fun queryActiveBetween(startAt: Long, endAt: Long): List<TransferRecordEntity>
+
+    @Query(
+        """
+        SELECT * FROM transfer_records
         WHERE (fromAccountId = :accountId OR toAccountId = :accountId)
             AND isDeleted = 0
         ORDER BY occurredAt DESC, id DESC
@@ -63,4 +73,3 @@ interface TransferRecordDao {
     )
     suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long
 }
-

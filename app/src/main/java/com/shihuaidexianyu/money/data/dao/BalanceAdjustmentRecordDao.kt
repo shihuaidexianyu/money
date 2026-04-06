@@ -25,6 +25,16 @@ interface BalanceAdjustmentRecordDao {
     @Query("SELECT * FROM balance_adjustment_records ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAllActive(): List<BalanceAdjustmentRecordEntity>
 
+    @Query(
+        """
+        SELECT * FROM balance_adjustment_records
+        WHERE sourceUpdateRecordId = 0
+            AND occurredAt BETWEEN :startAt AND :endAt
+        ORDER BY occurredAt ASC, id ASC
+        """,
+    )
+    suspend fun queryManualBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecordEntity>
+
     @Query("SELECT COUNT(*) FROM balance_adjustment_records")
     fun observeCount(): Flow<Int>
 
@@ -49,4 +59,3 @@ interface BalanceAdjustmentRecordDao {
     )
     suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long
 }
-

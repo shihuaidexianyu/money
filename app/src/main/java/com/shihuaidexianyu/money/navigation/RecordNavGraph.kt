@@ -1,6 +1,4 @@
 package com.shihuaidexianyu.money.navigation
-
-import android.net.Uri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -47,7 +45,7 @@ internal fun NavGraphBuilder.addRecordGraph(
         val direction = CashFlowDirection.fromValue(entry.arguments?.getString("direction"))
         val accountId = entry.arguments?.getLong("accountId") ?: 0L
         val prefillAmount = entry.arguments?.getLong("amount") ?: 0L
-        val prefillPurpose = Uri.decode(entry.arguments?.getString("purpose") ?: "")
+        val prefillPurpose = NavigationQueryCodec.decode(entry.arguments?.getString("purpose") ?: "")
         val reminderId = entry.arguments?.getLong("reminderId") ?: 0L
         val viewModel = viewModel<RecordCashFlowViewModel>(
             key = "cash_flow_${direction.value}_${accountId}_$reminderId",

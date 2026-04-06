@@ -10,8 +10,12 @@ import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
+import com.shihuaidexianyu.money.navigation.MoneyDestination
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
@@ -119,5 +123,51 @@ class ReminderUseCaseTest {
         assertTrue(updated != null)
         assertTrue(updated.nextDueAt > System.currentTimeMillis())
         assertTrue(updated.lastConfirmedAt != null)
+    }
+
+    @Test
+    fun `record cash flow route encodes purpose query safely`() {
+        val route = MoneyDestination.recordCashFlowRoute(
+            direction = CashFlowDirection.OUTFLOW,
+            accountId = 7L,
+            amount = 1_234L,
+            purpose = "房租 & 水电?#100%",
+            reminderId = 9L,
+        )
+
+        assertEquals(
+            "records/cashflow/outflow/7?amount=1234&purpose=%E6%88%BF%E7%A7%9F%20%26%20%E6%B0%B4%E7%94%B5%3F%23100%25&reminderId=9",
+            route,
+        )
+    }
+
+    @Test
+    fun `due reminders refresh when ticker advances`() = runBlocking {
+        val ticker = MutableStateFlow(900L)
+        val reminderRepository = InMemoryRecurringReminderRepository(ticker)
+        val reminderId = reminderRepository.insertReminder(
+            RecurringReminderEntity(
+                name = "宽带",
+                type = ReminderType.SUBSCRIPTION.value,
+                accountId = 1L,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 200L,
+                periodType = ReminderPeriodType.CUSTOM_DAYS.value,
+                periodValue = 30,
+                periodMonth = null,
+                nextDueAt = 1_000L,
+                createdAt = 1L,
+                updatedAt = 1L,
+            ),
+        )
+
+        assertTrue(reminderRepository.observeDueReminders().first().isEmpty())
+
+        ticker.value = 1_100L
+
+        assertEquals(
+            listOf(reminderId),
+            reminderRepository.observeDueReminders().first().map { it.id },
+        )
     }
 }

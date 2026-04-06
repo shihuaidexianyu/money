@@ -24,6 +24,7 @@ interface TransactionRepository {
     suspend fun queryTransferRecordById(id: Long): TransferRecordEntity?
     suspend fun queryAllTransferRecords(): List<TransferRecordEntity>
     suspend fun queryAllActiveTransferRecords(): List<TransferRecordEntity>
+    suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecordEntity>
     suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecordEntity>
 
     suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long
@@ -31,6 +32,7 @@ interface TransactionRepository {
     suspend fun deleteBalanceUpdateRecord(id: Long)
     suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecordEntity?
     suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecordEntity>
+    suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecordEntity>
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecordEntity>
     suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecordEntity?
     suspend fun getLatestBalanceUpdateAtOrBefore(accountId: Long, occurredAt: Long): BalanceUpdateRecordEntity?
@@ -40,12 +42,14 @@ interface TransactionRepository {
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecordEntity?
     suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long)
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity>
+    suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecordEntity>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity>
 
     suspend fun insertInvestmentSettlement(record: InvestmentSettlementEntity): Long
     suspend fun updateInvestmentSettlement(record: InvestmentSettlementEntity)
     suspend fun getInvestmentSettlementById(id: Long): InvestmentSettlementEntity?
     suspend fun queryAllInvestmentSettlements(): List<InvestmentSettlementEntity>
+    suspend fun queryInvestmentSettlementsBetween(startAt: Long, endAt: Long): List<InvestmentSettlementEntity>
     suspend fun queryInvestmentSettlementsByAccountId(accountId: Long): List<InvestmentSettlementEntity>
     suspend fun getLatestInvestmentSettlement(accountId: Long): InvestmentSettlementEntity?
     suspend fun deleteInvestmentSettlementsByAccountId(accountId: Long)
@@ -59,4 +63,3 @@ interface TransactionRepository {
     suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long
     suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity>
 }
-
