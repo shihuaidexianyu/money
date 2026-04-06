@@ -89,6 +89,12 @@ class InMemoryTransactionRepository : TransactionRepository {
         return transferRecords.filterNot(TransferRecordEntity::isDeleted)
     }
 
+    override suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecordEntity> {
+        return queryAllActiveTransferRecords()
+            .filter { it.occurredAt in startAt..endAt }
+            .sortedWith(compareBy<TransferRecordEntity> { it.occurredAt }.thenBy { it.id })
+    }
+
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecordEntity> {
         return queryAllActiveTransferRecords().filter {
             it.fromAccountId == accountId || it.toAccountId == accountId
@@ -119,6 +125,12 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecordEntity> {
         return balanceUpdates.toList()
+    }
+
+    override suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecordEntity> {
+        return balanceUpdates
+            .filter { it.occurredAt in startAt..endAt }
+            .sortedWith(compareBy<BalanceUpdateRecordEntity> { it.occurredAt }.thenBy { it.id })
     }
 
     override suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecordEntity> {
@@ -165,6 +177,12 @@ class InMemoryTransactionRepository : TransactionRepository {
         return adjustments.toList()
     }
 
+    override suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecordEntity> {
+        return adjustments
+            .filter { it.sourceUpdateRecordId == 0L && it.occurredAt in startAt..endAt }
+            .sortedWith(compareBy<BalanceAdjustmentRecordEntity> { it.occurredAt }.thenBy { it.id })
+    }
+
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity> {
         return adjustments.filter { it.accountId == accountId && it.sourceUpdateRecordId == 0L }
     }
@@ -187,6 +205,12 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun queryAllInvestmentSettlements(): List<InvestmentSettlementEntity> {
         return settlements.toList()
+    }
+
+    override suspend fun queryInvestmentSettlementsBetween(startAt: Long, endAt: Long): List<InvestmentSettlementEntity> {
+        return settlements
+            .filter { it.periodEndAt in startAt..endAt }
+            .sortedWith(compareBy<InvestmentSettlementEntity> { it.periodEndAt }.thenBy { it.id })
     }
 
     override suspend fun queryInvestmentSettlementsByAccountId(accountId: Long): List<InvestmentSettlementEntity> {
@@ -269,4 +293,3 @@ class InMemoryTransactionRepository : TransactionRepository {
         changeVersion.value = changeVersion.value + 1
     }
 }
-

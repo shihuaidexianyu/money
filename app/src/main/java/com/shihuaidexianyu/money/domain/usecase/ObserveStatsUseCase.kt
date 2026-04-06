@@ -60,6 +60,7 @@ class ObserveStatsUseCase(
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val nowProvider: () -> Long = System::currentTimeMillis,
 ) {
     @Suppress("OPT_IN_USAGE")
     fun invoke(periodFlow: Flow<StatsPeriod>): Flow<StatsSnapshot> {
@@ -77,7 +78,7 @@ class ObserveStatsUseCase(
         period: StatsPeriod,
         settings: AppSettings,
     ): StatsSnapshot = coroutineScope {
-        val now = System.currentTimeMillis()
+        val now = nowProvider()
         val subPeriods = TimeRangeUtils.splitIntoPeriods(period, nowMillis = now)
         val overallRange = TimeRangeUtils.currentStatsRange(period, nowMillis = now)
         val statsData = loadStatsData(overallRange)
@@ -85,7 +86,7 @@ class ObserveStatsUseCase(
         val cashFlowBarsJob = async { buildCashFlowBars(subPeriods, statsData.cashFlowsInRange) }
         val netAssetJob = async { buildNetAssetPoints(subPeriods, statsData) }
         val accountSharesJob = async { buildAccountShares(statsData) }
-        val investmentJob = async { buildInvestmentPoints(overallRange, statsData) }
+        val investmentJob = async { buildInvestmentPoints(statsData) }
 
         StatsSnapshot(
             settings = settings,
@@ -108,28 +109,31 @@ class ObserveStatsUseCase(
             transactionRepository.queryActiveCashFlowRecordsBetween(rangeStart, rangeEnd)
         }
         val transfersJob = async {
-            transactionRepository.queryAllActiveTransferRecords()
-                .filter { it.occurredAt in rangeStart..rangeEnd }
+            transactionRepository.queryActiveTransferRecordsBetween(rangeStart, rangeEnd)
         }
         val adjustmentsJob = async {
-            transactionRepository.queryAllBalanceAdjustmentRecords()
-                .filter { it.sourceUpdateRecordId == 0L && it.occurredAt in rangeStart..rangeEnd }
+            transactionRepository.queryManualBalanceAdjustmentRecordsBetween(rangeStart, rangeEnd)
         }
         val balanceUpdatesJob = async {
-            transactionRepository.queryAllBalanceUpdateRecords()
-                .filter { it.occurredAt in rangeStart..rangeEnd }
+            transactionRepository.queryBalanceUpdateRecordsBetween(rangeStart, rangeEnd)
         }
-        val settlementsJob = async { transactionRepository.queryAllInvestmentSettlements() }
+        val settlementsJob = async { transactionRepository.queryInvestmentSettlementsBetween(rangeStart, rangeEnd) }
         val currentBalancesJob = async {
             accounts.associate { account -> account.id to calculateCurrentBalanceUseCase(account.id) }
         }
         val rangeStartBalancesJob = async {
             accounts.associate { account ->
-                account.id to calculateCurrentBalanceUseCase(account.id, rangeStart - 1L)
+                val balance = if (rangeStart <= account.createdAt) {
+                    0L
+                } else {
+                    calculateCurrentBalanceUseCase(account.id, rangeStart - 1L)
+                }
+                account.id to balance
             }
         }
 
         StatsData(
+            overallRange = overallRange,
             accounts = accounts,
             cashFlowsInRange = cashFlowsJob.await(),
             transfersInRange = transfersJob.await(),
@@ -213,7 +217,6 @@ class ObserveStatsUseCase(
     }
 
     private fun buildInvestmentPoints(
-        overallRange: TimeRange,
         statsData: StatsData,
     ): List<InvestmentPoint> {
         val investmentAccountIds = statsData.accounts
@@ -224,7 +227,6 @@ class ObserveStatsUseCase(
 
         return statsData.allInvestmentSettlements
             .filter { it.accountId in investmentAccountIds }
-            .filter { it.periodEndAt in overallRange.startAtMillis..overallRange.endAtMillis }
             .sortedBy { it.periodEndAt }
             .map { settlement ->
                 InvestmentPoint(
@@ -246,6 +248,19 @@ class ObserveStatsUseCase(
 
         fun addEvent(accountId: Long, event: BalanceEvent) {
             eventsByAccount.getOrPut(accountId) { mutableListOf() }.add(event)
+        }
+
+        statsData.accounts.forEach { account ->
+            if (account.createdAt in statsData.overallRange.startAtMillis..statsData.overallRange.endAtMillis) {
+                addEvent(
+                    account.id,
+                    BalanceEvent(
+                        occurredAt = account.createdAt,
+                        orderKey = -1_000_000L,
+                        effect = BalanceEffect.Add(account.initialBalance),
+                    ),
+                )
+            }
         }
 
         statsData.cashFlowsInRange.forEach { record ->
@@ -308,6 +323,7 @@ class ObserveStatsUseCase(
 }
 
 private data class StatsData(
+    val overallRange: TimeRange,
     val accounts: List<AccountEntity>,
     val cashFlowsInRange: List<CashFlowRecordEntity>,
     val transfersInRange: List<TransferRecordEntity>,

@@ -10,13 +10,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 class RecurringReminderRepositoryImpl(
     private val dao: RecurringReminderDao,
+    private val tickerFlow: Flow<Long> = minuteTickerFlow(),
 ) : RecurringReminderRepository {
     override fun observeAllReminders(): Flow<List<RecurringReminderEntity>> = dao.observeAll()
 
     override fun observeDueReminders(): Flow<List<RecurringReminderEntity>> =
         combine(
             dao.observeAll(),
-            minuteTickerFlow(),
+            tickerFlow,
         ) { reminders, now ->
             reminders.filter { it.isEnabled && it.nextDueAt <= now }
         }.distinctUntilChanged()

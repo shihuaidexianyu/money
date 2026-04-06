@@ -69,6 +69,10 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryAllActiveTransferRecords(): List<TransferRecordEntity> = transferRecordDao.queryAllActive()
 
+    override suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecordEntity> {
+        return transferRecordDao.queryActiveBetween(startAt, endAt)
+    }
+
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecordEntity> = transferRecordDao.queryByAccountId(accountId)
 
     override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long = balanceUpdateRecordDao.insert(record)
@@ -80,6 +84,10 @@ class TransactionRepositoryImpl(
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecordEntity? = balanceUpdateRecordDao.queryById(id)
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecordEntity> = balanceUpdateRecordDao.queryAllActive()
+
+    override suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecordEntity> {
+        return balanceUpdateRecordDao.queryBetween(startAt, endAt)
+    }
 
     override suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecordEntity> = balanceUpdateRecordDao.queryByAccountId(accountId)
 
@@ -101,6 +109,10 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity> = balanceAdjustmentRecordDao.queryAllActive()
 
+    override suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecordEntity> {
+        return balanceAdjustmentRecordDao.queryManualBetween(startAt, endAt)
+    }
+
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity> = balanceAdjustmentRecordDao.queryByAccountId(accountId)
 
     override suspend fun insertInvestmentSettlement(record: InvestmentSettlementEntity): Long = investmentSettlementDao.insert(record)
@@ -110,6 +122,10 @@ class TransactionRepositoryImpl(
     override suspend fun getInvestmentSettlementById(id: Long): InvestmentSettlementEntity? = investmentSettlementDao.queryById(id)
 
     override suspend fun queryAllInvestmentSettlements(): List<InvestmentSettlementEntity> = investmentSettlementDao.queryAllActive()
+
+    override suspend fun queryInvestmentSettlementsBetween(startAt: Long, endAt: Long): List<InvestmentSettlementEntity> {
+        return investmentSettlementDao.queryBetween(startAt, endAt)
+    }
 
     override suspend fun queryInvestmentSettlementsByAccountId(accountId: Long): List<InvestmentSettlementEntity> = investmentSettlementDao.queryByAccountId(accountId)
 
@@ -135,4 +151,3 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity> = cashFlowRecordDao.queryActiveBetween(startAt, endAt)
 }
-

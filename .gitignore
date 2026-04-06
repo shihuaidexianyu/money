@@ -19,5 +19,6 @@ local.properties
 .android-user-home-debug
 .android-user-home-rebuild
 .android-user-home-release
+.android-local*
 .kotlin
 /.idea
