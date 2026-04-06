@@ -39,6 +39,7 @@ data class EditReminderUiState(
 
 sealed interface EditReminderEffect {
     data object Saved : EditReminderEffect
+    data object Closed : EditReminderEffect
     data class ShowMessage(override val message: String) : EditReminderEffect, UiEffect.HasMessage
 }
 
@@ -53,32 +54,41 @@ class EditReminderViewModel(
 
     private val effects = MutableSharedFlow<EditReminderEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var closed = false
 
     init {
         viewModelScope.launch {
-            val reminder = reminderRepository.getReminderById(reminderId) ?: return@launch
-            val accounts = accountRepository.queryActiveAccounts()
-            val periodType = ReminderPeriodType.fromValue(reminder.periodType)
-            _uiState.value = EditReminderUiState(
-                isLoading = false,
-                name = reminder.name,
-                type = ReminderType.fromValue(reminder.type),
-                accounts = accounts.toAccountOptionUiModels(),
-                selectedAccountId = reminder.accountId,
-                direction = CashFlowDirection.fromValue(reminder.direction),
-                amountText = BigDecimal.valueOf(reminder.amount, 2)
-                    .setScale(2, RoundingMode.DOWN)
-                    .toPlainString(),
-                periodType = periodType,
-                periodDay = reminder.periodValue.toString(),
-                periodMonth = (reminder.periodMonth ?: 1).toString(),
-                periodCustomDays = if (periodType == ReminderPeriodType.CUSTOM_DAYS) {
-                    reminder.periodValue.toString()
-                } else {
-                    "30"
-                },
-                isEnabled = reminder.isEnabled,
-            )
+            try {
+                val reminder = reminderRepository.getReminderById(reminderId)
+                if (reminder == null) {
+                    emitClosedOnce()
+                    return@launch
+                }
+                val accounts = accountRepository.queryActiveAccounts()
+                val periodType = ReminderPeriodType.fromValue(reminder.periodType)
+                _uiState.value = EditReminderUiState(
+                    isLoading = false,
+                    name = reminder.name,
+                    type = ReminderType.fromValue(reminder.type),
+                    accounts = accounts.toAccountOptionUiModels(),
+                    selectedAccountId = reminder.accountId,
+                    direction = CashFlowDirection.fromValue(reminder.direction),
+                    amountText = BigDecimal.valueOf(reminder.amount, 2)
+                        .setScale(2, RoundingMode.DOWN)
+                        .toPlainString(),
+                    periodType = periodType,
+                    periodDay = reminder.periodValue.toString(),
+                    periodMonth = (reminder.periodMonth ?: 1).toString(),
+                    periodCustomDays = if (periodType == ReminderPeriodType.CUSTOM_DAYS) {
+                        reminder.periodValue.toString()
+                    } else {
+                        "30"
+                    },
+                    isEnabled = reminder.isEnabled,
+                )
+            } catch (_: Exception) {
+                emitClosedOnce()
+            }
         }
     }
 
@@ -111,15 +121,14 @@ class EditReminderViewModel(
                 return@launch
             }
 
-            val periodValue = when (state.periodType) {
-                ReminderPeriodType.MONTHLY -> state.periodDay.toIntOrNull() ?: 1
-                ReminderPeriodType.YEARLY -> state.periodDay.toIntOrNull() ?: 1
-                ReminderPeriodType.CUSTOM_DAYS -> state.periodCustomDays.toIntOrNull() ?: 30
-            }
-            val periodMonth = if (state.periodType == ReminderPeriodType.YEARLY) {
-                state.periodMonth.toIntOrNull() ?: 1
-            } else {
-                null
+            val scheduleInput = parseReminderScheduleInput(
+                periodType = state.periodType,
+                periodDayText = state.periodDay,
+                periodMonthText = state.periodMonth,
+                periodCustomDaysText = state.periodCustomDays,
+            ).getOrElse { error ->
+                effects.emit(EditReminderEffect.ShowMessage(error.message ?: "请输入有效的周期"))
+                return@launch
             }
 
             _uiState.value = state.copy(isSaving = true)
@@ -132,16 +141,26 @@ class EditReminderViewModel(
                     direction = state.direction,
                     amount = amount,
                     periodType = state.periodType,
-                    periodValue = periodValue,
-                    periodMonth = periodMonth,
+                    periodValue = scheduleInput.periodValue,
+                    periodMonth = scheduleInput.periodMonth,
                     isEnabled = state.isEnabled,
                 )
             }.onSuccess {
                 effects.emit(EditReminderEffect.Saved)
             }.onFailure { throwable ->
+                if (reminderRepository.getReminderById(reminderId) == null) {
+                    emitClosedOnce()
+                    return@onFailure
+                }
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(EditReminderEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
         }
+    }
+
+    private suspend fun emitClosedOnce() {
+        if (closed) return
+        closed = true
+        effects.emit(EditReminderEffect.Closed)
     }
 }

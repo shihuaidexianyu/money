@@ -1,0 +1,123 @@
+package com.shihuaidexianyu.money
+
+import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
+import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import org.junit.Test
+
+class ReminderUseCaseTest {
+    @Test
+    fun `create reminder rejects invalid yearly day for month`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val reminderRepository = InMemoryRecurringReminderRepository()
+        val accountId = accountRepository.createAccount(
+            AccountEntity(
+                name = "信用卡",
+                groupType = "bank",
+                initialBalance = 0,
+                createdAt = 1L,
+            ),
+        )
+        val useCase = CreateReminderUseCase(accountRepository, reminderRepository)
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            useCase(
+                name = "年费",
+                type = ReminderType.MANUAL,
+                accountId = accountId,
+                direction = CashFlowDirection.OUTFLOW,
+                amount = 9_999,
+                periodType = ReminderPeriodType.YEARLY,
+                periodValue = 30,
+                periodMonth = 2,
+            )
+        }
+
+        assertTrue(error.message?.contains("1 到 29") == true)
+    }
+
+    @Test
+    fun `update reminder rejects invalid custom interval`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val reminderRepository = InMemoryRecurringReminderRepository()
+        val accountId = accountRepository.createAccount(
+            AccountEntity(
+                name = "储蓄卡",
+                groupType = "bank",
+                initialBalance = 0,
+                createdAt = 1L,
+            ),
+        )
+        val reminderId = reminderRepository.insertReminder(
+            RecurringReminderEntity(
+                name = "水费",
+                type = ReminderType.MANUAL.value,
+                accountId = accountId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 1_200,
+                periodType = ReminderPeriodType.CUSTOM_DAYS.value,
+                periodValue = 7,
+                periodMonth = null,
+                nextDueAt = 100L,
+                createdAt = 1L,
+                updatedAt = 1L,
+            ),
+        )
+        val useCase = UpdateReminderUseCase(accountRepository, reminderRepository)
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            useCase(
+                reminderId = reminderId,
+                name = "水费",
+                type = ReminderType.MANUAL,
+                accountId = accountId,
+                direction = CashFlowDirection.OUTFLOW,
+                amount = 1_200,
+                periodType = ReminderPeriodType.CUSTOM_DAYS,
+                periodValue = 0,
+                periodMonth = null,
+                isEnabled = true,
+            )
+        }
+
+        assertTrue(error.message?.contains("间隔天数") == true)
+    }
+
+    @Test
+    fun `confirm reminder advances overdue reminder into the future`() = runBlocking {
+        val reminderRepository = InMemoryRecurringReminderRepository()
+        val reminderId = reminderRepository.insertReminder(
+            RecurringReminderEntity(
+                name = "订阅",
+                type = ReminderType.SUBSCRIPTION.value,
+                accountId = 1L,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 3_000,
+                periodType = ReminderPeriodType.CUSTOM_DAYS.value,
+                periodValue = 1,
+                periodMonth = null,
+                nextDueAt = System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000L,
+                createdAt = 1L,
+                updatedAt = 1L,
+            ),
+        )
+        val useCase = ConfirmReminderUseCase(reminderRepository)
+
+        useCase(reminderId)
+
+        val updated = reminderRepository.getReminderById(reminderId)
+        assertTrue(updated != null)
+        assertTrue(updated.nextDueAt > System.currentTimeMillis())
+        assertTrue(updated.lastConfirmedAt != null)
+    }
+}

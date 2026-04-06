@@ -86,15 +86,14 @@ class CreateReminderViewModel(
                 return@launch
             }
 
-            val periodValue = when (state.periodType) {
-                ReminderPeriodType.MONTHLY -> state.periodDay.toIntOrNull() ?: 1
-                ReminderPeriodType.YEARLY -> state.periodDay.toIntOrNull() ?: 1
-                ReminderPeriodType.CUSTOM_DAYS -> state.periodCustomDays.toIntOrNull() ?: 30
-            }
-            val periodMonth = if (state.periodType == ReminderPeriodType.YEARLY) {
-                state.periodMonth.toIntOrNull() ?: 1
-            } else {
-                null
+            val scheduleInput = parseReminderScheduleInput(
+                periodType = state.periodType,
+                periodDayText = state.periodDay,
+                periodMonthText = state.periodMonth,
+                periodCustomDaysText = state.periodCustomDays,
+            ).getOrElse { error ->
+                effects.emit(CreateReminderEffect.ShowMessage(error.message ?: "请输入有效的周期"))
+                return@launch
             }
 
             _uiState.value = state.copy(isSaving = true)
@@ -106,8 +105,8 @@ class CreateReminderViewModel(
                     direction = state.direction,
                     amount = amount,
                     periodType = state.periodType,
-                    periodValue = periodValue,
-                    periodMonth = periodMonth,
+                    periodValue = scheduleInput.periodValue,
+                    periodMonth = scheduleInput.periodMonth,
                 )
             }.onSuccess {
                 effects.emit(CreateReminderEffect.Saved)

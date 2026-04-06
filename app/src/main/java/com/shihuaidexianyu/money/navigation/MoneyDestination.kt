@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.navigation
 
+import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.BarChart
@@ -45,6 +46,22 @@ sealed class MoneyDestination(
             return "records/cashflow/${direction.value}/$accountId"
         }
 
+        fun recordCashFlowRoute(
+            direction: CashFlowDirection,
+            accountId: Long,
+            amount: Long?,
+            purpose: String?,
+            reminderId: Long?,
+        ): String {
+            val baseRoute = recordCashFlowRoute(direction, accountId)
+            val query = buildList {
+                amount?.takeIf { it > 0 }?.let { add("amount=$it") }
+                purpose?.takeIf { it.isNotBlank() }?.let { add("purpose=${Uri.encode(it)}") }
+                reminderId?.takeIf { it > 0 }?.let { add("reminderId=$it") }
+            }
+            return if (query.isEmpty()) baseRoute else "$baseRoute?${query.joinToString("&")}"
+        }
+
         fun recordTransferRoute(fromAccountId: Long = 0L): String = "records/transfer/$fromAccountId"
         fun editCashFlowRoute(recordId: Long): String = "history/cashflow/$recordId"
         fun editTransferRoute(recordId: Long): String = "history/transfer/$recordId"
@@ -59,4 +76,3 @@ sealed class MoneyDestination(
         fun editReminderRoute(reminderId: Long): String = "reminders/$reminderId/edit"
     }
 }
-

@@ -24,6 +24,7 @@ class CreateReminderUseCase(
         require(name.isNotBlank()) { "名称不能为空" }
         require(amount > 0) { "金额必须大于 0" }
         requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        ReminderScheduleValidator.validate(periodType, periodValue, periodMonth)
 
         val nextDueAt = ReminderNextDueCalculator.calculateFirstDue(
             periodType = periodType,
