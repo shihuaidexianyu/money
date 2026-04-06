@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.navigation
 
+import android.net.Uri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -8,7 +9,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.ui.record.EditCashFlowScreen
 import com.shihuaidexianyu.money.ui.record.EditCashFlowViewModel
 import com.shihuaidexianyu.money.ui.record.EditTransferScreen
@@ -43,11 +43,11 @@ internal fun NavGraphBuilder.addRecordGraph(
             navArgument("purpose") { type = NavType.StringType; defaultValue = "" },
             navArgument("reminderId") { type = NavType.LongType; defaultValue = 0L },
         ),
-    ) { entry ->
+        ) { entry ->
         val direction = CashFlowDirection.fromValue(entry.arguments?.getString("direction"))
         val accountId = entry.arguments?.getLong("accountId") ?: 0L
         val prefillAmount = entry.arguments?.getLong("amount") ?: 0L
-        val prefillPurpose = entry.arguments?.getString("purpose") ?: ""
+        val prefillPurpose = Uri.decode(entry.arguments?.getString("purpose") ?: "")
         val reminderId = entry.arguments?.getLong("reminderId") ?: 0L
         val viewModel = viewModel<RecordCashFlowViewModel>(
             key = "cash_flow_${direction.value}_${accountId}_$reminderId",

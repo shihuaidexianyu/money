@@ -43,8 +43,13 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onReminderClick = { reminder ->
                 val direction = CashFlowDirection.fromValue(reminder.direction)
                 navController.navigate(
-                    MoneyDestination.recordCashFlowRoute(direction, reminder.accountId) +
-                        "?amount=${reminder.amount}&purpose=${reminder.name}&reminderId=${reminder.id}",
+                    MoneyDestination.recordCashFlowRoute(
+                        direction = direction,
+                        accountId = reminder.accountId,
+                        amount = reminder.amount,
+                        purpose = reminder.name,
+                        reminderId = reminder.id,
+                    ),
                 )
             },
             onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },

@@ -2,8 +2,11 @@ package com.shihuaidexianyu.money.data.repository
 
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.util.minuteTickerFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 class InMemoryRecurringReminderRepository : RecurringReminderRepository {
@@ -14,12 +17,14 @@ class InMemoryRecurringReminderRepository : RecurringReminderRepository {
         reminders.map { it.values.sortedBy { r -> r.nextDueAt } }
 
     override fun observeDueReminders(): Flow<List<RecurringReminderEntity>> =
-        reminders.map { map ->
-            val now = System.currentTimeMillis()
+        combine(
+            reminders,
+            minuteTickerFlow(),
+        ) { map, now ->
             map.values
                 .filter { it.isEnabled && it.nextDueAt <= now }
                 .sortedBy { it.nextDueAt }
-        }
+        }.distinctUntilChanged()
 
     override suspend fun getReminderById(id: Long): RecurringReminderEntity? = reminders.value[id]
 

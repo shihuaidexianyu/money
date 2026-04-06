@@ -1,18 +1,25 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
+import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
+import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
+import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.util.TimeRange
 import com.shihuaidexianyu.money.util.TimeRangeUtils
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 
 data class CashFlowBar(
     val label: String,
@@ -70,13 +77,15 @@ class ObserveStatsUseCase(
         period: StatsPeriod,
         settings: AppSettings,
     ): StatsSnapshot = coroutineScope {
-        val subPeriods = TimeRangeUtils.splitIntoPeriods(period)
-        val overallRange = TimeRangeUtils.currentStatsRange(period)
+        val now = System.currentTimeMillis()
+        val subPeriods = TimeRangeUtils.splitIntoPeriods(period, nowMillis = now)
+        val overallRange = TimeRangeUtils.currentStatsRange(period, nowMillis = now)
+        val statsData = loadStatsData(overallRange)
 
-        val cashFlowBarsJob = async { buildCashFlowBars(subPeriods) }
-        val netAssetJob = async { buildNetAssetPoints(subPeriods) }
-        val accountSharesJob = async { buildAccountShares() }
-        val investmentJob = async { buildInvestmentPoints(overallRange) }
+        val cashFlowBarsJob = async { buildCashFlowBars(subPeriods, statsData.cashFlowsInRange) }
+        val netAssetJob = async { buildNetAssetPoints(subPeriods, statsData) }
+        val accountSharesJob = async { buildAccountShares(statsData) }
+        val investmentJob = async { buildInvestmentPoints(overallRange, statsData) }
 
         StatsSnapshot(
             settings = settings,
@@ -88,81 +97,113 @@ class ObserveStatsUseCase(
         )
     }
 
-    private suspend fun buildCashFlowBars(
+    private suspend fun loadStatsData(
+        overallRange: TimeRange,
+    ): StatsData = coroutineScope {
+        val accounts = accountRepository.queryActiveAccounts()
+        val rangeStart = overallRange.startAtMillis
+        val rangeEnd = overallRange.endAtMillis
+
+        val cashFlowsJob = async {
+            transactionRepository.queryActiveCashFlowRecordsBetween(rangeStart, rangeEnd)
+        }
+        val transfersJob = async {
+            transactionRepository.queryAllActiveTransferRecords()
+                .filter { it.occurredAt in rangeStart..rangeEnd }
+        }
+        val adjustmentsJob = async {
+            transactionRepository.queryAllBalanceAdjustmentRecords()
+                .filter { it.sourceUpdateRecordId == 0L && it.occurredAt in rangeStart..rangeEnd }
+        }
+        val balanceUpdatesJob = async {
+            transactionRepository.queryAllBalanceUpdateRecords()
+                .filter { it.occurredAt in rangeStart..rangeEnd }
+        }
+        val settlementsJob = async { transactionRepository.queryAllInvestmentSettlements() }
+        val currentBalancesJob = async {
+            accounts.associate { account -> account.id to calculateCurrentBalanceUseCase(account.id) }
+        }
+        val rangeStartBalancesJob = async {
+            accounts.associate { account ->
+                account.id to calculateCurrentBalanceUseCase(account.id, rangeStart - 1L)
+            }
+        }
+
+        StatsData(
+            accounts = accounts,
+            cashFlowsInRange = cashFlowsJob.await(),
+            transfersInRange = transfersJob.await(),
+            manualAdjustmentsInRange = adjustmentsJob.await(),
+            balanceUpdatesInRange = balanceUpdatesJob.await(),
+            allInvestmentSettlements = settlementsJob.await(),
+            currentBalances = currentBalancesJob.await(),
+            rangeStartBalances = rangeStartBalancesJob.await(),
+        )
+    }
+
+    private fun buildCashFlowBars(
         subPeriods: List<TimeRangeUtils.SubPeriod>,
+        cashFlowsInRange: List<CashFlowRecordEntity>,
     ): List<CashFlowBar> {
-        return subPeriods.map { sub ->
-            val inflow = transactionRepository.sumAllInflowBetween(
-                sub.range.startAtMillis, sub.range.endAtMillis,
+        val inflowTotals = LongArray(subPeriods.size)
+        val outflowTotals = LongArray(subPeriods.size)
+
+        cashFlowsInRange.forEach { record ->
+            val index = subPeriods.indexOfFirst { record.occurredAt in it.range.startAtMillis..it.range.endAtMillis }
+            if (index < 0) return@forEach
+            when (record.direction) {
+                "inflow" -> inflowTotals[index] += record.amount
+                "outflow" -> outflowTotals[index] += record.amount
+            }
+        }
+
+        return subPeriods.mapIndexed { index, subPeriod ->
+            CashFlowBar(
+                label = subPeriod.label,
+                inflow = inflowTotals[index],
+                outflow = outflowTotals[index],
             )
-            val outflow = transactionRepository.sumAllOutflowBetween(
-                sub.range.startAtMillis, sub.range.endAtMillis,
-            )
-            CashFlowBar(label = sub.label, inflow = inflow, outflow = outflow)
         }
     }
 
-    private suspend fun buildNetAssetPoints(
+    private fun buildNetAssetPoints(
         subPeriods: List<TimeRangeUtils.SubPeriod>,
+        statsData: StatsData,
     ): List<NetAssetPoint> {
-        val accounts = accountRepository.queryActiveAccounts()
-        if (accounts.isEmpty()) return emptyList()
+        if (statsData.accounts.isEmpty()) return emptyList()
 
-        return subPeriods.map { sub ->
+        val eventsByAccount = buildBalanceEventsByAccount(statsData)
+        val runningBalances = statsData.rangeStartBalances.toMutableMap()
+        val pointers = statsData.accounts.associate { it.id to 0 }.toMutableMap()
+
+        return subPeriods.map { subPeriod ->
             var total = 0L
-            for (account in accounts) {
-                val latestUpdate = transactionRepository.getLatestBalanceUpdateAtOrBefore(
-                    account.id, sub.range.endAtMillis,
-                )
-                if (latestUpdate != null) {
-                    val baseBalance = latestUpdate.actualBalance
-                    val inflowAfter = transactionRepository.sumInflowBetween(
-                        account.id, latestUpdate.occurredAt, sub.range.endAtMillis,
-                    )
-                    val outflowAfter = transactionRepository.sumOutflowBetween(
-                        account.id, latestUpdate.occurredAt, sub.range.endAtMillis,
-                    )
-                    val transferIn = transactionRepository.sumTransferInBetween(
-                        account.id, latestUpdate.occurredAt, sub.range.endAtMillis,
-                    )
-                    val transferOut = transactionRepository.sumTransferOutBetween(
-                        account.id, latestUpdate.occurredAt, sub.range.endAtMillis,
-                    )
-                    val adjustment = transactionRepository.sumAdjustmentBetween(
-                        account.id, latestUpdate.occurredAt, sub.range.endAtMillis,
-                    )
-                    total += baseBalance + inflowAfter - outflowAfter + transferIn - transferOut + adjustment
-                } else {
-                    val inflowAfter = transactionRepository.sumInflowBetween(
-                        account.id, 0L, sub.range.endAtMillis,
-                    )
-                    val outflowAfter = transactionRepository.sumOutflowBetween(
-                        account.id, 0L, sub.range.endAtMillis,
-                    )
-                    val transferIn = transactionRepository.sumTransferInBetween(
-                        account.id, 0L, sub.range.endAtMillis,
-                    )
-                    val transferOut = transactionRepository.sumTransferOutBetween(
-                        account.id, 0L, sub.range.endAtMillis,
-                    )
-                    val adjustment = transactionRepository.sumAdjustmentBetween(
-                        account.id, 0L, sub.range.endAtMillis,
-                    )
-                    total += account.initialBalance + inflowAfter - outflowAfter + transferIn - transferOut + adjustment
+            for (account in statsData.accounts) {
+                val events = eventsByAccount[account.id].orEmpty()
+                var pointer = pointers[account.id] ?: 0
+                var balance = runningBalances[account.id] ?: 0L
+                while (pointer < events.size && events[pointer].occurredAt <= subPeriod.range.endAtMillis) {
+                    balance = events[pointer].applyTo(balance)
+                    pointer += 1
                 }
+                pointers[account.id] = pointer
+                runningBalances[account.id] = balance
+                total += balance
             }
+
             NetAssetPoint(
-                label = sub.label,
-                timestamp = sub.range.endAtMillis,
+                label = subPeriod.label,
+                timestamp = subPeriod.range.endAtMillis,
                 totalBalance = total,
             )
         }
     }
 
-    private suspend fun buildAccountShares(): List<AccountShare> {
-        val accounts = accountRepository.queryActiveAccounts()
-        return accounts.map { account ->
-            val balance = calculateCurrentBalanceUseCase(account.id)
+    private fun buildAccountShares(
+        statsData: StatsData,
+    ): List<AccountShare> {
+        return statsData.accounts.map { account ->
+            val balance = statsData.currentBalances[account.id] ?: 0L
             AccountShare(
                 accountName = account.name,
                 groupType = AccountGroupType.fromValue(account.groupType),
@@ -171,28 +212,124 @@ class ObserveStatsUseCase(
         }.filter { it.balance != 0L }
     }
 
-    private suspend fun buildInvestmentPoints(
-        overallRange: com.shihuaidexianyu.money.util.TimeRange,
+    private fun buildInvestmentPoints(
+        overallRange: TimeRange,
+        statsData: StatsData,
     ): List<InvestmentPoint> {
-        val accounts = accountRepository.queryActiveAccounts()
+        val investmentAccountIds = statsData.accounts
             .filter { AccountGroupType.fromValue(it.groupType) == AccountGroupType.INVESTMENT }
-        if (accounts.isEmpty()) return emptyList()
+            .map { it.id }
+            .toSet()
+        if (investmentAccountIds.isEmpty()) return emptyList()
 
-        val allSettlements = accounts.flatMap { account ->
-            transactionRepository.queryInvestmentSettlementsByAccountId(account.id)
-        }.filter { it.periodEndAt in overallRange.startAtMillis..overallRange.endAtMillis }
+        return statsData.allInvestmentSettlements
+            .filter { it.accountId in investmentAccountIds }
+            .filter { it.periodEndAt in overallRange.startAtMillis..overallRange.endAtMillis }
             .sortedBy { it.periodEndAt }
+            .map { settlement ->
+                InvestmentPoint(
+                    label = java.time.Instant.ofEpochMilli(settlement.periodEndAt)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDate()
+                        .let { "${it.monthValue}/${it.dayOfMonth}" },
+                    timestamp = settlement.periodEndAt,
+                    pnl = settlement.pnl,
+                    returnRate = settlement.returnRate,
+                )
+            }
+    }
 
-        return allSettlements.map { settlement ->
-            InvestmentPoint(
-                label = java.time.Instant.ofEpochMilli(settlement.periodEndAt)
-                    .atZone(java.time.ZoneId.systemDefault())
-                    .toLocalDate()
-                    .let { "${it.monthValue}/${it.dayOfMonth}" },
-                timestamp = settlement.periodEndAt,
-                pnl = settlement.pnl,
-                returnRate = settlement.returnRate,
+    private fun buildBalanceEventsByAccount(
+        statsData: StatsData,
+    ): Map<Long, List<BalanceEvent>> {
+        val eventsByAccount = mutableMapOf<Long, MutableList<BalanceEvent>>()
+
+        fun addEvent(accountId: Long, event: BalanceEvent) {
+            eventsByAccount.getOrPut(accountId) { mutableListOf() }.add(event)
+        }
+
+        statsData.cashFlowsInRange.forEach { record ->
+            addEvent(
+                record.accountId,
+                BalanceEvent(
+                    occurredAt = record.occurredAt,
+                    orderKey = 0L,
+                    effect = if (record.direction == "inflow") {
+                        BalanceEffect.Add(record.amount)
+                    } else {
+                        BalanceEffect.Add(-record.amount)
+                    },
+                ),
             )
         }
+        statsData.transfersInRange.forEach { record ->
+            addEvent(
+                record.fromAccountId,
+                BalanceEvent(
+                    occurredAt = record.occurredAt,
+                    orderKey = 0L,
+                    effect = BalanceEffect.Add(-record.amount),
+                ),
+            )
+            addEvent(
+                record.toAccountId,
+                BalanceEvent(
+                    occurredAt = record.occurredAt,
+                    orderKey = 0L,
+                    effect = BalanceEffect.Add(record.amount),
+                ),
+            )
+        }
+        statsData.manualAdjustmentsInRange.forEach { record ->
+            addEvent(
+                record.accountId,
+                BalanceEvent(
+                    occurredAt = record.occurredAt,
+                    orderKey = 0L,
+                    effect = BalanceEffect.Add(record.delta),
+                ),
+            )
+        }
+        statsData.balanceUpdatesInRange.forEach { record ->
+            addEvent(
+                record.accountId,
+                BalanceEvent(
+                    occurredAt = record.occurredAt,
+                    orderKey = 1_000_000L + record.id,
+                    effect = BalanceEffect.Reset(record.actualBalance),
+                ),
+            )
+        }
+
+        return eventsByAccount.mapValues { (_, events) ->
+            events.sortedWith(compareBy<BalanceEvent> { it.occurredAt }.thenBy { it.orderKey })
+        }
     }
+}
+
+private data class StatsData(
+    val accounts: List<AccountEntity>,
+    val cashFlowsInRange: List<CashFlowRecordEntity>,
+    val transfersInRange: List<TransferRecordEntity>,
+    val manualAdjustmentsInRange: List<BalanceAdjustmentRecordEntity>,
+    val balanceUpdatesInRange: List<BalanceUpdateRecordEntity>,
+    val allInvestmentSettlements: List<InvestmentSettlementEntity>,
+    val currentBalances: Map<Long, Long>,
+    val rangeStartBalances: Map<Long, Long>,
+)
+
+private data class BalanceEvent(
+    val occurredAt: Long,
+    val orderKey: Long,
+    val effect: BalanceEffect,
+) {
+    fun applyTo(balance: Long): Long = when (effect) {
+        is BalanceEffect.Add -> balance + effect.delta
+        is BalanceEffect.Reset -> effect.value
+    }
+}
+
+private sealed interface BalanceEffect {
+    data class Add(val delta: Long) : BalanceEffect
+    data class Reset(val value: Long) : BalanceEffect
 }

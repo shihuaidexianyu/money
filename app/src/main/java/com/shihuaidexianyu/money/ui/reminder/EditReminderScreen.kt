@@ -34,7 +34,12 @@ fun EditReminderScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        if (effect is EditReminderEffect.Saved) onBack()
+        when (effect) {
+            EditReminderEffect.Saved,
+            EditReminderEffect.Closed,
+            -> onBack()
+            is EditReminderEffect.ShowMessage -> Unit
+        }
     }
 
     if (showAccountPicker) {

@@ -9,12 +9,18 @@ class ConfirmReminderUseCase(
     suspend operator fun invoke(reminderId: Long) {
         val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
         val now = System.currentTimeMillis()
-        val nextDueAt = ReminderNextDueCalculator.calculateNextDue(
-            currentDueAt = reminder.nextDueAt,
-            periodType = ReminderPeriodType.fromValue(reminder.periodType),
-            periodValue = reminder.periodValue,
-            periodMonth = reminder.periodMonth,
-        )
+        val periodType = ReminderPeriodType.fromValue(reminder.periodType)
+        var nextDueAt = reminder.nextDueAt
+        do {
+            val previousDueAt = nextDueAt
+            nextDueAt = ReminderNextDueCalculator.calculateNextDue(
+                currentDueAt = previousDueAt,
+                periodType = periodType,
+                periodValue = reminder.periodValue,
+                periodMonth = reminder.periodMonth,
+            )
+            require(nextDueAt > previousDueAt) { "提醒下次时间计算失败" }
+        } while (nextDueAt <= now)
         reminderRepository.updateReminder(
             reminder.copy(
                 nextDueAt = nextDueAt,

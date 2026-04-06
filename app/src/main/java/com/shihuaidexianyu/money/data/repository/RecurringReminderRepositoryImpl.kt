@@ -3,7 +3,10 @@ package com.shihuaidexianyu.money.data.repository
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.util.minuteTickerFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class RecurringReminderRepositoryImpl(
     private val dao: RecurringReminderDao,
@@ -11,7 +14,12 @@ class RecurringReminderRepositoryImpl(
     override fun observeAllReminders(): Flow<List<RecurringReminderEntity>> = dao.observeAll()
 
     override fun observeDueReminders(): Flow<List<RecurringReminderEntity>> =
-        dao.observeDue(System.currentTimeMillis())
+        combine(
+            dao.observeAll(),
+            minuteTickerFlow(),
+        ) { reminders, now ->
+            reminders.filter { it.isEnabled && it.nextDueAt <= now }
+        }.distinctUntilChanged()
 
     override suspend fun getReminderById(id: Long): RecurringReminderEntity? = dao.queryById(id)
 
