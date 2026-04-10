@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
 import com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
@@ -51,6 +53,13 @@ class MoneyAppContainer(context: Context) {
                 context = appContext,
                 database = moneyDatabase,
             )
+        }
+    }
+
+    suspend fun seedDebugSampleDataIfNeeded() {
+        val isDebuggableApp = (appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebuggableApp) {
+            DebugSampleDataSeeder.seedIfNeeded(moneyDatabase)
         }
     }
 
@@ -236,4 +245,3 @@ class MoneyAppContainer(context: Context) {
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
     )
 }
-

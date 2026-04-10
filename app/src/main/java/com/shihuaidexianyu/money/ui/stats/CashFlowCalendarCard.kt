@@ -83,7 +83,6 @@ fun CashFlowCalendarCard(
     modifier: Modifier = Modifier,
 ) {
     val zoneId = ZoneId.systemDefault()
-    val today = LocalDate.now(zoneId)
     val visibleDate = LocalDate.ofEpochDay(visibleEpochDay)
     val selectedDate = LocalDate.ofEpochDay(selectedEpochDay)
     BoxWithConstraints(modifier = modifier) {
@@ -100,50 +99,8 @@ fun CashFlowCalendarCard(
     val selectedBucket = remember(buckets, selectedDate) {
         buckets.firstOrNull { selectedDate in it.startDate..it.endDate } ?: buckets.firstOrNull()
     }
-    val monthStatus = remember(totalsByDate, visibleMonth, today, settings) {
-        buildMonthStatus(
-            totalsByDate = totalsByDate,
-            visibleMonth = visibleMonth,
-            today = today,
-            settings = settings,
-        )
-    }
 
         MoneyCard(contentPadding = PaddingValues(if (compactLayout) 14.dp else 16.dp)) {
-            if (compactLayout) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "现金流趋势",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    monthStatus?.let { status ->
-                        MoneyStatusPill(
-                            text = status,
-                            accent = Color(0xFF2B6EF2),
-                        )
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "现金流趋势",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    monthStatus?.let { status ->
-                        MoneyStatusPill(
-                            text = status,
-                            accent = Color(0xFF2B6EF2),
-                        )
-                    }
-                }
-            }
-
             CashFlowControlRow(
                 compactLayout = compactLayout,
                 granularity = granularity,
@@ -158,21 +115,32 @@ fun CashFlowCalendarCard(
             )
 
             selectedBucket?.let { bucket ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = bucketHeadline(bucket, granularity),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = bucketHeadline(bucket, granularity),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (bucket.inflow != 0L || bucket.outflow != 0L) {
+                            Text(
+                                text = "入账 ${AmountFormatter.format(bucket.inflow, settings)} / 出账 ${AmountFormatter.format(bucket.outflow, settings)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     Text(
                         text = formatBucketPrimary(bucket, settings),
                         style = if (compactLayout) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
                         color = bucketPrimaryColor(bucket.netAmount),
-                    )
-                    Text(
-                        text = "入账 ${AmountFormatter.format(bucket.inflow, settings)} / 出账 ${AmountFormatter.format(bucket.outflow, settings)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -184,7 +152,7 @@ fun CashFlowCalendarCard(
                 onBucketSelect = { bucket -> onDateSelect(bucket.startDate.toEpochDay()) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (compactLayout) 220.dp else 246.dp),
+                    .height(if (compactLayout) 252.dp else 276.dp),
             )
         }
     }
@@ -606,7 +574,7 @@ private fun TrendChart(
                         )
                     }
 
-                    if (buckets.size <= 12 || index % (buckets.size / 6 + 1) == 0) {
+                    if (shouldDrawAxisLabel(index, buckets.size, granularity)) {
                         drawContext.canvas.nativeCanvas.drawText(
                             trendAxisLabel(bucket, granularity),
                             x + barWidth / 2f,
@@ -876,8 +844,9 @@ private fun buildBuckets(
             }
         }
         CashFlowGranularity.YEAR -> {
-            val startYear = ((visibleDate.year - 1) / 12) * 12 + 1
-            (startYear until startYear + 12).map { year ->
+            val endYear = visibleDate.year
+            val startYear = endYear - 4
+            (startYear..endYear).map { year ->
                 buildBucket(
                     label = "${year}年",
                     startDate = LocalDate.of(year, 1, 1),
@@ -945,9 +914,23 @@ private fun headerText(
         -> "${visibleDate.year}年${visibleDate.monthValue}月"
         CashFlowGranularity.MONTH -> "${visibleDate.year}年"
         CashFlowGranularity.YEAR -> {
-            val startYear = ((visibleDate.year - 1) / 12) * 12 + 1
-            "${startYear}-${startYear + 11}"
+            val endYear = visibleDate.year
+            val startYear = endYear - 4
+            "${startYear}-${endYear}"
         }
+    }
+}
+
+private fun shouldDrawAxisLabel(
+    index: Int,
+    bucketCount: Int,
+    granularity: CashFlowGranularity,
+): Boolean {
+    return when (granularity) {
+        CashFlowGranularity.DAY -> true
+        CashFlowGranularity.YEAR -> true
+        CashFlowGranularity.MONTH -> true
+        CashFlowGranularity.WEEK -> bucketCount <= 8 || index % 2 == 0
     }
 }
 

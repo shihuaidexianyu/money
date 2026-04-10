@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,24 +45,10 @@ fun StatsScreen(
                 title = "统计",
                 trailing = {
                     if (!state.isLoading) {
-                        MoneyStatusPill(text = "${state.overview.activeAccountCount} 个账户")
+                        MoneyStatusPill(text = statsScopeLabel(state.period))
                     }
                 },
             )
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StatsPeriod.entries.forEach { period ->
-                    FilterChip(
-                        selected = state.period == period,
-                        onClick = { onPeriodChange(period) },
-                        label = { Text(period.displayName) },
-                    )
-                }
-            }
         }
 
         if (state.isLoading) {
@@ -75,14 +60,14 @@ fun StatsScreen(
             }
         } else {
             item {
-                MoneySectionHeader(title = "本期总览")
+                MoneySectionHeader(title = scopeSectionTitle(state.period, "总览"))
             }
             item {
                 StatsOverviewCard(state)
             }
 
             item {
-                MoneySectionHeader(title = "现金流", trailing = "不含转账与余额修正")
+                MoneySectionHeader(title = "现金流")
             }
             item {
                 CashFlowCalendarCard(
@@ -102,7 +87,7 @@ fun StatsScreen(
             }
 
             item {
-                MoneySectionHeader(title = "净资产趋势", trailing = "含转账、修正与余额锚点")
+                MoneySectionHeader(title = "净资产趋势")
             }
             item {
                 MoneyCard {
@@ -128,7 +113,7 @@ fun StatsScreen(
             }
 
             item {
-                MoneySectionHeader(title = "资产配置", trailing = "按账户组聚合")
+                MoneySectionHeader(title = "资产配置")
             }
             item {
                 MoneyCard {
@@ -142,7 +127,7 @@ fun StatsScreen(
 
             if (state.overview.activeInvestmentAccountCount > 0) {
                 item {
-                    MoneySectionHeader(title = "投资结算", trailing = "按结算区间聚合")
+                    MoneySectionHeader(title = "投资结算")
                 }
                 item {
                     MoneyCard {
@@ -221,11 +206,6 @@ private fun StatsOverviewCard(
                 modifier = Modifier.weight(1f),
             )
         }
-        Text(
-            text = "净现金流不含转账与余额修正；净资产趋势会纳入账户之间调拨和余额更新锚点。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -257,5 +237,21 @@ private fun formatRate(value: Double?): String {
         "--"
     } else {
         "${"%.2f".format(value * 100)}%"
+    }
+}
+
+private fun statsScopeLabel(period: StatsPeriod): String {
+    return when (period) {
+        StatsPeriod.WEEK -> "周度统计"
+        StatsPeriod.MONTH -> "月度统计"
+        StatsPeriod.YEAR -> "年度统计"
+    }
+}
+
+private fun scopeSectionTitle(period: StatsPeriod, noun: String): String {
+    return when (period) {
+        StatsPeriod.WEEK -> "本周$noun"
+        StatsPeriod.MONTH -> "本月$noun"
+        StatsPeriod.YEAR -> "本年$noun"
     }
 }

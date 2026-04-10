@@ -143,11 +143,12 @@ class StatsViewModel(
             CashFlowGranularity.WEEK,
             -> current.plusMonths(offset)
             CashFlowGranularity.MONTH -> current.plusYears(offset)
-            CashFlowGranularity.YEAR -> current.plusYears(offset * 12L)
+            CashFlowGranularity.YEAR -> current.plusYears(offset * 5L)
         }
         val selectedDate = LocalDate.ofEpochDay(state.cashFlowSelectedEpochDay)
         val remappedSelected = remapSelectedDate(
             selectedDate = selectedDate,
+            currentVisibleDate = current,
             targetVisibleDate = shifted,
             granularity = state.cashFlowGranularity,
         )
@@ -159,6 +160,7 @@ class StatsViewModel(
 
     private fun remapSelectedDate(
         selectedDate: LocalDate,
+        currentVisibleDate: LocalDate,
         targetVisibleDate: LocalDate,
         granularity: CashFlowGranularity,
     ): LocalDate {
@@ -176,7 +178,11 @@ class StatsViewModel(
                     .withDayOfMonth(1)
             }
             CashFlowGranularity.YEAR -> {
-                targetVisibleDate.withMonth(1).withDayOfMonth(1)
+                val yearOffset = selectedDate.year - currentVisibleDate.year
+                targetVisibleDate
+                    .withYear(targetVisibleDate.year + yearOffset)
+                    .withMonth(1)
+                    .withDayOfMonth(1)
             }
         }
     }
