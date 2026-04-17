@@ -11,10 +11,12 @@ import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -66,7 +68,9 @@ class HistoryViewModel(
                     transactionRepository.observeChangeVersion(),
                 ) { settings, _ ->
                     buildState(settings)
-                }.collect { newState ->
+                }
+                    .flowOn(Dispatchers.Default)
+                    .collect { newState ->
                     allRecords = newState.records
                     _uiState.update { current ->
                         newState.copy(
@@ -80,8 +84,8 @@ class HistoryViewModel(
                         )
                     }
                 }
-            } catch (_: Exception) {
-                // leave current state as-is
+            } catch (e: Exception) {
+                android.util.Log.e("HistoryViewModel", "Failed to load history", e)
             }
         }
     }

@@ -57,7 +57,8 @@ class AccountDetailViewModel(
                         )
                     }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("AccountDetailViewModel", "Failed to observe account detail", e)
                 _uiState.value = _uiState.value.copy(isLoading = false, isMissing = true)
             }
         }

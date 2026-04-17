@@ -19,7 +19,11 @@ class ConfirmReminderUseCase(
                 periodValue = reminder.periodValue,
                 periodMonth = reminder.periodMonth,
             )
-            require(nextDueAt > previousDueAt) { "提醒下次时间计算失败" }
+            if (nextDueAt <= previousDueAt) {
+                // 计算异常时，使用一天后的时间作为安全降级，避免崩溃或死循环
+                nextDueAt = previousDueAt + 24L * 60L * 60L * 1000L
+                break
+            }
         } while (nextDueAt <= now)
         reminderRepository.updateReminder(
             reminder.copy(

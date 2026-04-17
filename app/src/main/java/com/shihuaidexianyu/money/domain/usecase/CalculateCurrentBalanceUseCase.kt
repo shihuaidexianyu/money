@@ -17,7 +17,7 @@ class CalculateCurrentBalanceUseCase(
 
         val anchorBalance = latestUpdate?.actualBalance ?: account.initialBalance
         val anchorTime = latestUpdate?.occurredAt
-            ?: DateTimeTextFormatter.floorToMinute(account.createdAt) - 1L
+            ?: (DateTimeTextFormatter.floorToMinute(account.createdAt) - 1L).coerceAtLeast(-1L)
 
         val inflow = transactionRepository.sumInflowBetween(accountId, anchorTime, atTimeMillis)
         val outflow = transactionRepository.sumOutflowBetween(accountId, anchorTime, atTimeMillis)

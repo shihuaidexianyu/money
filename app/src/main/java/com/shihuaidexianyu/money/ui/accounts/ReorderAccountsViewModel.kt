@@ -66,7 +66,8 @@ class ReorderAccountsViewModel(
                     groupOrder = groupOrder,
                     accountsByGroup = groupOrder.associateWith { group -> accountsByGroup[group].orEmpty() },
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("ReorderAccountsViewModel", "Failed to load accounts", e)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }

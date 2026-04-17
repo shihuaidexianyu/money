@@ -63,8 +63,8 @@ class UpdateBalanceViewModel(
                     actualBalancePreview = systemBalance,
                     deltaPreview = 0,
                 )
-            } catch (_: Exception) {
-                // leave current state as-is
+            } catch (e: Exception) {
+                android.util.Log.e("UpdateBalanceViewModel", "Failed to load accounts", e)
             }
         }
     }

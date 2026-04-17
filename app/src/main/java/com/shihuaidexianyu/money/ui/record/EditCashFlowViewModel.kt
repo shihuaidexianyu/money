@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -70,7 +71,8 @@ class EditCashFlowViewModel(
                     purpose = record.purpose,
                     occurredAtMillis = record.occurredAt,
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("EditCashFlowViewModel", "Failed to load record", e)
                 emitDeletedOnce()
             }
         }
@@ -94,7 +96,7 @@ class EditCashFlowViewModel(
                 effects.emit(EditCashFlowEffect.ShowMessage("请选择账户"))
                 return@launch
             }
-            val amount = com.shihuaidexianyu.money.util.AmountInputParser.parseToMinor(state.amountText) ?: run {
+            val amount = AmountInputParser.parseToMinor(state.amountText) ?: run {
                 effects.emit(EditCashFlowEffect.ShowMessage("金额不能为空"))
                 return@launch
             }

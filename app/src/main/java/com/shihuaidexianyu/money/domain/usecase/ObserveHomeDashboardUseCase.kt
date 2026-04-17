@@ -14,8 +14,10 @@ import com.shihuaidexianyu.money.util.TimeRangeUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 
 data class HomeDashboardSnapshot(
@@ -49,7 +51,7 @@ class ObserveHomeDashboardUseCase(
         }.mapLatest { (triple, dueReminders) ->
             val (accounts, reminderConfigs, settings) = triple
             buildSnapshot(accounts, reminderConfigs, settings, dueReminders)
-        }
+        }.flowOn(Dispatchers.Default)
     }
 
     private suspend fun buildSnapshot(

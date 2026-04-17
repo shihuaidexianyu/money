@@ -32,7 +32,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun updateCashFlowRecord(record: CashFlowRecordEntity) {
-        replaceById(cashFlowRecords, record.id, record)
+        replaceCashFlowById(record.id, record)
         bumpVersion()
     }
 
@@ -65,7 +65,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun updateTransferRecord(record: TransferRecordEntity) {
-        replaceById(transferRecords, record.id, record)
+        replaceTransferById(record.id, record)
         bumpVersion()
     }
 
@@ -106,7 +106,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecordEntity) {
-        replaceById(balanceUpdates, record.id, record)
+        replaceBalanceUpdateById(record.id, record)
         bumpVersion()
     }
 
@@ -156,7 +156,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity) {
-        replaceById(adjustments, record.id, record)
+        replaceAdjustmentById(record.id, record)
         bumpVersion()
     }
 
@@ -240,17 +240,24 @@ class InMemoryTransactionRepository : TransactionRepository {
             .sortedBy { it.occurredAt }
     }
 
-    private fun <T> replaceById(target: MutableList<T>, id: Long, replacement: T) {
-        val index = target.indexOfFirst {
-            when (it) {
-                is CashFlowRecordEntity -> it.id == id
-                is TransferRecordEntity -> it.id == id
-                is BalanceUpdateRecordEntity -> it.id == id
-                is BalanceAdjustmentRecordEntity -> it.id == id
-                else -> false
-            }
-        }
-        if (index >= 0) target[index] = replacement
+    private fun replaceCashFlowById(id: Long, replacement: CashFlowRecordEntity) {
+        val index = cashFlowRecords.indexOfFirst { it.id == id }
+        if (index >= 0) cashFlowRecords[index] = replacement
+    }
+
+    private fun replaceTransferById(id: Long, replacement: TransferRecordEntity) {
+        val index = transferRecords.indexOfFirst { it.id == id }
+        if (index >= 0) transferRecords[index] = replacement
+    }
+
+    private fun replaceBalanceUpdateById(id: Long, replacement: BalanceUpdateRecordEntity) {
+        val index = balanceUpdates.indexOfFirst { it.id == id }
+        if (index >= 0) balanceUpdates[index] = replacement
+    }
+
+    private fun replaceAdjustmentById(id: Long, replacement: BalanceAdjustmentRecordEntity) {
+        val index = adjustments.indexOfFirst { it.id == id }
+        if (index >= 0) adjustments[index] = replacement
     }
 
     private fun bumpVersion() {

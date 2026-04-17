@@ -66,7 +66,8 @@ class HomeViewModel(
                         },
                     )
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Failed to observe home dashboard", e)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }

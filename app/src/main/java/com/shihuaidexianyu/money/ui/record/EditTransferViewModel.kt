@@ -9,6 +9,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -69,7 +70,8 @@ class EditTransferViewModel(
                     note = record.note,
                     occurredAtMillis = record.occurredAt,
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("EditTransferViewModel", "Failed to load record", e)
                 emitDeletedOnce()
             }
         }
@@ -98,7 +100,7 @@ class EditTransferViewModel(
         viewModelScope.launch {
             val fromId = state.fromAccountId ?: run { effects.emit(EditTransferEffect.ShowMessage("请选择账户")); return@launch }
             val toId = state.toAccountId ?: run { effects.emit(EditTransferEffect.ShowMessage("请选择账户")); return@launch }
-            val amount = com.shihuaidexianyu.money.util.AmountInputParser.parseToMinor(state.amountText) ?: run {
+            val amount = AmountInputParser.parseToMinor(state.amountText) ?: run {
                 effects.emit(EditTransferEffect.ShowMessage("金额不能为空"))
                 return@launch
             }

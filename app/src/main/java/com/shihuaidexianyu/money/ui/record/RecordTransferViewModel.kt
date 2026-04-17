@@ -52,8 +52,8 @@ class RecordTransferViewModel(
                     fromAccountId = _uiState.value.fromAccountId ?: accounts.firstOrNull()?.id,
                     toAccountId = accounts.firstOrNull { it.id != _uiState.value.fromAccountId }?.id,
                 )
-            } catch (_: Exception) {
-                // leave current state as-is
+            } catch (e: Exception) {
+                android.util.Log.e("RecordTransferViewModel", "Failed to load accounts", e)
             }
         }
     }

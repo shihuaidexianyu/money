@@ -73,7 +73,8 @@ class EditBalanceUpdateViewModel(
                     actualBalancePreview = record.actualBalance,
                     deltaPreview = record.delta,
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("EditBalanceUpdateViewModel", "Failed to load record", e)
                 emitDeletedOnce()
             }
         }

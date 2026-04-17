@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -153,10 +154,10 @@ fun SettingsScreen(
                     enabled = !state.isExporting,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    androidx.compose.material3.Text(if (state.isExporting) "正在导出..." else "导出 JSON 备份")
+                    Text(if (state.isExporting) "正在导出..." else "导出 JSON 备份")
                 }
                 state.exportError?.let {
-                    androidx.compose.material3.Text(
+                    Text(
                         text = it,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
@@ -194,7 +195,7 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        androidx.compose.material3.Text("分享备份文件")
+                        Text("分享备份文件")
                     }
                 }
             }

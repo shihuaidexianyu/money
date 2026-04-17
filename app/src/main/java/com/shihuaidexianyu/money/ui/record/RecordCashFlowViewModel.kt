@@ -10,6 +10,8 @@ import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,8 +50,8 @@ class RecordCashFlowViewModel(
             direction = direction,
             selectedAccountId = initialAccountId,
             amountText = prefillAmount?.let {
-                java.math.BigDecimal.valueOf(it, 2)
-                    .setScale(2, java.math.RoundingMode.DOWN)
+                BigDecimal.valueOf(it, 2)
+                    .setScale(2, RoundingMode.HALF_UP)
                     .toPlainString()
             } ?: "",
             purpose = prefillPurpose ?: "",
@@ -68,8 +70,8 @@ class RecordCashFlowViewModel(
                     accounts = accounts.toAccountOptionUiModels(),
                     selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
                 )
-            } catch (_: Exception) {
-                // leave current state as-is
+            } catch (e: Exception) {
+                android.util.Log.e("RecordCashFlowViewModel", "Failed to load accounts", e)
             }
         }
     }

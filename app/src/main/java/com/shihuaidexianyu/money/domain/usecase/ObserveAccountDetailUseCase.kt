@@ -9,8 +9,10 @@ import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 
 data class AccountDetailSnapshot(
@@ -45,7 +47,7 @@ class ObserveAccountDetailUseCase(
                 settings = settings,
                 reminderConfigs = reminderConfigs,
             )
-        }
+        }.flowOn(Dispatchers.Default)
     }
 
     private suspend fun buildSnapshot(

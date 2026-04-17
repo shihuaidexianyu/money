@@ -9,7 +9,7 @@ object AmountFormatter {
         val absolute = BigDecimal.valueOf(amountInMinor)
             .movePointLeft(2)
             .abs()
-            .setScale(2, RoundingMode.DOWN)
+            .setScale(2, RoundingMode.HALF_UP)
             .toPlainString()
         val grouped = addGroupingSeparators(absolute)
         val signed = if (amountInMinor < 0) "-" else ""
@@ -19,7 +19,7 @@ object AmountFormatter {
     fun formatPlain(amountInMinor: Long): String {
         return addGroupingSeparators(
             BigDecimal.valueOf(amountInMinor, 2)
-                .setScale(2, RoundingMode.DOWN)
+                .setScale(2, RoundingMode.HALF_UP)
                 .toPlainString(),
         )
     }

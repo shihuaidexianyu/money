@@ -59,7 +59,8 @@ class EditAccountViewModel(
                     groupType = AccountGroupType.fromValue(account.groupType),
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("EditAccountViewModel", "Failed to load account", e)
                 emitClosedOnce()
             }
         }

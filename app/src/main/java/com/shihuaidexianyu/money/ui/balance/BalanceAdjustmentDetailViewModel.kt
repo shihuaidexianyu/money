@@ -48,7 +48,8 @@ class BalanceAdjustmentDetailViewModel(
                     delta = record.delta,
                     occurredAt = record.occurredAt,
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("BalanceAdjustmentDetailViewModel", "Failed to load record", e)
                 emitClosedOnce()
             }
         }

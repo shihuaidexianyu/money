@@ -50,7 +50,8 @@ class BalanceUpdateDetailViewModel(
                 transactionRepository.observeChangeVersion().collect {
                     loadRecord()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("BalanceUpdateDetailViewModel", "Failed to observe record", e)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }

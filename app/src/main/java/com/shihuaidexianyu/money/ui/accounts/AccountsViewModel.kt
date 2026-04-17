@@ -15,9 +15,11 @@ import com.shihuaidexianyu.money.util.AccountStatusUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class AccountListItemUiModel(
     val id: Long,
@@ -95,10 +97,10 @@ class AccountsViewModel(
         accounts: List<AccountEntity>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: AppSettings,
-    ): List<AccountListItemUiModel> {
+    ): List<AccountListItemUiModel> = withContext(Dispatchers.Default) {
         val items = accounts.map { mapItem(it, reminderConfigs[it.id]) }
         val groupOrderIndex = settings.accountGroupOrder.withIndex().associate { it.value to it.index }
-        return items.sortedWith(
+        items.sortedWith(
             compareBy<AccountListItemUiModel> { groupOrderIndex[it.groupType] ?: Int.MAX_VALUE }
                 .thenBy { it.displayOrder },
         )

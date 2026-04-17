@@ -74,7 +74,7 @@ class EditReminderViewModel(
                     selectedAccountId = reminder.accountId,
                     direction = CashFlowDirection.fromValue(reminder.direction),
                     amountText = BigDecimal.valueOf(reminder.amount, 2)
-                        .setScale(2, RoundingMode.DOWN)
+                        .setScale(2, RoundingMode.HALF_UP)
                         .toPlainString(),
                     periodType = periodType,
                     periodDay = reminder.periodValue.toString(),
@@ -86,7 +86,8 @@ class EditReminderViewModel(
                     },
                     isEnabled = reminder.isEnabled,
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("EditReminderViewModel", "Failed to load reminder", e)
                 emitClosedOnce()
             }
         }
