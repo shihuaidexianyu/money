@@ -199,9 +199,8 @@ private fun TotalAssetsBlock(
     staleCount: Int,
     showStaleMark: Boolean,
 ) {
-    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val borderColor = if (staleCount > 0 && showStaleMark) {
-        MaterialTheme.colorScheme.secondary.copy(alpha = if (isDarkTheme) 0.50f else 0.22f)
+        MaterialTheme.colorScheme.secondary.copy(alpha = 0.22f)
     } else {
         MaterialTheme.colorScheme.outlineVariant
     }
@@ -216,7 +215,7 @@ private fun TotalAssetsBlock(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(28.dp),
         tonalElevation = 0.dp,
-        shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
+        shadowElevation = 0.dp,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
@@ -265,17 +264,17 @@ private fun FlowPill(
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
-    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Surface(
-        modifier = modifier.border(
-            width = 1.dp,
-            color = accent.copy(alpha = if (isDarkTheme) 0.40f else 0.18f),
-            shape = RoundedCornerShape(20.dp),
-        ),
+        modifier = modifier
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(20.dp),
+            ),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
-        shadowElevation = if (isDarkTheme) 0.dp else 1.dp,
-        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 0.dp,
+        shape = RoundedCornerShape(20.dp),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -286,7 +285,7 @@ private fun FlowPill(
                 modifier = Modifier
                     .size(12.dp)
                     .background(
-                        color = accent.copy(alpha = if (isDarkTheme) 0.85f else 0.95f),
+                        color = accent,
                         shape = CircleShape,
                     ),
             )
@@ -300,7 +299,7 @@ private fun FlowPill(
                 )
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     color = accent,
                 )
             }
@@ -381,7 +380,6 @@ private fun ActionTile(
     enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Surface(
         modifier = modifier
             .border(
@@ -398,7 +396,7 @@ private fun ActionTile(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
         tonalElevation = 0.dp,
-        shadowElevation = if (isDarkTheme) 0.dp else 1.dp,
+        shadowElevation = 0.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),

@@ -66,7 +66,6 @@ fun MoneyCard(
     contentPadding: PaddingValues = PaddingValues(20.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -78,7 +77,7 @@ fun MoneyCard(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(24.dp),
         tonalElevation = 0.dp,
-        shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
+        shadowElevation = 0.dp,
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
