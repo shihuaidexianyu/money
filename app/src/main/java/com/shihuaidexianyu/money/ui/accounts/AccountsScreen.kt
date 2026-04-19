@@ -41,6 +41,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
+import com.shihuaidexianyu.money.ui.theme.Amber600
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 
@@ -65,14 +66,14 @@ fun AccountsScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
+                            color = Amber600,
                             shape = CircleShape,
                         ),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Add,
                         contentDescription = "新建账户",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint = Color.White,
                     )
                 }
             },
