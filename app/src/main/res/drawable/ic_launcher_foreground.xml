@@ -3,28 +3,35 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- 外圈圆环 -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M22,44V72C22,77.52 26.48,82 32,82H76C81.52,82 86,77.52 86,72V44C86,38.48 81.52,34 76,34H32C26.48,34 22,38.48 22,44Z"
-        android:strokeColor="#1E2038"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.5"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="5.2" />
-    <path
         android:fillColor="#00000000"
-        android:pathData="M22,43V36C22,31.58 25.58,28 30,28H68"
-        android:strokeColor="#1E2038"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="5.2" />
+        android:pathData="M54,24C70.57,24 84,37.43 84,54C84,70.57 70.57,84 54,84C37.43,84 24,70.57 24,54C24,37.43 37.43,24 54,24Z" />
+    <!-- ¥ 左斜线 -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M60,52H86V66H60C56.13,66 53,62.87 53,59C53,55.13 56.13,52 60,52Z"
-        android:strokeColor="#1E2038"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="5.2" />
+        android:pathData="M38,36 L54,56" />
+    <!-- ¥ 右斜线 -->
     <path
-        android:fillColor="#1E2038"
-        android:pathData="M64,59m-2.7,0a2.7,2.7 0,1 1,5.4 0a2.7,2.7 0,1 1,-5.4 0" />
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M70,36 L54,56" />
+    <!-- ¥ 横线 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M40,54 L68,54" />
+    <!-- ¥ 竖线 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L54,76" />
 </vector>
