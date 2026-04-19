@@ -15,10 +15,10 @@ val TransferBlue = Color(0xFF5B8DB8)
 val ReminderPurple = Color(0xFF9B7CB6)
 
 // ===== Backgrounds =====
-val BackgroundCream = Color(0xFFFAF8F5)
-val SurfaceWarm = Color(0xFFF5F0E8)
+val BackgroundCream = Color(0xFFF5F0E8)
+val SurfaceWarm = Color(0xFFF1E8DD)
 val SurfaceWhite = Color(0xFFFFFFFF)
-val InputBg = Color(0xFFF5F2ED)
+val InputBg = Color(0xFFF2ECE4)
 
 // ===== Text =====
 val CharcoalWarm = Color(0xFF2C2721)
@@ -26,14 +26,14 @@ val WarmGray = Color(0xFF6B6560)
 val MutedWarm = Color(0xFFD5CFC8)
 
 // ===== Borders & dividers =====
-val WarmBorder = Color(0xFFF0EDE8)
-val WarmBorderFocused = Color(0xFFE0DCD6)
+val WarmBorder = Color(0xFFE1D7C8)
+val WarmBorderFocused = Color(0xFFCFC0AE)
 
 // ===== Dark mode =====
-val Night950 = Color(0xFF1A1816)
-val Night800 = Color(0xFF242220)
-val Night700 = Color(0xFF2E2C29)
-val Night600 = Color(0xFF3A3834)
+val Night950 = Color(0xFF141210)
+val Night800 = Color(0xFF201C18)
+val Night700 = Color(0xFF2B2621)
+val Night600 = Color(0xFF3B342D)
 
 // ===== Legacy aliases for backward compatibility (to be removed later) =====
 val Teal700 = Color(0xFF1E5D5E)

@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
@@ -184,20 +186,36 @@ private fun AccountCard(
         account.isStale -> "建议更新"
         else -> "当前余额"
     }
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardColor = when {
+        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.20f else 0.12f)
+        account.isArchived -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDarkTheme) 0.90f else 0.80f)
+        else -> MaterialTheme.colorScheme.surface
+    }
+    val borderColor = when {
+        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.55f else 0.28f)
+        account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = if (isDarkTheme) 0.70f else 0.45f)
+        else -> MaterialTheme.colorScheme.outlineVariant
+    }
+    val iconContainerColor = when {
+        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.24f else 0.14f)
+        else -> iconBg
+    }
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(20.dp),
+            )
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick),
-        color = if (account.isStale) {
-            statusColor.copy(alpha = 0.06f)
-        } else {
-            MaterialTheme.colorScheme.surface
-        },
+        color = cardColor,
         shape = RoundedCornerShape(20.dp),
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
+        shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
     ) {
         Row(
             modifier = Modifier
@@ -208,7 +226,7 @@ private fun AccountCard(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .background(color = iconBg, shape = CircleShape),
+                    .background(color = iconContainerColor, shape = CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

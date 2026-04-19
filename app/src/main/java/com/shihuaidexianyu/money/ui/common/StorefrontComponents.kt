@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -37,6 +38,7 @@ fun MoneyGradientBackground(
         color = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
     ) {
+        val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -46,7 +48,7 @@ fun MoneyGradientBackground(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f),
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.18f else 0.30f),
                                 MaterialTheme.colorScheme.background,
                                 MaterialTheme.colorScheme.background,
                             ),
@@ -64,6 +66,7 @@ fun MoneyCard(
     contentPadding: PaddingValues = PaddingValues(20.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -75,7 +78,7 @@ fun MoneyCard(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(24.dp),
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
+        shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
