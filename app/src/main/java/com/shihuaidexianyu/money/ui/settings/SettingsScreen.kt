@@ -3,7 +3,7 @@ package com.shihuaidexianyu.money.ui.settings
 import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -14,13 +14,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.PaddingValues
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
-import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
@@ -100,7 +102,7 @@ fun SettingsScreen(
     ) {
         item { MoneySectionHeader(title = "显示") }
         item {
-            MoneyListSection {
+            MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
                     title = "首页默认周期",
                     trailing = settings.homePeriod.displayName,
@@ -137,7 +139,7 @@ fun SettingsScreen(
 
         item { MoneySectionHeader(title = "账户") }
         item {
-            MoneyListSection {
+            MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
                     title = "账户顺序",
                     trailing = "自定义",
@@ -149,41 +151,40 @@ fun SettingsScreen(
         item { MoneySectionHeader(title = "数据") }
         item {
             MoneyCard {
-                Button(
+                MoneySaveButton(
                     onClick = onExportJson,
-                    enabled = !state.isExporting,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (state.isExporting) "正在导出..." else "导出 JSON 备份")
-                }
+                    isSaving = state.isExporting,
+                    label = "导出 JSON 备份",
+                    savingLabel = "正在导出...",
+                )
                 state.exportError?.let {
                     Text(
                         text = it,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 }
                 if (state.lastExportFileName != null && state.lastExportUri != null) {
-                    MoneyListSection {
-                        MoneyListRow(
-                            title = "最近导出",
-                            trailing = state.lastExportFileName,
-                            showChevron = false,
-                        )
-                        MoneySectionDivider()
-                        MoneyListRow(
-                            title = "保存位置",
-                            trailing = state.lastExportRelativePath ?: "下载目录",
-                            showChevron = false,
-                        )
-                        MoneySectionDivider()
-                        MoneyListRow(
-                            title = "导出时间",
-                            trailing = state.lastExportedAt?.let(DateTimeTextFormatter::format) ?: "-",
-                            showChevron = false,
-                        )
-                    }
-                    Button(
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "最近导出",
+                        trailing = state.lastExportFileName,
+                        showChevron = false,
+                    )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "保存位置",
+                        trailing = state.lastExportRelativePath ?: "下载目录",
+                        showChevron = false,
+                    )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "导出时间",
+                        trailing = state.lastExportedAt?.let(DateTimeTextFormatter::format) ?: "-",
+                        showChevron = false,
+                    )
+                    MoneySaveButton(
                         onClick = {
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "application/json"
@@ -193,13 +194,11 @@ fun SettingsScreen(
                             }
                             context.startActivity(Intent.createChooser(shareIntent, "分享备份文件"))
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("分享备份文件")
-                    }
+                        isSaving = false,
+                        label = "分享备份文件",
+                    )
                 }
             }
         }
     }
 }
-
