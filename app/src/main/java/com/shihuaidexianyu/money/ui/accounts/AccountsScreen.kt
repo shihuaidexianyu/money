@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
@@ -43,7 +42,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.Amber600
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
@@ -172,10 +170,7 @@ private fun AccountCard(
     onClick: () -> Unit,
 ) {
     val (icon, iconBg, iconTint) = accountGroupVisuals(account.groupType)
-    val cardColor = when {
-        account.isArchived -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.80f)
-        else -> MaterialTheme.colorScheme.surface
-    }
+    val cardColor = MaterialTheme.colorScheme.surface
     val borderColor = MaterialTheme.colorScheme.outlineVariant
     val accentBarColor = when {
         account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
