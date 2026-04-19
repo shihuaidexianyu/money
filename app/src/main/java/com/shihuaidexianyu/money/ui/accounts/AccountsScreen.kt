@@ -60,11 +60,19 @@ fun AccountsScreen(
         MoneyPageTitle(
             title = "账户",
             trailing = {
-                IconButton(onClick = onCreateAccount) {
+                IconButton(
+                    onClick = onCreateAccount,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = CircleShape,
+                        ),
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Add,
                         contentDescription = "新建账户",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             },

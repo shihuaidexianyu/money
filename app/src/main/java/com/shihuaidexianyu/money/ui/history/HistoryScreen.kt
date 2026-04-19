@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,10 +40,11 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneyListRow
+import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -49,6 +53,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 private enum class HistoryFilterSheet {
+    OVERVIEW,
     ACCOUNT,
     DATE,
     AMOUNT,
@@ -125,6 +130,7 @@ fun HistoryScreen(
     sheet?.takeIf { it != HistoryFilterSheet.ACCOUNT }?.let { current ->
         HistoryFilterSheetContent(
             title = when (current) {
+                HistoryFilterSheet.OVERVIEW -> "筛选"
                 HistoryFilterSheet.DATE -> "日期"
                 HistoryFilterSheet.AMOUNT -> "金额"
                 HistoryFilterSheet.DIRECTION -> "方向"
@@ -133,6 +139,40 @@ fun HistoryScreen(
             onDismiss = { sheet = null },
         ) {
             when (current) {
+                HistoryFilterSheet.OVERVIEW -> {
+                    MoneyCard(contentPadding = PaddingValues(0.dp)) {
+                        MoneyListRow(
+                            title = "账户",
+                            trailing = accountSheetSummary(state),
+                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.ACCOUNT },
+                        )
+                        MoneySectionDivider()
+                        MoneyListRow(
+                            title = "日期",
+                            trailing = dateSheetSummary(state),
+                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.DATE },
+                        )
+                        MoneySectionDivider()
+                        MoneyListRow(
+                            title = "金额",
+                            trailing = amountChipLabel(state),
+                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.AMOUNT },
+                        )
+                        MoneySectionDivider()
+                        MoneyListRow(
+                            title = "方向",
+                            trailing = directionChipLabel(state),
+                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.DIRECTION },
+                        )
+                    }
+                    if (hasActiveFilters(state)) {
+                        Text(
+                            text = "已启用 ${activeFilterCount(state)} 项筛选",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 HistoryFilterSheet.DATE -> {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -229,30 +269,30 @@ fun HistoryScreen(
                     onValueChange = onKeywordChange,
                     placeholder = "搜索用途或备注",
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilterChip(
-                        selected = state.selectedAccountId != null,
-                        onClick = { sheet = HistoryFilterSheet.ACCOUNT },
-                        label = { Text(accountChipLabel(state)) },
+                        selected = hasActiveFilters(state),
+                        onClick = { sheet = HistoryFilterSheet.OVERVIEW },
+                        label = { Text(filterChipLabel(state)) },
                     )
-                    FilterChip(
-                        selected = state.dateStartAt != null || state.dateEndAt != null,
-                        onClick = { sheet = HistoryFilterSheet.DATE },
-                        label = { Text(dateChipLabel(state)) },
-                    )
-                    FilterChip(
-                        selected = state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
-                        onClick = { sheet = HistoryFilterSheet.AMOUNT },
-                        label = { Text(amountChipLabel(state)) },
-                    )
-                    FilterChip(
-                        selected = state.amountDirectionFilter != AmountDirectionFilter.ALL,
-                        onClick = { sheet = HistoryFilterSheet.DIRECTION },
-                        label = { Text(directionChipLabel(state)) },
-                    )
+                    if (hasActiveFilters(state)) {
+                        Text(
+                            text = "清除",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                onAccountChange(null)
+                                onDateRangeChange(null, null)
+                                onMinAmountChange("")
+                                onMaxAmountChange("")
+                                onAmountDirectionChange(AmountDirectionFilter.ALL)
+                            },
+                        )
+                    }
                 }
                 activeFilterSummary(state)?.let {
                     Text(
@@ -356,45 +396,46 @@ private fun HistoryRow(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MoneyStatusPill(
-                text = historyKindLabel(record),
-                accent = accent,
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(42.dp)
+                    .background(
+                        color = accent,
+                        shape = RoundedCornerShape(999.dp),
+                    ),
             )
-            Text(
-                text = DateTimeTextFormatter.format(record.occurredAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+            Spacer(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(record.title, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = record.subtitle,
+                    text = "${historyKindLabel(record)} · ${record.subtitle}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = AmountFormatter.format(record.amount, settings),
-                style = MaterialTheme.typography.titleLarge,
-                color = when {
-                    record.kind == HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
-                    record.amount > 0 -> LocalMoneyColors.current.income
-                    record.amount < 0 -> LocalMoneyColors.current.expense
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = AmountFormatter.format(record.amount, settings),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = when {
+                        record.kind == HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
+                        record.amount > 0 -> LocalMoneyColors.current.income
+                        record.amount < 0 -> LocalMoneyColors.current.expense
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                Text(
+                    text = DateTimeTextFormatter.format(record.occurredAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -406,10 +447,29 @@ private fun accountChipLabel(state: HistoryUiState): String {
     } ?: "全部账户"
 }
 
+private fun accountSheetSummary(state: HistoryUiState): String {
+    val account = state.accountOptions.firstOrNull { it.id == state.selectedAccountId }
+    return account?.name ?: "全部账户"
+}
+
 private fun dateChipLabel(state: HistoryUiState): String {
     val start = state.dateStartAt
     val end = state.dateEndAt
     return if (start == null && end == null) "日期" else "日期已选"
+}
+
+private fun dateSheetSummary(state: HistoryUiState): String {
+    val start = state.dateStartAt
+    val end = state.dateEndAt
+    return if (start == null && end == null) {
+        "不限"
+    } else if (start != null && end != null) {
+        "${DateTimeTextFormatter.formatDateOnly(start)} 至 ${DateTimeTextFormatter.formatDateOnly(end)}"
+    } else if (start != null) {
+        "${DateTimeTextFormatter.formatDateOnly(start)} 起"
+    } else {
+        "截至 ${DateTimeTextFormatter.formatDateOnly(requireNotNull(end))}"
+    }
 }
 
 private fun amountChipLabel(state: HistoryUiState): String {
@@ -424,13 +484,26 @@ private fun directionChipLabel(state: HistoryUiState): String {
     return if (state.amountDirectionFilter == AmountDirectionFilter.ALL) "方向" else state.amountDirectionFilter.displayName
 }
 
-private fun activeFilterSummary(state: HistoryUiState): String? {
-    val count = listOf(
+private fun filterChipLabel(state: HistoryUiState): String {
+    val count = activeFilterCount(state)
+    return if (count == 0) "筛选" else "筛选 $count"
+}
+
+private fun hasActiveFilters(state: HistoryUiState): Boolean {
+    return activeFilterCount(state) > 0
+}
+
+private fun activeFilterCount(state: HistoryUiState): Int {
+    return listOf(
         state.selectedAccountId != null,
         state.dateStartAt != null || state.dateEndAt != null,
         state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
         state.amountDirectionFilter != AmountDirectionFilter.ALL,
     ).count { it }
+}
+
+private fun activeFilterSummary(state: HistoryUiState): String? {
+    val count = activeFilterCount(state)
     return if (count == 0 && state.keyword.isBlank()) {
         null
     } else {
