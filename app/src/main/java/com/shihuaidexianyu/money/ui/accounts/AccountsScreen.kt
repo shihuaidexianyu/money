@@ -20,7 +20,7 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,7 +37,6 @@ import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
-import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
@@ -56,25 +55,25 @@ fun AccountsScreen(
     val groupedActiveAccounts = state.activeAccounts.groupBy { it.groupType }
     val groupedArchivedAccounts = state.archivedAccounts.groupBy { it.groupType }
     val hasArchivedAccounts = state.archivedAccounts.isNotEmpty()
-    val staleCount = state.activeAccounts.count { it.isStale }
 
     Column(modifier = modifier) {
         MoneyPageTitle(
             title = "账户",
+            trailing = {
+                IconButton(onClick = onCreateAccount) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = "新建账户",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            },
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
         )
         LazyColumn(
             contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            item {
-                AccountsOverviewCard(
-                    activeCount = state.activeAccounts.size,
-                    archivedCount = state.archivedAccounts.size,
-                    staleCount = staleCount,
-                    onCreateAccount = onCreateAccount,
-                )
-            }
             if (state.activeAccounts.isEmpty()) {
                 item {
                     MoneyEmptyStateCard(
@@ -150,39 +149,6 @@ fun AccountsScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AccountsOverviewCard(
-    activeCount: Int,
-    archivedCount: Int,
-    staleCount: Int,
-    onCreateAccount: () -> Unit,
-) {
-    MoneyCard {
-        Text(
-            text = "账户总览",
-            style = MaterialTheme.typography.titleLarge,
-        )
-        Text(
-            text = if (staleCount > 0) {
-                "有账户需要更新余额，先处理再继续记账会更稳妥。"
-            } else {
-                "按账户类型查看资产分布，也能从这里快速补充新账户。"
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        MoneyInlineLabelValue(label = "活跃账户", value = "$activeCount 个")
-        MoneyInlineLabelValue(label = "待更新账户", value = "$staleCount 个")
-        if (archivedCount > 0) {
-            MoneyInlineLabelValue(label = "已归档账户", value = "$archivedCount 个")
-        }
-        Button(onClick = onCreateAccount) {
-            Icon(Icons.Outlined.Add, contentDescription = null)
-            Text("新建账户", modifier = Modifier.padding(start = 6.dp))
         }
     }
 }
