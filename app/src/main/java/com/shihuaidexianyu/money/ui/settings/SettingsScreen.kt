@@ -17,7 +17,6 @@ import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
-import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
@@ -93,23 +92,7 @@ fun SettingsScreen(
         title = "设置",
         modifier = modifier,
     ) {
-        item {
-            MoneyCard {
-                Text(
-                    text = "偏好概览",
-                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                )
-                Text(
-                    text = "把首页展示、主题和货币符号收在一起，常用设置一眼就能找到。",
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                MoneyInlineLabelValue(label = "首页周期", value = settings.homePeriod.displayName)
-                MoneyInlineLabelValue(label = "主题模式", value = settings.themeMode.displayName)
-                MoneyInlineLabelValue(label = "货币符号", value = settings.currencySymbol)
-            }
-        }
-        item { MoneySectionHeader(title = "显示与偏好") }
+        item { MoneySectionHeader(title = "显示") }
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
