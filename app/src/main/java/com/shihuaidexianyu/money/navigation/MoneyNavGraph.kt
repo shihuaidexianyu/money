@@ -63,10 +63,10 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
             if (currentRoute in topLevelRoutes) {
                 Surface(color = MaterialTheme.colorScheme.surface) {
                     Column {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 2.dp,
+                            tonalElevation = 0.dp,
                         ) {
                             MoneyDestination.topLevel.forEach { destination ->
                                 NavigationBarItem(
@@ -83,7 +83,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = MaterialTheme.colorScheme.primary,
                                         selectedTextColor = MaterialTheme.colorScheme.primary,
-                                        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     ),

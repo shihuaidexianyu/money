@@ -119,10 +119,6 @@ fun UpdateBalanceScreen(
                     label = "系统余额",
                     value = AmountFormatter.format(state.systemBalanceBeforeUpdate, settings),
                 )
-            }
-        }
-        item {
-            MoneyCard {
                 MoneyAmountField(
                     value = state.actualBalanceText,
                     onValueChange = viewModel::updateActualBalance,

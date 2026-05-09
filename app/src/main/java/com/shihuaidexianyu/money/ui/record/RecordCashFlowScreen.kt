@@ -115,19 +115,15 @@ fun RecordCashFlowScreen(
     ) {
         item {
             MoneyCard {
+                MoneyAmountField(
+                    value = state.amountText,
+                    onValueChange = viewModel::updateAmount,
+                )
                 MoneySelectionField(
                     label = "账户",
                     value = selectedAccount?.name ?: "请选择",
                     subtitle = selectedAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { showAccountPicker = true },
-                )
-            }
-        }
-        item {
-            MoneyCard {
-                MoneyAmountField(
-                    value = state.amountText,
-                    onValueChange = viewModel::updateAmount,
                 )
             }
         }

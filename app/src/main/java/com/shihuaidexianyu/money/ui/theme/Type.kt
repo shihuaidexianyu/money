@@ -12,14 +12,14 @@ val MoneyTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = AppFont,
         fontWeight = FontWeight.Bold,
-        fontSize = 38.sp,
-        lineHeight = 44.sp,
+        fontSize = 36.sp,
+        lineHeight = 42.sp,
     ),
     displayMedium = TextStyle(
         fontFamily = AppFont,
         fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 38.sp,
+        fontSize = 30.sp,
+        lineHeight = 36.sp,
     ),
     headlineSmall = TextStyle(
         fontFamily = AppFont,

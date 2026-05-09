@@ -127,15 +127,15 @@ fun EditCashFlowScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                MoneyAmountField(
+                    value = state.amountText,
+                    onValueChange = viewModel::updateAmount,
+                )
                 MoneySelectionField(
                     label = "账户",
                     value = selectedAccount?.name ?: "请选择",
                     subtitle = selectedAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { showAccountPicker = true },
-                )
-                MoneyAmountField(
-                    value = state.amountText,
-                    onValueChange = viewModel::updateAmount,
                 )
             }
         }

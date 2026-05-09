@@ -148,6 +148,10 @@ fun EditTransferScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                MoneyAmountField(
+                    value = state.amountText,
+                    onValueChange = viewModel::updateAmount,
+                )
                 MoneySelectionField(
                     label = "转出账户",
                     value = fromAccount?.name ?: "请选择",
@@ -169,10 +173,6 @@ fun EditTransferScreen(
                     value = toAccount?.name ?: "请选择",
                     subtitle = toAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { pickerTarget = EditTransferPickerTarget.TO },
-                )
-                MoneyAmountField(
-                    value = state.amountText,
-                    onValueChange = viewModel::updateAmount,
                 )
             }
         }

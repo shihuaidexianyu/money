@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -51,7 +52,7 @@ fun MoneyGradientBackground(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.18f else 0.30f),
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.10f else 0.16f),
                                 MaterialTheme.colorScheme.background,
                                 MaterialTheme.colorScheme.background,
                             ),
@@ -66,19 +67,20 @@ fun MoneyGradientBackground(
 @Composable
 fun MoneyCard(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(18.dp),
+    contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val shape = RoundedCornerShape(12.dp)
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
+                shape = shape,
             ),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
+        shape = shape,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -127,7 +129,7 @@ fun MoneyBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    IconButton(onClick = onClick, modifier = modifier) {
+    IconButton(onClick = onClick, modifier = modifier.size(40.dp)) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
             contentDescription = "返回",
@@ -174,14 +176,14 @@ fun MoneyStatusPill(
 ) {
     Surface(
         modifier = modifier,
-        color = accent.copy(alpha = 0.10f),
-        shape = RoundedCornerShape(12.dp),
+        color = accent.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
             color = accent,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
     }
 }
@@ -196,7 +198,7 @@ fun MoneyMetricTile(
     Surface(
         modifier = modifier,
         color = accent.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -261,16 +263,17 @@ fun MoneyListSection(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val shape = RoundedCornerShape(12.dp)
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
+                shape = shape,
             ),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(14.dp),
+        shape = shape,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -290,7 +293,7 @@ fun MoneyListRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -330,7 +333,7 @@ fun MoneyListRow(
 
 @Composable
 fun MoneySectionDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
 }
 
 @Composable
@@ -340,16 +343,23 @@ fun MoneySelectionField(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
 ) {
+    val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f),
+                shape = shape,
+            ),
+        color = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(14.dp),
+        shape = shape,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {

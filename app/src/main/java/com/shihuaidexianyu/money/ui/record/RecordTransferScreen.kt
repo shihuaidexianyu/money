@@ -123,6 +123,10 @@ fun RecordTransferScreen(
     ) {
         item {
             MoneyCard {
+                MoneyAmountField(
+                    value = state.amountText,
+                    onValueChange = viewModel::updateAmount,
+                )
                 MoneySelectionField(
                     label = "转出账户",
                     value = fromAccount?.name ?: "请选择",
@@ -149,10 +153,6 @@ fun RecordTransferScreen(
         }
         item {
             MoneyCard {
-                MoneyAmountField(
-                    value = state.amountText,
-                    onValueChange = viewModel::updateAmount,
-                )
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,

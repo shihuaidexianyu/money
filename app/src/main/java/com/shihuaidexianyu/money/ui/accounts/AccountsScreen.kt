@@ -82,8 +82,8 @@ fun AccountsScreen(
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
         )
         LazyColumn(
-            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (state.activeAccounts.isEmpty()) {
                 item {
@@ -108,7 +108,7 @@ fun AccountsScreen(
                         MoneySectionHeader(title = groupType.displayName)
                     }
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             accounts.forEach { account ->
                                 AccountCard(
                                     account = account,
@@ -148,7 +148,7 @@ fun AccountsScreen(
                         MoneySectionHeader(title = "${groupType.displayName} · 已归档")
                     }
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             accounts.forEach { account ->
                                 AccountCard(
                                     account = account,
@@ -172,7 +172,7 @@ private fun AccountCard(
 ) {
     val (icon, iconBg, iconTint) = accountGroupVisuals(account.groupType)
     val cardColor = MaterialTheme.colorScheme.surface
-    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)
     val accentBarColor = when {
         account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
         account.isStale -> CoralRed
@@ -185,25 +185,25 @@ private fun AccountCard(
             .border(
                 width = 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
             )
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         color = cardColor,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
-                    .height(48.dp)
+                    .height(42.dp)
                     .background(
                         color = accentBarColor,
                         shape = RoundedCornerShape(999.dp),
@@ -212,7 +212,7 @@ private fun AccountCard(
             Spacer(modifier = Modifier.width(12.dp))
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(40.dp)
                     .background(color = iconBg, shape = CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
@@ -220,7 +220,7 @@ private fun AccountCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
             Spacer(modifier = Modifier.width(14.dp))

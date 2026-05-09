@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -47,8 +48,8 @@ fun MoneyFormPage(
     snackbarHostState: SnackbarHostState? = null,
     onBack: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(20.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(14.dp),
     content: LazyListScope.() -> Unit,
 ) {
     Column(modifier = modifier) {
@@ -140,11 +141,14 @@ fun MoneySingleLineField(
         enabled = enabled,
         singleLine = true,
         textStyle = textStyle,
+        shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             focusedLabelColor = MaterialTheme.colorScheme.primary,
             unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         ),
     )
 }
@@ -249,7 +253,7 @@ fun MoneyDateTimeFields(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         MoneySelectionField(
             label = dateLabel,
@@ -280,11 +284,14 @@ fun MoneyAmountField(
         singleLine = true,
         textStyle = MaterialTheme.typography.displayMedium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             focusedLabelColor = MaterialTheme.colorScheme.primary,
             unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         ),
     )
 }
@@ -300,9 +307,11 @@ fun MoneySaveButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 50.dp),
         enabled = enabled && !isSaving,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
