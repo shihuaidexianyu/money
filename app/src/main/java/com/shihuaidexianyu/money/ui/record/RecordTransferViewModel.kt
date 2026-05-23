@@ -3,9 +3,10 @@ package com.shihuaidexianyu.money.ui.record
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
-import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,7 @@ sealed interface RecordTransferEffect {
 class RecordTransferViewModel(
     initialFromAccountId: Long?,
     private val accountRepository: AccountRepository,
+    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val createTransferRecordUseCase: CreateTransferRecordUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(RecordTransferUiState(fromAccountId = initialFromAccountId))
@@ -55,7 +57,11 @@ class RecordTransferViewModel(
                     ?.takeIf { it in accountIds && it != fromAccountId }
                     ?: accounts.firstOrNull { it.id != fromAccountId }?.id
                 _uiState.value = _uiState.value.copy(
-                    accounts = accounts.toAccountOptionUiModels(),
+                    accounts = accounts.map { account ->
+                        account.toAccountOptionUiModel(
+                            balance = calculateCurrentBalanceUseCase(account.id),
+                        )
+                    },
                     fromAccountId = fromAccountId,
                     toAccountId = toAccountId,
                 )

@@ -58,6 +58,19 @@ class InMemoryTransactionRepository : TransactionRepository {
         return queryAllActiveCashFlowRecords().filter { it.accountId == accountId }
     }
 
+    override suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String> {
+        return queryAllActiveCashFlowRecords()
+            .asSequence()
+            .filter { it.direction == direction }
+            .filter { accountId == null || it.accountId == accountId }
+            .filter { it.purpose.isNotBlank() }
+            .sortedWith(compareByDescending<CashFlowRecordEntity> { it.occurredAt }.thenByDescending { it.id })
+            .map { it.purpose }
+            .distinct()
+            .take(limit)
+            .toList()
+    }
+
     override suspend fun insertTransferRecord(record: TransferRecordEntity): Long {
         val id = nextTransferId++
         transferRecords += record.copy(id = id)

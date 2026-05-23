@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -14,6 +15,10 @@ import kotlinx.coroutines.launch
 data class ReorderAccountItemUiModel(
     val id: Long,
     val name: String,
+    val iconName: String,
+    val colorName: String,
+    val balance: Long,
+    val lastUsedAt: Long?,
 )
 
 data class ReorderAccountsUiState(
@@ -31,6 +36,7 @@ sealed interface ReorderAccountsEffect {
 
 class ReorderAccountsViewModel(
     private val accountRepository: AccountRepository,
+    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val updateAccountDisplayOrderUseCase: UpdateAccountDisplayOrderUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReorderAccountsUiState())
@@ -48,6 +54,10 @@ class ReorderAccountsViewModel(
                         ReorderAccountItemUiModel(
                             id = it.id,
                             name = it.name,
+                            iconName = it.iconName,
+                            colorName = it.colorName,
+                            balance = calculateCurrentBalanceUseCase(it.id),
+                            lastUsedAt = it.lastUsedAt,
                         )
                     }
                 _uiState.value = ReorderAccountsUiState(
@@ -77,6 +87,31 @@ class ReorderAccountsViewModel(
         val item = items.removeAt(index)
         items.add(index + 1, item)
         _uiState.value = _uiState.value.copy(accounts = items)
+    }
+
+    fun sortByBalance() {
+        _uiState.value = _uiState.value.copy(
+            accounts = _uiState.value.accounts.sortedWith(
+                compareByDescending<ReorderAccountItemUiModel> { it.balance }
+                    .thenByDescending { it.lastUsedAt ?: Long.MIN_VALUE }
+                    .thenBy { it.name },
+            ),
+        )
+    }
+
+    fun sortByRecentUse() {
+        _uiState.value = _uiState.value.copy(
+            accounts = _uiState.value.accounts.sortedWith(
+                compareByDescending<ReorderAccountItemUiModel> { it.lastUsedAt ?: Long.MIN_VALUE }
+                    .thenBy { it.name },
+            ),
+        )
+    }
+
+    fun sortByName() {
+        _uiState.value = _uiState.value.copy(
+            accounts = _uiState.value.accounts.sortedBy { it.name },
+        )
     }
 
     fun save() {

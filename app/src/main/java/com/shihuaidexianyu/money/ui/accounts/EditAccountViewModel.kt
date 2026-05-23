@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
+import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
+import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
+import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
+import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +22,8 @@ import kotlinx.coroutines.launch
 data class EditAccountUiState(
     val isLoading: Boolean = true,
     val name: String = "",
+    val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
+    val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
 )
@@ -55,6 +61,8 @@ class EditAccountViewModel(
                 _uiState.value = EditAccountUiState(
                     isLoading = false,
                     name = account.name,
+                    iconName = account.iconName,
+                    colorName = account.colorName,
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
             } catch (e: Exception) {
@@ -66,6 +74,14 @@ class EditAccountViewModel(
 
     fun updateName(value: String) {
         _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
+    }
+
+    fun updateIconName(value: String) {
+        _uiState.value = _uiState.value.copy(iconName = normalizeAccountIconName(value))
+    }
+
+    fun updateColorName(value: String) {
+        _uiState.value = _uiState.value.copy(colorName = normalizeAccountColorName(value))
     }
 
     fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
@@ -89,6 +105,8 @@ class EditAccountViewModel(
                     accountId = accountId,
                     name = state.name,
                     balanceUpdateReminderConfig = state.reminderConfig,
+                    iconName = state.iconName,
+                    colorName = state.colorName,
                 )
             }.onSuccess {
                 effects.emit(EditAccountEffect.Saved)

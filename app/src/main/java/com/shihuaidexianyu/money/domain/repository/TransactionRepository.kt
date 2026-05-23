@@ -16,6 +16,7 @@ interface TransactionRepository {
     suspend fun queryAllCashFlowRecords(): List<CashFlowRecordEntity>
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecordEntity>
     suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecordEntity>
+    suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String>
 
     suspend fun insertTransferRecord(record: TransferRecordEntity): Long
     suspend fun updateTransferRecord(record: TransferRecordEntity)

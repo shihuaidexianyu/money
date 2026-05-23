@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.ui.common.AccountVisualIcon
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
@@ -53,6 +54,36 @@ fun ReorderAccountsScreen(
             }
         } else {
             item {
+                MoneyCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = viewModel::sortByBalance,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        ) {
+                            Text("按余额")
+                        }
+                        OutlinedButton(
+                            onClick = viewModel::sortByRecentUse,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        ) {
+                            Text("最近使用")
+                        }
+                        OutlinedButton(
+                            onClick = viewModel::sortByName,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        ) {
+                            Text("按名称")
+                        }
+                    }
+                }
+            }
+            item {
                 MoneySectionHeader(title = "账户顺序")
             }
             item {
@@ -61,6 +92,14 @@ fun ReorderAccountsScreen(
                         MoneyListRow(
                             title = account.name,
                             showChevron = false,
+                            leading = {
+                                AccountVisualIcon(
+                                    iconName = account.iconName,
+                                    colorName = account.colorName,
+                                    containerSize = 34.dp,
+                                    iconSize = 18.dp,
+                                )
+                            },
                             accessory = {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(

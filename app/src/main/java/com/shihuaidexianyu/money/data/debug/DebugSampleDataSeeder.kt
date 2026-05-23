@@ -48,6 +48,8 @@ object DebugSampleDataSeeder {
                     createdAt = paymentCreatedAt,
                     lastUsedAt = millisAt(zoneId, today, 20, 10),
                     displayOrder = 0,
+                    iconName = "wallet",
+                    colorName = "green",
                 ),
             )
             val bankId = accountDao.insert(
@@ -57,6 +59,8 @@ object DebugSampleDataSeeder {
                     createdAt = bankCreatedAt,
                     lastUsedAt = millisAt(zoneId, today.minusDays(1), 18, 10),
                     displayOrder = 1,
+                    iconName = "bank",
+                    colorName = "blue",
                 ),
             )
             val savingsId = accountDao.insert(
@@ -66,6 +70,8 @@ object DebugSampleDataSeeder {
                     createdAt = savingsCreatedAt,
                     lastUsedAt = millisAt(zoneId, today.minusDays(3), 19, 40),
                     displayOrder = 2,
+                    iconName = "savings",
+                    colorName = "teal",
                 ),
             )
             val investmentId = accountDao.insert(
@@ -76,6 +82,8 @@ object DebugSampleDataSeeder {
                     lastUsedAt = millisAt(zoneId, today.minusDays(4), 15, 0),
                     lastBalanceUpdateAt = millisAt(zoneId, today.minusDays(5), 21, 0),
                     displayOrder = 3,
+                    iconName = "chart",
+                    colorName = "purple",
                 ),
             )
 

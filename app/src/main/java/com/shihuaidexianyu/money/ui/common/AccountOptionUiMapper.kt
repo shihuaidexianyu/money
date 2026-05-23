@@ -6,6 +6,8 @@ fun AccountEntity.toAccountOptionUiModel(): AccountOptionUiModel {
     return AccountOptionUiModel(
         id = id,
         name = name,
+        iconName = iconName,
+        colorName = colorName,
         lastUsedAt = lastUsedAt,
     )
 }
@@ -18,8 +20,25 @@ fun AccountEntity.toAccountOptionUiModel(balance: Long): AccountOptionUiModel {
     return AccountOptionUiModel(
         id = id,
         name = name,
+        iconName = iconName,
+        colorName = colorName,
         balance = balance,
         lastUsedAt = lastUsedAt,
+    )
+}
+
+fun AccountEntity.toAccountOptionUiModel(
+    balance: Long,
+    isStale: Boolean,
+): AccountOptionUiModel {
+    return AccountOptionUiModel(
+        id = id,
+        name = name,
+        iconName = iconName,
+        colorName = colorName,
+        balance = balance,
+        lastUsedAt = lastUsedAt,
+        isStale = isStale,
     )
 }
 

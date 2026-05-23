@@ -288,6 +288,7 @@ fun MoneyListRow(
     trailing: String? = null,
     showChevron: Boolean = true,
     modifier: Modifier = Modifier,
+    leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -297,6 +298,11 @@ fun MoneyListRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        leading?.let {
+            Box(modifier = Modifier.padding(end = 12.dp)) {
+                it()
+            }
+        }
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),

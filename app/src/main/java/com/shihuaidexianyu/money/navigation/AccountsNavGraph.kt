@@ -51,6 +51,7 @@ internal fun NavGraphBuilder.addAccountsGraph(
             factory = moneyViewModelFactory {
                 ReorderAccountsViewModel(
                     accountRepository = container.accountRepository,
+                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     updateAccountDisplayOrderUseCase = container.updateAccountDisplayOrderUseCase,
                 )
             },

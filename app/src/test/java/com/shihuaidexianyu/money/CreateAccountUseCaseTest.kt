@@ -4,6 +4,8 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
+import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
+import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -77,6 +79,33 @@ class CreateAccountUseCaseTest {
             ),
             reminderRepository.getReminderConfig(accountId),
         )
+    }
+
+    @Test
+    fun `account visual settings are normalized on create`() = runBlocking {
+        val repository = InMemoryAccountRepository()
+        val useCase = CreateAccountUseCase(
+            accountRepository = repository,
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+        )
+
+        val accountId = useCase(
+            name = "旅行基金",
+            initialBalance = 100,
+            iconName = "savings",
+            colorName = "teal",
+        )
+        val fallbackId = useCase(
+            name = "默认账户",
+            initialBalance = 100,
+            iconName = "missing",
+            colorName = "missing",
+        )
+
+        assertEquals("savings", repository.getAccountById(accountId)?.iconName)
+        assertEquals("teal", repository.getAccountById(accountId)?.colorName)
+        assertEquals(DEFAULT_ACCOUNT_ICON_NAME, repository.getAccountById(fallbackId)?.iconName)
+        assertEquals(DEFAULT_ACCOUNT_COLOR_NAME, repository.getAccountById(fallbackId)?.colorName)
     }
 }
 

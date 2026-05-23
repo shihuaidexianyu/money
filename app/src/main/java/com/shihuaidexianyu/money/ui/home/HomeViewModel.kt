@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
@@ -27,6 +26,8 @@ data class DueReminderUiModel(
 data class StaleAccountUiModel(
     val accountId: Long,
     val name: String,
+    val iconName: String,
+    val colorName: String,
     val currentBalance: Long,
     val lastBalanceUpdateAt: Long?,
 )
@@ -54,6 +55,7 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 observeHomeDashboardUseCase().collect { snapshot ->
+                    val staleAccountIds = snapshot.staleAccounts.map { it.id }.toSet()
                     _uiState.value = HomeUiState(
                         isLoading = false,
                         settings = snapshot.settings,
@@ -66,6 +68,8 @@ class HomeViewModel(
                             StaleAccountUiModel(
                                 accountId = account.id,
                                 name = account.name,
+                                iconName = account.iconName,
+                                colorName = account.colorName,
                                 currentBalance = snapshot.accountBalances[account.id] ?: 0L,
                                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                             )
@@ -73,6 +77,7 @@ class HomeViewModel(
                         accountOptions = snapshot.activeAccounts.map { account ->
                             account.toAccountOptionUiModel(
                                 balance = snapshot.accountBalances[account.id] ?: 0L,
+                                isStale = account.id in staleAccountIds,
                             )
                         },
                         dueReminders = snapshot.dueReminders.map { reminder ->

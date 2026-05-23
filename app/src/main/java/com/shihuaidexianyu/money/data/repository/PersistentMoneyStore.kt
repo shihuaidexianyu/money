@@ -103,6 +103,8 @@ private fun JSONArray?.toAccountList(): List<AccountEntity> =
             lastUsedAt = item.optNullableLong("lastUsedAt"),
             lastBalanceUpdateAt = item.optNullableLong("lastBalanceUpdateAt"),
             displayOrder = item.optInt("displayOrder"),
+            iconName = item.optString("iconName", "wallet"),
+            colorName = item.optString("colorName", "blue"),
         )
     }
 
@@ -184,6 +186,8 @@ private fun AccountEntity.toJson(): JSONObject = JSONObject().apply {
     put("lastUsedAt", lastUsedAt ?: JSONObject.NULL)
     put("lastBalanceUpdateAt", lastBalanceUpdateAt ?: JSONObject.NULL)
     put("displayOrder", displayOrder)
+    put("iconName", iconName)
+    put("colorName", colorName)
 }
 
 private fun CashFlowRecordEntity.toJson(): JSONObject = JSONObject().apply {

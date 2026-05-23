@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.record
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
@@ -27,6 +28,7 @@ data class RecordCashFlowUiState(
     val amountText: String = "",
     val purpose: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
+    val purposeSuggestions: List<String> = emptyList(),
     val isSaving: Boolean = false,
     val showPurposeConfirm: Boolean = false,
 )
@@ -43,6 +45,7 @@ class RecordCashFlowViewModel(
     prefillPurpose: String? = null,
     private val reminderId: Long? = null,
     private val accountRepository: AccountRepository,
+    private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val createCashFlowRecordUseCase: CreateCashFlowRecordUseCase,
     private val confirmReminderUseCase: ConfirmReminderUseCase? = null,
@@ -76,6 +79,7 @@ class RecordCashFlowViewModel(
                     },
                     selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
                 )
+                refreshPurposeSuggestions()
             } catch (e: Exception) {
                 android.util.Log.e("RecordCashFlowViewModel", "Failed to load accounts", e)
             }
@@ -84,6 +88,7 @@ class RecordCashFlowViewModel(
 
     fun updateAccount(accountId: Long) {
         _uiState.value = _uiState.value.copy(selectedAccountId = accountId)
+        refreshPurposeSuggestions()
     }
 
     fun updateAmount(value: String) {
@@ -91,6 +96,10 @@ class RecordCashFlowViewModel(
     }
 
     fun updatePurpose(value: String) {
+        _uiState.value = _uiState.value.copy(purpose = value)
+    }
+
+    fun applyPurposeSuggestion(value: String) {
         _uiState.value = _uiState.value.copy(purpose = value)
     }
 
@@ -102,6 +111,27 @@ class RecordCashFlowViewModel(
 
     fun dismissPurposeConfirm() {
         _uiState.value = _uiState.value.copy(showPurposeConfirm = false)
+    }
+
+    private fun refreshPurposeSuggestions() {
+        val accountId = _uiState.value.selectedAccountId
+        viewModelScope.launch {
+            runCatching {
+                transactionRepository.queryRecentCashFlowPurposes(
+                    direction = direction.value,
+                    accountId = accountId,
+                    limit = 6,
+                ).ifEmpty {
+                    transactionRepository.queryRecentCashFlowPurposes(
+                        direction = direction.value,
+                        accountId = null,
+                        limit = 6,
+                    )
+                }
+            }.onSuccess { suggestions ->
+                _uiState.value = _uiState.value.copy(purposeSuggestions = suggestions)
+            }
+        }
     }
 
     fun save(confirmBlankPurpose: Boolean = false) {

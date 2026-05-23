@@ -4,10 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
-import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
@@ -42,6 +43,7 @@ class EditTransferViewModel(
     private val recordId: Long,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val updateTransferRecordUseCase: UpdateTransferRecordUseCase,
     private val deleteTransferRecordUseCase: DeleteTransferRecordUseCase,
 ) : ViewModel() {
@@ -63,7 +65,11 @@ class EditTransferViewModel(
                 val accounts = accountRepository.queryActiveAccounts()
                 _uiState.value = EditTransferUiState(
                     isLoading = false,
-                    accounts = accounts.toAccountOptionUiModels(),
+                    accounts = accounts.map { account ->
+                        account.toAccountOptionUiModel(
+                            balance = calculateCurrentBalanceUseCase(account.id),
+                        )
+                    },
                     fromAccountId = record.fromAccountId,
                     toAccountId = record.toAccountId,
                     amountText = AmountFormatter.formatPlain(record.amount),

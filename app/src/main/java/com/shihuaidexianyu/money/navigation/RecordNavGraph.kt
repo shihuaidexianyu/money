@@ -58,6 +58,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     prefillPurpose = prefillPurpose.takeIf { it.isNotEmpty() },
                     reminderId = reminderId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
+                    transactionRepository = container.transactionRepository,
                     calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     createCashFlowRecordUseCase = container.createCashFlowRecordUseCase,
                     confirmReminderUseCase = container.confirmReminderUseCase,
@@ -81,6 +82,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                 RecordTransferViewModel(
                     initialFromAccountId = fromAccountId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
+                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     createTransferRecordUseCase = container.createTransferRecordUseCase,
                 )
             },
@@ -128,6 +130,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
+                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     updateTransferRecordUseCase = container.updateTransferRecordUseCase,
                     deleteTransferRecordUseCase = container.deleteTransferRecordUseCase,
                 )

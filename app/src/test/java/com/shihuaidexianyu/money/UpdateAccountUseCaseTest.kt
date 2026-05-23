@@ -34,10 +34,14 @@ class UpdateAccountUseCaseTest {
                 hour = 20,
                 minute = 15,
             ),
+            iconName = "chart",
+            colorName = "purple",
         )
 
         val updated = accountRepository.getAccountById(accountId)
         assertEquals("理财账户", updated?.name)
+        assertEquals("chart", updated?.iconName)
+        assertEquals("purple", updated?.colorName)
         assertEquals(
             BalanceUpdateReminderConfig(
                 weekday = BalanceUpdateReminderWeekday.THURSDAY,

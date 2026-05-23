@@ -65,6 +65,10 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecordEntity> = cashFlowRecordDao.queryByAccountId(accountId)
 
+    override suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String> {
+        return cashFlowRecordDao.queryRecentPurposes(direction = direction, accountId = accountId, limit = limit)
+    }
+
     override suspend fun insertTransferRecord(record: TransferRecordEntity): Long {
         return transferRecordDao.insert(record).also { bumpVersion() }
     }

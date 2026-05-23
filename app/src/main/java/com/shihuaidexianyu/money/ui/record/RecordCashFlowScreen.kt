@@ -1,6 +1,12 @@
 package com.shihuaidexianyu.money.ui.record
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -8,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
@@ -135,6 +142,19 @@ fun RecordCashFlowScreen(
                     onValueChange = viewModel::updatePurpose,
                     label = "用途",
                 )
+                if (state.purposeSuggestions.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.heightIn(min = 36.dp),
+                    ) {
+                        items(state.purposeSuggestions) { suggestion ->
+                            SuggestionChip(
+                                onClick = { viewModel.applyPurposeSuggestion(suggestion) },
+                                label = { Text(suggestion) },
+                            )
+                        }
+                    }
+                }
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },

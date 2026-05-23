@@ -42,6 +42,20 @@ interface CashFlowRecordDao {
 
     @Query(
         """
+        SELECT purpose FROM cash_flow_records
+        WHERE direction = :direction
+            AND (:accountId IS NULL OR accountId = :accountId)
+            AND isDeleted = 0
+            AND TRIM(purpose) != ''
+        GROUP BY purpose
+        ORDER BY MAX(occurredAt) DESC, MAX(id) DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun queryRecentPurposes(direction: String, accountId: Long?, limit: Int): List<String>
+
+    @Query(
+        """
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE accountId = :accountId
             AND direction = 'inflow'
@@ -95,4 +109,3 @@ interface CashFlowRecordDao {
     )
     suspend fun queryActiveBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity>
 }
-

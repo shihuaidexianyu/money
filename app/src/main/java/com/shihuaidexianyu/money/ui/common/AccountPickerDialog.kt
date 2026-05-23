@@ -25,13 +25,17 @@ enum class AccountPickerSortMode {
     DEFAULT,
     MOST_USED,
     HIGHEST_BALANCE,
+    STALE_FIRST,
 }
 
 data class AccountOptionUiModel(
     val id: Long,
     val name: String,
+    val iconName: String = "wallet",
+    val colorName: String = "blue",
     val balance: Long? = null,
     val lastUsedAt: Long? = null,
+    val isStale: Boolean = false,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,6 +96,14 @@ fun AccountPickerDialog(
                                 isDisabled = isDisabled,
                             ),
                             showChevron = false,
+                            leading = {
+                                AccountVisualIcon(
+                                    iconName = account.iconName,
+                                    colorName = account.colorName,
+                                    containerSize = 34.dp,
+                                    iconSize = 18.dp,
+                                )
+                            },
                             modifier = Modifier
                                 .alpha(if (isDisabled) 0.45f else 1f)
                                 .clickable(enabled = !isDisabled) { onPick(account.id) },
@@ -139,6 +151,11 @@ private fun List<AccountOptionUiModel>.sortedForPicker(
                 .thenByDescending { it.lastUsedAt ?: Long.MIN_VALUE }
                 .thenBy { it.name },
         )
+        AccountPickerSortMode.STALE_FIRST -> sortedWith(
+            compareByDescending<AccountOptionUiModel> { it.isStale }
+                .thenByDescending { it.lastUsedAt ?: Long.MIN_VALUE }
+                .thenBy { it.name },
+        )
     }
 }
 
@@ -148,6 +165,7 @@ private fun AccountOptionUiModel.pickerSubtitle(
 ): String? {
     if (isDisabled) return "当前场景不可选"
     val parts = buildList {
+        if (isStale) add("待核对")
         balance?.let { add("余额 ${AmountFormatter.format(it, settings)}") }
         lastUsedAt?.let { add("最近使用 ${DateTimeTextFormatter.format(it)}") }
     }

@@ -113,6 +113,21 @@ private val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+private val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `accounts` ADD COLUMN `iconName` TEXT NOT NULL DEFAULT 'wallet'")
+        db.execSQL("ALTER TABLE `accounts` ADD COLUMN `colorName` TEXT NOT NULL DEFAULT 'blue'")
+    }
+}
+
+internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
+    MIGRATION_1_2,
+    MIGRATION_2_3,
+    MIGRATION_3_4,
+    MIGRATION_4_5,
+    MIGRATION_5_6,
+)
+
 @Database(
     entities = [
         AccountEntity::class,
@@ -122,7 +137,7 @@ private val MIGRATION_4_5 = object : Migration(4, 5) {
         BalanceAdjustmentRecordEntity::class,
         RecurringReminderEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class MoneyDatabase : RoomDatabase() {
@@ -143,7 +158,7 @@ abstract class MoneyDatabase : RoomDatabase() {
                     context,
                     MoneyDatabase::class.java,
                     "money.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+                ).addMigrations(*MONEY_DATABASE_MIGRATIONS).build()
                     .also { INSTANCE = it }
             }
         }

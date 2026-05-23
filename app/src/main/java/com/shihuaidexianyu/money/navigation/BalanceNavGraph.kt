@@ -192,8 +192,16 @@ internal fun NavGraphBuilder.addBalanceGraph(
             viewModel = viewModel,
             settings = settingsState.settings,
             onShowResult = { navController.navigate(MoneyDestination.balanceUpdateResultRoute(accountId)) },
-            onStartCashFlow = { direction, targetAccountId ->
-                navController.navigate(MoneyDestination.recordCashFlowRoute(direction, targetAccountId))
+            onStartCashFlow = { direction, targetAccountId, amount ->
+                navController.navigate(
+                    MoneyDestination.recordCashFlowRoute(
+                        direction = direction,
+                        accountId = targetAccountId,
+                        amount = amount,
+                        purpose = "余额核对补记",
+                        reminderId = null,
+                    ),
+                )
             },
             onBack = { navController.popBackStack() },
         )

@@ -48,6 +48,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
+import com.shihuaidexianyu.money.ui.common.AccountVisualIcon
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
@@ -102,6 +103,7 @@ fun HomeScreen(
         AccountPickerDialog(
             title = "选择核对余额账户",
             accounts = state.accountOptions,
+            sortMode = AccountPickerSortMode.STALE_FIRST,
             onDismiss = { showUpdateBalancePicker = false },
             onPick = { accountId ->
                 showUpdateBalancePicker = false
@@ -139,26 +141,19 @@ fun HomeScreen(
                     showStaleMark = state.settings.showStaleMark,
                 )
             }
-            if (state.staleAccounts.isNotEmpty()) {
+            if (state.staleAccounts.isNotEmpty() || state.dueReminders.isNotEmpty()) {
                 item {
-                    MoneySectionHeader(
-                        title = "待核对账户",
-                        trailingContent = {
-                            Text(
-                                text = "全部核对",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable(onClick = onStartBatchReconcile),
-                            )
-                        },
-                    )
+                    MoneySectionHeader(title = "待处理")
                 }
                 item {
-                    StaleAccountsBlock(
-                        accounts = state.staleAccounts.take(3),
+                    PendingActionsBlock(
+                        staleAccounts = state.staleAccounts.take(3),
+                        reminders = state.dueReminders,
                         settings = state.settings,
                         onAccountClick = { onStartUpdateBalance(it) },
                         onBatchClick = onStartBatchReconcile,
+                        onReminderClick = onReminderClick,
+                        onAllRemindersClick = onAllRemindersClick,
                     )
                 }
             }
@@ -172,34 +167,6 @@ fun HomeScreen(
                     outflowLabel = "${state.settings.homePeriod.displayName}净流出",
                     outflowValue = AmountFormatter.format(state.periodNetOutflow, state.settings),
                 )
-            }
-            if (state.dueReminders.isNotEmpty()) {
-                item {
-                    MoneySectionHeader(
-                        title = "待处理提醒",
-                        trailingContent = {
-                            Text(
-                                text = "管理全部",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable(onClick = onAllRemindersClick),
-                            )
-                        },
-                    )
-                }
-                item {
-                    MoneyListSection {
-                        state.dueReminders.forEachIndexed { index, reminder ->
-                            ReminderRow(
-                                reminder = reminder,
-                                onClick = { onReminderClick(reminder) },
-                            )
-                            if (index != state.dueReminders.lastIndex) {
-                                MoneySectionDivider()
-                            }
-                        }
-                    }
-                }
             }
             item {
                 MoneySectionHeader(title = "快速记录")
@@ -219,42 +186,81 @@ fun HomeScreen(
 }
 
 @Composable
-private fun StaleAccountsBlock(
-    accounts: List<StaleAccountUiModel>,
+private fun PendingActionsBlock(
+    staleAccounts: List<StaleAccountUiModel>,
+    reminders: List<DueReminderUiModel>,
     settings: AppSettings,
     onAccountClick: (Long) -> Unit,
     onBatchClick: () -> Unit,
+    onReminderClick: (DueReminderUiModel) -> Unit,
+    onAllRemindersClick: () -> Unit,
 ) {
     MoneyListSection {
-        accounts.forEachIndexed { index, account ->
+        val hasStaleAccounts = staleAccounts.isNotEmpty()
+        val hasReminders = reminders.isNotEmpty()
+        staleAccounts.forEachIndexed { index, account ->
             StaleAccountRow(
                 account = account,
                 settings = settings,
                 onClick = { onAccountClick(account.accountId) },
             )
-            if (index != accounts.lastIndex) {
+            if (index != staleAccounts.lastIndex || hasReminders || hasStaleAccounts) {
                 MoneySectionDivider()
             }
         }
-        MoneySectionDivider()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onBatchClick)
-                .padding(horizontal = 16.dp, vertical = 13.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "批量确认无变化",
-                style = MaterialTheme.typography.bodyLarge,
+        if (hasStaleAccounts) {
+            PendingActionLinkRow(
+                title = "批量确认无变化",
+                action = "去核对",
+                onClick = onBatchClick,
             )
-            Text(
-                text = "去核对",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
+            if (hasReminders) {
+                MoneySectionDivider()
+            }
+        }
+        reminders.forEachIndexed { index, reminder ->
+            ReminderRow(
+                reminder = reminder,
+                onClick = { onReminderClick(reminder) },
+            )
+            if (index != reminders.lastIndex) {
+                MoneySectionDivider()
+            }
+        }
+        if (hasReminders) {
+            MoneySectionDivider()
+            PendingActionLinkRow(
+                title = "管理全部提醒",
+                action = "查看",
+                onClick = onAllRemindersClick,
             )
         }
+    }
+}
+
+@Composable
+private fun PendingActionLinkRow(
+    title: String,
+    action: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Text(
+            text = action,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 
@@ -273,12 +279,23 @@ private fun StaleAccountRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = account.name,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AccountVisualIcon(
+                    iconName = account.iconName,
+                    colorName = account.colorName,
+                    containerSize = 30.dp,
+                    iconSize = 16.dp,
+                )
+                Text(
+                    text = account.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = account.lastBalanceUpdateAt?.let {
                     "最近核对 ${DateTimeTextFormatter.format(it)}"

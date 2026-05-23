@@ -33,13 +33,14 @@ import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import kotlin.math.abs
 
 @Composable
 fun UpdateBalanceScreen(
     viewModel: UpdateBalanceViewModel,
     settings: AppSettings,
     onShowResult: () -> Unit,
-    onStartCashFlow: (CashFlowDirection, Long) -> Unit,
+    onStartCashFlow: (CashFlowDirection, Long, Long) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -173,7 +174,8 @@ fun UpdateBalanceScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                if (state.deltaPreview != null && state.deltaPreview != 0L) {
+                val nonZeroDelta = state.deltaPreview
+                if (nonZeroDelta != null && nonZeroDelta != 0L) {
                     Text(
                         text = "如果这是漏记的收支，可以先补记一笔；如果只是实际余额修正，可直接保存本次核对。",
                         style = MaterialTheme.typography.bodySmall,
@@ -181,6 +183,7 @@ fun UpdateBalanceScreen(
                     )
                     val accountId = state.selectedAccountId
                     if (accountId != null) {
+                        val prefillAmount = abs(nonZeroDelta)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -190,6 +193,7 @@ fun UpdateBalanceScreen(
                                     onStartCashFlow(
                                         CashFlowDirection.INFLOW,
                                         accountId,
+                                        prefillAmount,
                                     )
                                 },
                                 enabled = !state.isSaving,
@@ -202,6 +206,7 @@ fun UpdateBalanceScreen(
                                     onStartCashFlow(
                                         CashFlowDirection.OUTFLOW,
                                         accountId,
+                                        prefillAmount,
                                     )
                                 },
                                 enabled = !state.isSaving,
