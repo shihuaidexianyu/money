@@ -1,10 +1,13 @@
 package com.shihuaidexianyu.money.ui.balance
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,7 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
@@ -36,6 +41,7 @@ fun UpdateBalanceScreen(
     viewModel: UpdateBalanceViewModel,
     settings: AppSettings,
     onShowResult: () -> Unit,
+    onStartCashFlow: (CashFlowDirection, Long) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -102,7 +108,7 @@ fun UpdateBalanceScreen(
     }
 
     MoneyFormPage(
-        title = "更新余额",
+        title = "核对余额",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
@@ -124,6 +130,15 @@ fun UpdateBalanceScreen(
                     onValueChange = viewModel::updateActualBalance,
                     label = "实际余额",
                 )
+                if (state.actualBalanceEdited || state.deltaPreview != 0L || state.actualBalancePreview == null) {
+                    OutlinedButton(
+                        onClick = viewModel::resetActualBalanceToSystem,
+                        enabled = !state.isSaving,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("设为无变化")
+                    }
+                }
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
@@ -147,11 +162,11 @@ fun UpdateBalanceScreen(
                     value = state.deltaPreview?.let { AmountFormatter.format(it, settings) } ?: "-",
                 )
                 state.deltaPreview?.let {
-                    androidx.compose.material3.Text(
+                    Text(
                         text = when {
                             it > 0 -> "高于系统记录"
                             it < 0 -> "低于系统记录"
-                            else -> "与系统记录一致"
+                            else -> "余额无变化，可直接确认"
                         },
                         color = when {
                             it > 0 -> LocalMoneyColors.current.income
@@ -161,7 +176,50 @@ fun UpdateBalanceScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, label = "确认更新余额")
+                if (state.deltaPreview != null && state.deltaPreview != 0L) {
+                    Text(
+                        text = "如果这是漏记的收支，可以先补记一笔；如果只是实际余额修正，可直接保存本次核对。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    val accountId = state.selectedAccountId
+                    if (accountId != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    onStartCashFlow(
+                                        CashFlowDirection.INFLOW,
+                                        accountId,
+                                    )
+                                },
+                                enabled = !state.isSaving,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("补记收入")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    onStartCashFlow(
+                                        CashFlowDirection.OUTFLOW,
+                                        accountId,
+                                    )
+                                },
+                                enabled = !state.isSaving,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("补记支出")
+                            }
+                        }
+                    }
+                }
+                MoneySaveButton(
+                    onClick = viewModel::save,
+                    isSaving = state.isSaving,
+                    label = if (state.deltaPreview == 0L) "确认无变化" else "保存余额核对",
+                )
             }
         }
     }

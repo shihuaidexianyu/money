@@ -15,6 +15,8 @@ import com.shihuaidexianyu.money.ui.balance.BalanceAdjustmentDetailViewModel
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateDetailScreen
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateDetailViewModel
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateResultScreen
+import com.shihuaidexianyu.money.ui.balance.BatchReconcileScreen
+import com.shihuaidexianyu.money.ui.balance.BatchReconcileViewModel
 import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateScreen
 import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateViewModel
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceScreen
@@ -140,6 +142,31 @@ internal fun NavGraphBuilder.addBalanceGraph(
         )
     }
 
+    composable(MoneyDestination.BatchReconcileRoute) {
+        val viewModel = viewModel<BatchReconcileViewModel>(
+            factory = moneyViewModelFactory {
+                BatchReconcileViewModel(
+                    accountReminderSettingsRepository = container.accountReminderSettingsRepository,
+                    accountRepository = container.accountRepository,
+                    settingsRepository = container.settingsRepository,
+                    transactionRepository = container.transactionRepository,
+                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
+                    updateBalanceUseCase = container.updateBalanceUseCase,
+                )
+            },
+        )
+        BatchReconcileScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onSaved = { count ->
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("batch_reconcile_message", "已核对 $count 个账户")
+                navController.popBackStack()
+            },
+        )
+    }
+
     composable(
         route = MoneyDestination.UpdateBalanceRoute,
         arguments = listOf(navArgument("accountId") { type = NavType.LongType }),
@@ -165,6 +192,9 @@ internal fun NavGraphBuilder.addBalanceGraph(
             viewModel = viewModel,
             settings = settingsState.settings,
             onShowResult = { navController.navigate(MoneyDestination.balanceUpdateResultRoute(accountId)) },
+            onStartCashFlow = { direction, targetAccountId ->
+                navController.navigate(MoneyDestination.recordCashFlowRoute(direction, targetAccountId))
+            },
             onBack = { navController.popBackStack() },
         )
     }

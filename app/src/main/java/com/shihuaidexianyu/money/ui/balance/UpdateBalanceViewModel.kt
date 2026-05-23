@@ -28,6 +28,7 @@ data class UpdateBalanceUiState(
     val systemBalanceBeforeUpdate: Long = 0,
     val actualBalancePreview: Long? = null,
     val deltaPreview: Long? = null,
+    val actualBalanceEdited: Boolean = false,
     val isSaving: Boolean = false,
     val latestResult: UpdateBalanceResult? = null,
 )
@@ -69,7 +70,10 @@ class UpdateBalanceViewModel(
     }
 
     fun updateAccount(accountId: Long) {
-        _uiState.value = _uiState.value.copy(selectedAccountId = accountId)
+        _uiState.value = _uiState.value.copy(
+            selectedAccountId = accountId,
+            actualBalanceEdited = false,
+        )
         refreshPreview(resetActualBalanceToSystem = true)
     }
 
@@ -80,14 +84,26 @@ class UpdateBalanceViewModel(
             actualBalanceText = value,
             actualBalancePreview = actual,
             deltaPreview = actual?.minus(systemBalance),
+            actualBalanceEdited = true,
         )
     }
 
     fun updateOccurredAt(value: Long) {
+        val shouldResetActualBalance = !_uiState.value.actualBalanceEdited
         _uiState.value = _uiState.value.copy(
             occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
         )
-        refreshPreview(resetActualBalanceToSystem = false)
+        refreshPreview(resetActualBalanceToSystem = shouldResetActualBalance)
+    }
+
+    fun resetActualBalanceToSystem() {
+        val systemBalance = _uiState.value.systemBalanceBeforeUpdate
+        _uiState.value = _uiState.value.copy(
+            actualBalanceText = AmountFormatter.formatPlain(systemBalance),
+            actualBalancePreview = systemBalance,
+            deltaPreview = 0,
+            actualBalanceEdited = false,
+        )
     }
 
     fun save() {
@@ -115,6 +131,7 @@ class UpdateBalanceViewModel(
                     systemBalanceBeforeUpdate = result.actualBalance,
                     actualBalancePreview = result.actualBalance,
                     deltaPreview = 0,
+                    actualBalanceEdited = false,
                 )
                 effects.emit(UpdateBalanceEffect.Saved)
             }.onFailure { throwable ->
@@ -154,6 +171,7 @@ class UpdateBalanceViewModel(
                 systemBalanceBeforeUpdate = systemBalance,
                 actualBalancePreview = actualBalancePreview,
                 deltaPreview = actualBalancePreview?.minus(systemBalance),
+                actualBalanceEdited = if (resetActualBalanceToSystem) false else current.actualBalanceEdited,
             )
         }
     }

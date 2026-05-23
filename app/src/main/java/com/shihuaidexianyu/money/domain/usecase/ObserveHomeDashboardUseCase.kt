@@ -28,6 +28,8 @@ data class HomeDashboardSnapshot(
     val periodNetOutflow: Long,
     val staleAccountCount: Int,
     val activeAccounts: List<AccountEntity>,
+    val staleAccounts: List<AccountEntity>,
+    val accountBalances: Map<Long, Long>,
     val dueReminders: List<RecurringReminderEntity>,
 )
 
@@ -77,19 +79,22 @@ class ObserveHomeDashboardUseCase(
         val balances = balanceJobs.associate { it.await() }
         val totalAssets = balances.values.sum()
         val openingTotalAssets = openingBalanceJobs.sumOf { it.await() }
+        val staleAccounts = accounts.filter { account ->
+            AccountStatusUtils.isStale(
+                account,
+                reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
+            )
+        }
         HomeDashboardSnapshot(
             settings = settings,
             totalAssets = totalAssets,
             periodAssetChange = totalAssets - openingTotalAssets,
             periodNetInflow = inflowJob.await(),
             periodNetOutflow = outflowJob.await(),
-            staleAccountCount = accounts.count { account ->
-                AccountStatusUtils.isStale(
-                    account,
-                    reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
-                )
-            },
+            staleAccountCount = staleAccounts.size,
             activeAccounts = accounts,
+            staleAccounts = staleAccounts,
+            accountBalances = balances,
             dueReminders = dueReminders,
         )
     }

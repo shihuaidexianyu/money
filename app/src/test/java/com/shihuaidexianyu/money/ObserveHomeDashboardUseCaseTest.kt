@@ -10,6 +10,8 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
@@ -97,6 +99,78 @@ class ObserveHomeDashboardUseCaseTest {
 
         assertEquals(2_300, snapshot.periodNetInflow)
         assertEquals(1_200, snapshot.periodNetOutflow)
+    }
+
+    @Test
+    fun `home dashboard exposes stale active accounts only`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val reminderSettingsRepository = InMemoryAccountReminderSettingsRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val recurringReminderRepository = InMemoryRecurringReminderRepository(
+            tickerFlow = MutableStateFlow(System.currentTimeMillis()).asStateFlow(),
+        )
+        val oldTime = 1_000L
+        val staleBankId = accountRepository.createAccount(
+            AccountEntity(
+                name = "银行卡",
+                groupType = AccountGroupType.BANK.value,
+                initialBalance = 10_000,
+                createdAt = oldTime,
+                lastBalanceUpdateAt = oldTime,
+            ),
+        )
+        val stalePaymentId = accountRepository.createAccount(
+            AccountEntity(
+                name = "零钱",
+                groupType = AccountGroupType.PAYMENT.value,
+                initialBalance = 2_000,
+                createdAt = oldTime,
+                lastBalanceUpdateAt = oldTime,
+            ),
+        )
+        val freshId = accountRepository.createAccount(
+            AccountEntity(
+                name = "新账户",
+                groupType = AccountGroupType.BANK.value,
+                initialBalance = 3_000,
+                createdAt = oldTime,
+                lastBalanceUpdateAt = System.currentTimeMillis(),
+            ),
+        )
+        val archivedId = accountRepository.createAccount(
+            AccountEntity(
+                name = "归档账户",
+                groupType = AccountGroupType.BANK.value,
+                initialBalance = 4_000,
+                createdAt = oldTime,
+                lastBalanceUpdateAt = oldTime,
+            ),
+        )
+        accountRepository.archiveAccount(archivedId, System.currentTimeMillis())
+        reminderSettingsRepository.updateReminderConfig(
+            freshId,
+            BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.SUNDAY,
+                hour = 23,
+                minute = 59,
+            ),
+        )
+
+        val useCase = ObserveHomeDashboardUseCase(
+            accountReminderSettingsRepository = reminderSettingsRepository,
+            accountRepository = accountRepository,
+            recurringReminderRepository = recurringReminderRepository,
+            settingsRepository = FakeSettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            transactionRepository = transactionRepository,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+        )
+
+        val snapshot = useCase().first()
+
+        assertEquals(2, snapshot.staleAccountCount)
+        assertEquals(setOf(staleBankId, stalePaymentId), snapshot.staleAccounts.map { it.id }.toSet())
+        assertEquals(10_000, snapshot.accountBalances[staleBankId])
+        assertEquals(2_000, snapshot.accountBalances[stalePaymentId])
     }
 
     private class FakeSettingsRepository(

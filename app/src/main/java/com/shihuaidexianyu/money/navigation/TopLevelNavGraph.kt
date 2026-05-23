@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,6 +24,10 @@ internal fun NavGraphBuilder.addTopLevelGraph(
     container: MoneyAppContainer,
 ) {
     composable(MoneyDestination.Home.route) {
+        val entry = navController.currentBackStackEntry
+        val batchReconcileMessage = entry
+            ?.savedStateHandle
+            ?.get<String>("batch_reconcile_message")
         val viewModel = viewModel<HomeViewModel>(
             factory = moneyViewModelFactory {
                 HomeViewModel(
@@ -33,11 +38,16 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         HomeScreen(
             state = state,
+            snackbarMessage = batchReconcileMessage,
+            onSnackbarMessageShown = {
+                entry?.savedStateHandle?.remove<String>("batch_reconcile_message")
+            },
             onStartCashFlow = { direction, accountId ->
                 navController.navigate(MoneyDestination.recordCashFlowRoute(direction, accountId))
             },
             onStartTransfer = { navController.navigate(MoneyDestination.recordTransferRoute()) },
             onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
+            onStartBatchReconcile = { navController.navigate(MoneyDestination.BatchReconcileRoute) },
             onReminderClick = { reminder ->
                 val direction = CashFlowDirection.fromValue(reminder.direction)
                 navController.navigate(

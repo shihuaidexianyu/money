@@ -249,13 +249,12 @@ class HistoryViewModel(
             )
         }
         val updateRecords = transactionRepository.queryAllBalanceUpdateRecords()
-            .filter { it.delta != 0L }
             .map { record ->
                 HistoryRecordUiModel(
                     id = "balance_update_${record.id}",
                     recordId = record.id,
                     kind = HistoryRecordKind.BALANCE_UPDATE,
-                    title = "更新余额",
+                    title = if (record.delta == 0L) "余额核对" else "更新余额",
                     subtitle = accounts[record.accountId]?.name ?: "未知账户",
                     amount = record.delta,
                     occurredAt = record.occurredAt,

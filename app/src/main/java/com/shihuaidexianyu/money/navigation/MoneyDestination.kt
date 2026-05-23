@@ -32,6 +32,7 @@ sealed class MoneyDestination(
         const val BalanceAdjustmentDetailRoute = "history/balance-adjustment/{recordId}"
         const val UpdateBalanceRoute = "balance/update/{accountId}"
         const val BalanceUpdateResultRoute = "balance/update/{accountId}/result"
+        const val BatchReconcileRoute = "balance/reconcile"
         const val ReminderListRoute = "reminders"
         const val CreateReminderRoute = "reminders/create"
         const val EditReminderRoute = "reminders/{reminderId}/edit"

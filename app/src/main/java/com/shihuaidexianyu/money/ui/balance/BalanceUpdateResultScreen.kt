@@ -42,7 +42,11 @@ fun BalanceUpdateResultScreen(
                     value = AmountFormatter.format(result.delta, settings),
                 )
                 Text(
-                    "本次已保存为一条余额更新记录",
+                    if (result.delta == 0L) {
+                        "本次已保存为一条余额核对记录"
+                    } else {
+                        "本次已保存为一条余额更新记录"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

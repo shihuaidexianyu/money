@@ -43,6 +43,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.CoralRed
 import com.shihuaidexianyu.money.ui.theme.SageGreen
 import com.shihuaidexianyu.money.util.AmountFormatter
@@ -101,6 +102,12 @@ fun AccountsScreen(
                     }
                 }
             } else {
+                val staleCount = state.activeAccounts.count { it.isStale }
+                if (staleCount > 0) {
+                    item {
+                        MoneySectionHeader(title = "$staleCount 个账户待核对")
+                    }
+                }
                 state.settings.accountGroupOrder.forEach { groupType ->
                     val accounts = groupedActiveAccounts[groupType].orEmpty()
                     if (accounts.isEmpty()) return@forEach
@@ -244,6 +251,12 @@ private fun AccountCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (account.isStale && !account.isArchived) {
+                    MoneyStatusPill(
+                        text = "待核对",
+                        accent = MaterialTheme.colorScheme.secondary,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(

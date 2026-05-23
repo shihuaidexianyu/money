@@ -60,8 +60,8 @@ fun AccountDetailScreen(
                 )
                 Text(
                     text = state.lastBalanceUpdateAt?.let {
-                        "最近更新 ${DateTimeTextFormatter.format(it)}"
-                    } ?: "尚未更新余额",
+                        "最近核对 ${DateTimeTextFormatter.format(it)}"
+                    } ?: "尚未核对余额",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -71,13 +71,13 @@ fun AccountDetailScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (state.isStale) {
-                    MoneyStatusPill(text = "待更新", accent = MaterialTheme.colorScheme.secondary)
+                    MoneyStatusPill(text = "待核对", accent = MaterialTheme.colorScheme.secondary)
                 }
                 Button(
                     onClick = onStartUpdateBalance,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("更新余额")
+                    Text("核对余额")
                 }
             }
         }

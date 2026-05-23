@@ -42,8 +42,9 @@ fun BalanceUpdateDetailScreen(
     }
 
     if (showDeleteConfirm) {
+        val isReconcile = state.delta == 0L
         MoneyConfirmDialog(
-            title = "撤销余额更新",
+            title = if (isReconcile) "撤销余额核对" else "撤销余额更新",
             message = "撤销后会重新计算该账户当前余额，确认继续？",
             onConfirm = {
                 showDeleteConfirm = false
@@ -56,7 +57,7 @@ fun BalanceUpdateDetailScreen(
     }
 
     MoneyFormPage(
-        title = "余额更新详情",
+        title = if (state.delta == 0L) "余额核对详情" else "余额更新详情",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
@@ -100,7 +101,7 @@ fun BalanceUpdateDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isDeleting,
                 ) {
-                    Text(if (state.isDeleting) "删除中..." else "删除这次更新")
+                    Text(if (state.isDeleting) "删除中..." else "删除这次记录")
                 }
             }
         }

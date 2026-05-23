@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
@@ -24,6 +25,14 @@ data class DueReminderUiModel(
     val amount: Long,
 )
 
+data class StaleAccountUiModel(
+    val accountId: Long,
+    val name: String,
+    val groupType: AccountGroupType,
+    val currentBalance: Long,
+    val lastBalanceUpdateAt: Long?,
+)
+
 data class HomeUiState(
     val isLoading: Boolean = true,
     val settings: AppSettings = AppSettings(),
@@ -32,6 +41,7 @@ data class HomeUiState(
     val periodNetInflow: Long = 0,
     val periodNetOutflow: Long = 0,
     val staleAccountCount: Int = 0,
+    val staleAccounts: List<StaleAccountUiModel> = emptyList(),
     val accountOptions: List<AccountOptionUiModel> = emptyList(),
     val dueReminders: List<DueReminderUiModel> = emptyList(),
 )
@@ -54,6 +64,15 @@ class HomeViewModel(
                         periodNetInflow = snapshot.periodNetInflow,
                         periodNetOutflow = snapshot.periodNetOutflow,
                         staleAccountCount = snapshot.staleAccountCount,
+                        staleAccounts = snapshot.staleAccounts.map { account ->
+                            StaleAccountUiModel(
+                                accountId = account.id,
+                                name = account.name,
+                                groupType = AccountGroupType.fromValue(account.groupType),
+                                currentBalance = snapshot.accountBalances[account.id] ?: 0L,
+                                lastBalanceUpdateAt = account.lastBalanceUpdateAt,
+                            )
+                        },
                         accountOptions = snapshot.activeAccounts.toAccountOptionUiModels(),
                         dueReminders = snapshot.dueReminders.map { reminder ->
                             DueReminderUiModel(

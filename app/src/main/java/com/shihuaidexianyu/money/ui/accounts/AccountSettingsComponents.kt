@@ -94,7 +94,7 @@ internal fun AccountTypeReminderFields(
     MoneySelectionField(
         label = "每周提醒日",
         value = reminderConfig.weekday.displayName,
-        subtitle = "到了提醒时间后未更新会标记为待更新",
+        subtitle = "到了提醒时间后未核对会标记为待核对",
         modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
     )
     MoneySelectionField(
@@ -121,7 +121,7 @@ internal fun AccountTypeReminderListSection(
         MoneySectionDivider()
         MoneyListRow(
             title = "每周提醒日",
-            subtitle = "到了提醒时间后未更新会标记为待更新",
+            subtitle = "到了提醒时间后未核对会标记为待核对",
             trailing = reminderConfig.weekday.displayName,
             modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
         )

@@ -20,11 +20,18 @@ import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.SouthWest
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material3.Button
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,19 +54,31 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun HomeScreen(
     state: HomeUiState,
+    snackbarMessage: String? = null,
+    onSnackbarMessageShown: () -> Unit = {},
     onStartCashFlow: (CashFlowDirection, Long) -> Unit,
     onStartTransfer: () -> Unit,
     onStartUpdateBalance: (Long) -> Unit,
+    onStartBatchReconcile: () -> Unit,
     onReminderClick: (DueReminderUiModel) -> Unit,
     onAllRemindersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pickerDirection by remember { mutableStateOf<CashFlowDirection?>(null) }
     var showUpdateBalancePicker by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            onSnackbarMessageShown()
+        }
+    }
 
     pickerDirection?.let { direction ->
         AccountPickerDialog(
@@ -75,7 +94,7 @@ fun HomeScreen(
 
     if (showUpdateBalancePicker) {
         AccountPickerDialog(
-            title = "选择更新余额账户",
+            title = "选择核对余额账户",
             accounts = state.accountOptions,
             onDismiss = { showUpdateBalancePicker = false },
             onPick = { accountId ->
@@ -84,10 +103,22 @@ fun HomeScreen(
             },
         )
     }
+    val assetChangeAccent = when {
+        state.periodAssetChange > 0 -> LocalMoneyColors.current.income
+        state.periodAssetChange < 0 -> LocalMoneyColors.current.expense
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Column(modifier = modifier) {
+        SnackbarHost(hostState = snackbarHostState)
         MoneyPageTitle(
             title = "首页",
+            trailing = {
+                ReminderHeaderButton(
+                    dueCount = state.dueReminders.size,
+                    onClick = onAllRemindersClick,
+                )
+            },
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
         )
         LazyColumn(
@@ -95,13 +126,38 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                val assetChangeAccent = when {
-                    state.periodAssetChange > 0 -> LocalMoneyColors.current.income
-                    state.periodAssetChange < 0 -> LocalMoneyColors.current.expense
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
                 TotalAssetsBlock(
                     totalAssets = AmountFormatter.format(state.totalAssets, state.settings),
+                    accountCount = state.accountOptions.size,
+                    staleCount = state.staleAccountCount,
+                    showStaleMark = state.settings.showStaleMark,
+                )
+            }
+            if (state.staleAccounts.isNotEmpty()) {
+                item {
+                    MoneySectionHeader(
+                        title = "待核对账户",
+                        trailingContent = {
+                            Text(
+                                text = "全部核对",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable(onClick = onStartBatchReconcile),
+                            )
+                        },
+                    )
+                }
+                item {
+                    StaleAccountsBlock(
+                        accounts = state.staleAccounts.take(3),
+                        settings = state.settings,
+                        onAccountClick = { onStartUpdateBalance(it) },
+                        onBatchClick = onStartBatchReconcile,
+                    )
+                }
+            }
+            item {
+                PeriodFormulaBlock(
                     assetChangeLabel = "${state.settings.homePeriod.displayName}资产变化",
                     assetChange = formatSignedAmount(state.periodAssetChange, state.settings),
                     assetChangeAccent = assetChangeAccent,
@@ -109,9 +165,6 @@ fun HomeScreen(
                     inflowValue = AmountFormatter.format(state.periodNetInflow, state.settings),
                     outflowLabel = "${state.settings.homePeriod.displayName}净流出",
                     outflowValue = AmountFormatter.format(state.periodNetOutflow, state.settings),
-                    accountCount = state.accountOptions.size,
-                    staleCount = state.staleAccountCount,
-                    showStaleMark = state.settings.showStaleMark,
                 )
             }
             if (state.dueReminders.isNotEmpty()) {
@@ -151,7 +204,6 @@ fun HomeScreen(
                     onOutflow = { pickerDirection = CashFlowDirection.OUTFLOW },
                     onTransfer = onStartTransfer,
                     onUpdateBalance = { showUpdateBalancePicker = true },
-                    onReminders = onAllRemindersClick,
                     enabled = state.accountOptions.isNotEmpty(),
                     transferEnabled = state.accountOptions.size >= 2,
                 )
@@ -161,15 +213,129 @@ fun HomeScreen(
 }
 
 @Composable
+private fun StaleAccountsBlock(
+    accounts: List<StaleAccountUiModel>,
+    settings: AppSettings,
+    onAccountClick: (Long) -> Unit,
+    onBatchClick: () -> Unit,
+) {
+    MoneyListSection {
+        accounts.forEachIndexed { index, account ->
+            StaleAccountRow(
+                account = account,
+                settings = settings,
+                onClick = { onAccountClick(account.accountId) },
+            )
+            if (index != accounts.lastIndex) {
+                MoneySectionDivider()
+            }
+        }
+        MoneySectionDivider()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onBatchClick)
+                .padding(horizontal = 16.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "批量确认无变化",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = "去核对",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StaleAccountRow(
+    account: StaleAccountUiModel,
+    settings: AppSettings,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = account.name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = account.lastBalanceUpdateAt?.let {
+                    "最近核对 ${DateTimeTextFormatter.format(it)}"
+                } ?: "尚未核对",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = AmountFormatter.format(account.currentBalance, settings),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+            )
+            Button(onClick = onClick) {
+                Text("核对")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReminderHeaderButton(
+    dueCount: Int,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(44.dp)
+            .background(
+                color = MaterialTheme.colorScheme.surface,
+                shape = CircleShape,
+            )
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
+                shape = CircleShape,
+            ),
+    ) {
+        BadgedBox(
+            badge = {
+                if (dueCount > 0) {
+                    Badge(containerColor = MaterialTheme.colorScheme.error)
+                }
+            },
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Notifications,
+                contentDescription = "提醒",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun TotalAssetsBlock(
     totalAssets: String,
-    assetChangeLabel: String,
-    assetChange: String,
-    assetChangeAccent: Color,
-    inflowLabel: String,
-    inflowValue: String,
-    outflowLabel: String,
-    outflowValue: String,
     accountCount: Int,
     staleCount: Int,
     showStaleMark: Boolean,
@@ -194,32 +360,20 @@ private fun TotalAssetsBlock(
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = "总资产",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = totalAssets,
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Text(
+                    text = "总资产",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 val statusText = if (staleCount > 0 && showStaleMark) {
-                    "$staleCount 个待更新"
+                    "$staleCount 个待核对"
                 } else {
                     "$accountCount 个账户"
                 }
@@ -232,29 +386,19 @@ private fun TotalAssetsBlock(
                     },
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                PeriodMetric(
-                    label = assetChangeLabel,
-                    value = assetChange,
-                    accent = assetChangeAccent,
-                    modifier = Modifier.weight(1f),
-                )
-                PeriodMetric(
-                    label = inflowLabel,
-                    value = inflowValue,
-                    accent = LocalMoneyColors.current.income,
-                    modifier = Modifier.weight(1f),
-                )
-                PeriodMetric(
-                    label = outflowLabel,
-                    value = outflowValue,
-                    accent = LocalMoneyColors.current.expense,
-                    modifier = Modifier.weight(1f),
-                )
+            val amountStyle = when {
+                totalAssets.length > 24 -> MaterialTheme.typography.titleLarge
+                totalAssets.length > 18 -> MaterialTheme.typography.headlineSmall
+                totalAssets.length > 14 -> MaterialTheme.typography.displayMedium
+                else -> MaterialTheme.typography.displayLarge
             }
+            Text(
+                text = totalAssets,
+                style = amountStyle,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+            )
             if (staleCount > 0 && showStaleMark) {
                 Text(
                     text = "有账户余额需要确认，更新后总资产会更准确。",
@@ -262,6 +406,73 @@ private fun TotalAssetsBlock(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PeriodFormulaBlock(
+    assetChangeLabel: String,
+    assetChange: String,
+    assetChangeAccent: Color,
+    inflowLabel: String,
+    inflowValue: String,
+    outflowLabel: String,
+    outflowValue: String,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
+                shape = RoundedCornerShape(12.dp),
+            ),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = assetChangeLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "净流入 - 净流出",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                AmountValueText(
+                    value = assetChange,
+                    accent = assetChangeAccent,
+                    prominent = true,
+                )
+            }
+            MoneySectionDivider()
+            FormulaLine(
+                symbol = "+",
+                label = inflowLabel,
+                value = inflowValue,
+                accent = LocalMoneyColors.current.income,
+            )
+            FormulaLine(
+                symbol = "-",
+                label = outflowLabel,
+                value = outflowValue,
+                accent = LocalMoneyColors.current.expense,
+            )
         }
     }
 }
@@ -274,22 +485,35 @@ private fun formatSignedAmount(amount: Long, settings: AppSettings): String {
 }
 
 @Composable
-private fun PeriodMetric(
+private fun FormulaLine(
+    symbol: String,
     label: String,
     value: String,
     accent: Color,
-    modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        color = accent.copy(alpha = 0.07f),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        shape = RoundedCornerShape(12.dp),
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(
+                    color = accent.copy(alpha = 0.08f),
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = symbol,
+                style = MaterialTheme.typography.titleMedium,
+                color = accent,
+            )
+        }
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             Text(
                 text = label,
@@ -298,15 +522,31 @@ private fun PeriodMetric(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                color = accent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            AmountValueText(value = value, accent = accent)
         }
     }
+}
+
+@Composable
+private fun AmountValueText(
+    value: String,
+    accent: Color,
+    prominent: Boolean = false,
+) {
+    val style = when {
+        prominent && value.length <= 18 -> MaterialTheme.typography.headlineSmall
+        prominent -> MaterialTheme.typography.titleLarge
+        value.length > 18 -> MaterialTheme.typography.bodyMedium
+        value.length > 14 -> MaterialTheme.typography.titleMedium
+        else -> MaterialTheme.typography.titleLarge
+    }
+    Text(
+        text = value,
+        style = style,
+        color = accent,
+        maxLines = 1,
+        overflow = TextOverflow.Clip,
+    )
 }
 
 @Composable
@@ -367,7 +607,6 @@ private fun ActionGrid(
     onOutflow: () -> Unit,
     onTransfer: () -> Unit,
     onUpdateBalance: () -> Unit,
-    onReminders: () -> Unit,
     enabled: Boolean,
     transferEnabled: Boolean,
 ) {
@@ -385,8 +624,8 @@ private fun ActionGrid(
         shadowElevation = 0.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ActionTile(
                 label = "入账",
@@ -420,14 +659,6 @@ private fun ActionGrid(
                 enabled = enabled,
                 modifier = Modifier.weight(1f),
             )
-            ActionTile(
-                label = "提醒",
-                icon = Icons.Rounded.Notifications,
-                tint = LocalMoneyColors.current.reminder,
-                onClick = onReminders,
-                enabled = true,
-                modifier = Modifier.weight(1f),
-            )
         }
     }
 }
@@ -445,13 +676,13 @@ private fun ActionTile(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 4.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(34.dp)
+                .size(42.dp)
                 .background(
                     color = tint.copy(alpha = if (enabled) 0.08f else 0.05f),
                     shape = CircleShape,
@@ -462,12 +693,12 @@ private fun ActionTile(
                 imageVector = icon,
                 contentDescription = label,
                 tint = if (enabled) tint else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(23.dp),
             )
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelLarge,
             color = if (enabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )
