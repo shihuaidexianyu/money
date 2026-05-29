@@ -44,10 +44,13 @@ data class StatsDashboardSnapshot(
     val settings: AppSettings,
     val period: StatsPeriod,
     val range: TimeRange,
+    val openingAssets: Long,
+    val closingAssets: Long,
     val totalInflow: Long,
     val totalOutflow: Long,
     val netCashFlow: Long,
     val assetChange: Long,
+    val assetAdjustment: Long,
     val purposeBreakdown: List<StatsPurposeBreakdown>,
     val dailyPoints: List<StatsDailyPoint>,
     val accountBalances: List<StatsAccountBalance>,
@@ -97,7 +100,7 @@ class ObserveStatsDashboardUseCase(
         }
         val balanceJobs = accounts.map { account ->
             async {
-                account to calculateCurrentBalanceUseCase(account.id)
+                account to calculateCurrentBalanceUseCase(account.id, range.endAtMillis)
             }
         }
         val openingBalanceJobs = accounts
@@ -120,15 +123,20 @@ class ObserveStatsDashboardUseCase(
         val openingAssets = openingBalanceJobs.sumOf { it.await() }
         val totalInflow = inflowRecords.sumOf { it.amount }
         val totalOutflow = outflowRecords.sumOf { it.amount }
+        val netCashFlow = totalInflow - totalOutflow
+        val assetChange = currentAssets - openingAssets
 
         StatsDashboardSnapshot(
             settings = settings,
             period = period,
             range = range,
+            openingAssets = openingAssets,
+            closingAssets = currentAssets,
             totalInflow = totalInflow,
             totalOutflow = totalOutflow,
-            netCashFlow = totalInflow - totalOutflow,
-            assetChange = currentAssets - openingAssets,
+            netCashFlow = netCashFlow,
+            assetChange = assetChange,
+            assetAdjustment = assetChange - netCashFlow,
             purposeBreakdown = buildPurposeBreakdown(outflowRecords),
             dailyPoints = buildDailyPoints(inflowRecords, outflowRecords, range, zoneId),
             accountBalances = accountBalances,

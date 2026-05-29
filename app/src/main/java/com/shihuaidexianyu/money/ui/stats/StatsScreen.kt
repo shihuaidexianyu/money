@@ -2,18 +2,21 @@ package com.shihuaidexianyu.money.ui.stats
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +30,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
@@ -61,7 +66,7 @@ fun StatsScreen(
                 )
             }
             item {
-                StatsSummaryCard(state = state)
+                AssetFlowCard(state = state)
             }
             item {
                 MoneySectionHeader(title = "支出用途", trailing = state.rangeText)
@@ -155,7 +160,7 @@ private fun StatsPeriodSelector(
 }
 
 @Composable
-private fun StatsSummaryCard(state: StatsUiState) {
+private fun AssetFlowCard(state: StatsUiState) {
     val income = LocalMoneyColors.current.income
     val expense = LocalMoneyColors.current.expense
     val current = LocalMoneyColors.current.current
@@ -169,6 +174,11 @@ private fun StatsSummaryCard(state: StatsUiState) {
         state.assetChange < 0L -> expense
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
+    val adjustmentAccent = when {
+        state.assetAdjustment > 0L -> income
+        state.assetAdjustment < 0L -> expense
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     MoneyCard {
         Row(
@@ -176,7 +186,10 @@ private fun StatsSummaryCard(state: StatsUiState) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
                 Text(
                     text = state.selectedPeriod.displayName,
                     style = MaterialTheme.typography.titleMedium,
@@ -185,49 +198,243 @@ private fun StatsSummaryCard(state: StatsUiState) {
                     text = state.rangeText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 text = "转账不计入收支",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.09f),
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryMetric(
-                    label = "收入",
-                    value = state.totalInflowText,
-                    accent = income,
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryMetric(
-                    label = "支出",
-                    value = state.totalOutflowText,
-                    accent = expense,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryMetric(
-                    label = "结余",
-                    value = state.netCashFlowText,
-                    accent = netAccent,
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryMetric(
-                    label = "资产变化",
-                    value = state.assetChangeText,
-                    accent = assetAccent.takeUnless { it == MaterialTheme.colorScheme.onSurfaceVariant } ?: current,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+        AssetFlowDiagram(
+            state = state,
+            incomeAccent = income,
+            expenseAccent = expense,
+            currentAccent = current,
+            netAccent = netAccent,
+            adjustmentAccent = adjustmentAccent,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FlowSummaryMetric(
+                label = "日常结余",
+                value = state.netCashFlowText,
+                accent = netAccent,
+                modifier = Modifier.weight(1f),
+            )
+            FlowSummaryMetric(
+                label = "资产变化",
+                value = state.assetChangeText,
+                accent = assetAccent.takeUnless { it == MaterialTheme.colorScheme.onSurfaceVariant } ?: current,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
 @Composable
-private fun SummaryMetric(
+private fun AssetFlowDiagram(
+    state: StatsUiState,
+    incomeAccent: Color,
+    expenseAccent: Color,
+    currentAccent: Color,
+    netAccent: Color,
+    adjustmentAccent: Color,
+) {
+    val lineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.86f)
+    val topNodeCenterY = 39.dp
+    val middleNodeCenterY = 135.dp
+    val bottomNodeCenterY = 231.dp
+    val topNodeBottomY = 74.dp
+    val middleNodeTopY = 100.dp
+    val middleNodeBottomY = 170.dp
+    val bottomNodeTopY = 196.dp
+    val branchY = 86.dp
+    val mergeY = 184.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(270.dp),
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(270.dp)) {
+            val oneSixth = size.width / 6f
+            val centerX = size.width / 2f
+            val fiveSixths = size.width * 5f / 6f
+            val topNodeBottom = topNodeBottomY.toPx()
+            val middleNodeTop = middleNodeTopY.toPx()
+            val middleNodeBottom = middleNodeBottomY.toPx()
+            val bottomNodeTop = bottomNodeTopY.toPx()
+            val branch = branchY.toPx()
+            val merge = mergeY.toPx()
+
+            drawLine(
+                color = lineColor,
+                start = Offset(oneSixth, topNodeBottom),
+                end = Offset(oneSixth, branch),
+                strokeWidth = 1.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = lineColor,
+                start = Offset(fiveSixths, topNodeBottom),
+                end = Offset(fiveSixths, branch),
+                strokeWidth = 1.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = lineColor,
+                start = Offset(oneSixth, branch),
+                end = Offset(fiveSixths, branch),
+                strokeWidth = 1.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = lineColor,
+                start = Offset(centerX, branch),
+                end = Offset(centerX, middleNodeTop),
+                strokeWidth = 1.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            listOf(oneSixth, centerX, fiveSixths).forEach { x ->
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x, middleNodeBottom),
+                    end = Offset(x, merge),
+                    strokeWidth = 1.dp.toPx(),
+                    cap = StrokeCap.Round,
+                )
+            }
+            drawLine(
+                color = lineColor,
+                start = Offset(oneSixth, merge),
+                end = Offset(fiveSixths, merge),
+                strokeWidth = 1.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = lineColor,
+                start = Offset(centerX, merge),
+                end = Offset(centerX, bottomNodeTop),
+                strokeWidth = 1.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = (topNodeCenterY - 35.dp)),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            FlowNode(
+                label = "收入",
+                value = "+${state.totalInflowText}",
+                accent = incomeAccent,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            FlowNode(
+                label = "支出",
+                value = "-${state.totalOutflowText}",
+                accent = expenseAccent,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = (middleNodeCenterY - 35.dp)),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            FlowNode(
+                label = "期初资产",
+                value = state.openingAssetsText,
+                accent = currentAccent,
+                modifier = Modifier.weight(1f),
+            )
+            FlowNode(
+                label = "净流入",
+                value = state.netCashFlowText,
+                accent = netAccent,
+                modifier = Modifier.weight(1f),
+            )
+            FlowNode(
+                label = "资产校准",
+                value = state.assetAdjustmentText,
+                accent = adjustmentAccent,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        FlowNode(
+            label = "期末资产",
+            value = state.closingAssetsText,
+            accent = currentAccent,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = (bottomNodeCenterY - 35.dp))
+                .widthIn(min = 128.dp, max = 180.dp),
+        )
+    }
+}
+
+@Composable
+private fun FlowNode(
+    label: String,
+    value: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.height(70.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
+        ),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = value,
+                style = when {
+                    value.length > 15 -> MaterialTheme.typography.labelLarge
+                    value.length > 11 -> MaterialTheme.typography.bodyMedium
+                    else -> MaterialTheme.typography.titleMedium
+                },
+                color = accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FlowSummaryMetric(
     label: String,
     value: String,
     accent: Color,
