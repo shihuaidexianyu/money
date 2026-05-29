@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,9 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
@@ -129,7 +133,7 @@ private fun AssetFlowCard(state: StatsUiState) {
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    MoneyCard {
+    MoneyCard(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -202,8 +206,8 @@ private fun AssetFlowDiagram(
             .height(252.dp),
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(252.dp)) {
-            val edgeNodeWidth = 108.dp.toPx()
-            val middleNodeWidth = 96.dp.toPx()
+            val edgeNodeWidth = 116.dp.toPx()
+            val middleNodeWidth = 104.dp.toPx()
             val topLeftX = edgeNodeWidth / 2f
             val centerX = size.width / 2f
             val topRightX = size.width - edgeNodeWidth / 2f
@@ -278,13 +282,13 @@ private fun AssetFlowDiagram(
                 label = "收入",
                 value = state.totalInflowFlowText,
                 accent = incomeAccent,
-                modifier = Modifier.widthIn(min = 108.dp, max = 116.dp),
+                modifier = Modifier.width(116.dp),
             )
             FlowNode(
                 label = "支出",
                 value = state.totalOutflowFlowText,
                 accent = expenseAccent,
-                modifier = Modifier.widthIn(min = 108.dp, max = 116.dp),
+                modifier = Modifier.width(116.dp),
             )
         }
         Row(
@@ -297,19 +301,19 @@ private fun AssetFlowDiagram(
                 label = "期初资产",
                 value = state.openingAssetsFlowText,
                 accent = currentAccent,
-                modifier = Modifier.widthIn(min = 96.dp, max = 104.dp),
+                modifier = Modifier.width(104.dp),
             )
             FlowNode(
                 label = "净流入",
                 value = state.netCashFlowFlowText,
                 accent = netAccent,
-                modifier = Modifier.widthIn(min = 96.dp, max = 104.dp),
+                modifier = Modifier.width(104.dp),
             )
             FlowNode(
                 label = "资产校准",
                 value = state.assetAdjustmentFlowText,
                 accent = adjustmentAccent,
-                modifier = Modifier.widthIn(min = 96.dp, max = 104.dp),
+                modifier = Modifier.width(104.dp),
             )
         }
         FlowNode(
@@ -319,7 +323,7 @@ private fun AssetFlowDiagram(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = (bottomNodeCenterY - 34.dp))
-                .widthIn(min = 132.dp, max = 160.dp),
+                .width(168.dp),
         )
     }
 }
@@ -343,7 +347,7 @@ private fun FlowNode(
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 3.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -357,16 +361,27 @@ private fun FlowNode(
             )
             Text(
                 text = value,
-                style = when {
-                    value.length > 10 -> MaterialTheme.typography.titleSmall
-                    value.length > 7 -> MaterialTheme.typography.titleMedium
-                    else -> MaterialTheme.typography.titleLarge
-                },
+                style = flowAmountStyle(value),
                 color = accent,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                softWrap = false,
+                overflow = TextOverflow.Clip,
                 textAlign = TextAlign.Center,
             )
         }
     }
+}
+
+private fun flowAmountStyle(value: String): TextStyle {
+    val fontSize = when {
+        value.length >= 10 -> 11.sp
+        value.length >= 9 -> 12.sp
+        value.length >= 7 -> 14.sp
+        else -> 16.sp
+    }
+    return TextStyle(
+        fontWeight = FontWeight.Medium,
+        fontSize = fontSize,
+        lineHeight = (fontSize.value + 4).sp,
+    )
 }
