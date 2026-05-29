@@ -7,6 +7,8 @@ import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.StatsDashboardSnapshot
 import com.shihuaidexianyu.money.util.AmountFormatter
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +34,12 @@ data class StatsUiState(
     val netCashFlowText: String = "",
     val assetChangeText: String = "",
     val assetAdjustmentText: String = "",
+    val openingAssetsFlowText: String = "",
+    val closingAssetsFlowText: String = "",
+    val totalInflowFlowText: String = "",
+    val totalOutflowFlowText: String = "",
+    val netCashFlowFlowText: String = "",
+    val assetAdjustmentFlowText: String = "",
 )
 
 class StatsViewModel(
@@ -78,6 +86,12 @@ class StatsViewModel(
             netCashFlowText = formatSignedAmount(netCashFlow, settings),
             assetChangeText = formatSignedAmount(assetChange, settings),
             assetAdjustmentText = formatSignedAmount(assetAdjustment, settings),
+            openingAssetsFlowText = formatFlowAmount(openingAssets),
+            closingAssetsFlowText = formatFlowAmount(closingAssets),
+            totalInflowFlowText = formatFlowAmount(totalInflow),
+            totalOutflowFlowText = formatFlowAmount(totalOutflow),
+            netCashFlowFlowText = formatFlowAmount(netCashFlow),
+            assetAdjustmentFlowText = formatFlowAmount(assetAdjustment),
         )
     }
 }
@@ -87,6 +101,16 @@ private fun formatSignedAmount(amount: Long, settings: AppSettings): String {
         amount > 0L -> "+${AmountFormatter.format(amount, settings)}"
         else -> AmountFormatter.format(amount, settings)
     }
+}
+
+private fun formatFlowAmount(amount: Long): String {
+    val sign = if (amount < 0L) "-" else ""
+    val absolute = BigDecimal.valueOf(amount)
+        .movePointLeft(2)
+        .abs()
+        .setScale(2, RoundingMode.HALF_UP)
+        .toPlainString()
+    return "$sign$absolute"
 }
 
 private fun formatRangeText(snapshot: StatsDashboardSnapshot): String {
