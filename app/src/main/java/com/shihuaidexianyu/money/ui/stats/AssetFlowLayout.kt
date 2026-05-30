@@ -14,9 +14,9 @@ data class AssetFlowLayoutSpec(
     val diagramHeight: Float,
 )
 
-fun calculateAssetFlowLayout(width: Float): AssetFlowLayoutSpec {
-    val middleGap = (width * 0.012f).coerceIn(4f, 6f)
-    val middleNodeWidth = (width - middleGap * 2f) / 3f
+fun calculateAssetFlowLayout(widthDp: Float): AssetFlowLayoutSpec {
+    val middleGap = (widthDp * 0.012f).coerceIn(4f, 6f)
+    val middleNodeWidth = (widthDp - middleGap * 2f) / 3f
     val topNodeWidth = middleNodeWidth
     val bottomNodeWidth = middleNodeWidth * 1.36f
     val nodeHeight = (middleNodeWidth * 0.48f).coerceIn(48f, 56f)

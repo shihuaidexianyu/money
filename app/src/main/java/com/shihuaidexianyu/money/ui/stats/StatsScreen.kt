@@ -283,17 +283,17 @@ private fun AssetFlowDiagram(
         modifier = Modifier.fillMaxWidth(),
     ) {
         val density = LocalDensity.current
-        val layout = remember(maxWidth, density) {
-            with(density) { calculateAssetFlowLayout(maxWidth.toPx()) }
+        val layout = remember(maxWidth) {
+            calculateAssetFlowLayout(maxWidth.value)
         }
-        val middleGap = with(density) { layout.middleGap.toDp() }
-        val middleNodeWidth = with(density) { layout.middleNodeWidth.toDp() }
-        val topNodeWidth = with(density) { layout.topNodeWidth.toDp() }
-        val bottomNodeWidth = with(density) { layout.bottomNodeWidth.toDp() }
-        val nodeHeight = with(density) { layout.nodeHeight.toDp() }
-        val middleNodeTop = with(density) { layout.middleNodeTop.toDp() }
-        val bottomNodeTop = with(density) { layout.bottomNodeTop.toDp() }
-        val diagramHeight = with(density) { layout.diagramHeight.toDp() }
+        val middleGap = layout.middleGap.dp
+        val middleNodeWidth = layout.middleNodeWidth.dp
+        val topNodeWidth = layout.topNodeWidth.dp
+        val bottomNodeWidth = layout.bottomNodeWidth.dp
+        val nodeHeight = layout.nodeHeight.dp
+        val middleNodeTop = layout.middleNodeTop.dp
+        val bottomNodeTop = layout.bottomNodeTop.dp
+        val diagramHeight = layout.diagramHeight.dp
 
         Box(
             modifier = Modifier
@@ -312,8 +312,8 @@ private fun AssetFlowDiagram(
             val middleNodeTopPx = middleNodeTop.toPx()
             val middleNodeBottom = (middleNodeTop + nodeHeight).toPx()
             val bottomNodeTopPx = bottomNodeTop.toPx()
-            val branch = layout.branchY
-            val merge = layout.mergeY
+            val branch = with(density) { layout.branchY.dp.toPx() }
+            val merge = with(density) { layout.mergeY.dp.toPx() }
 
             drawLine(
                 color = lineColor,

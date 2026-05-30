@@ -7,7 +7,7 @@ import org.junit.Test
 class AssetFlowLayoutTest {
     @Test
     fun `middle row nodes fit within narrow phone card width`() {
-        val layout = calculateAssetFlowLayout(width = 280f)
+        val layout = calculateAssetFlowLayout(widthDp = 280f)
 
         val middleRowWidth = layout.middleNodeWidth * 3f + layout.middleGap * 2f
 
@@ -18,10 +18,21 @@ class AssetFlowLayoutTest {
 
     @Test
     fun `node widths scale with wider card width`() {
-        val narrow = calculateAssetFlowLayout(width = 280f)
-        val wide = calculateAssetFlowLayout(width = 520f)
+        val narrow = calculateAssetFlowLayout(widthDp = 280f)
+        val wide = calculateAssetFlowLayout(widthDp = 520f)
 
         assertTrue(wide.middleNodeWidth > narrow.middleNodeWidth)
         assertTrue(wide.diagramHeight >= narrow.diagramHeight)
+    }
+
+    @Test
+    fun `layout dimensions are density independent`() {
+        val phoneCardWidthDp = 320f
+        val density = 420f / 160f
+        val layout = calculateAssetFlowLayout(widthDp = phoneCardWidthDp)
+
+        assertTrue(layout.nodeHeight >= 48f)
+        assertTrue(layout.diagramHeight >= 184f)
+        assertTrue(layout.diagramHeight * density >= 480f)
     }
 }
