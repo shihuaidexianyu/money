@@ -19,7 +19,7 @@ class ResolveBalanceUpdateContextUseCase(
         occurredAt: Long,
         excludingRecordId: Long? = null,
     ): BalanceUpdateContext {
-        val account = requireNotNull(accountRepository.getAccountById(accountId))
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
         val previousUpdate = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
             .filter { it.id != excludingRecordId && it.occurredAt <= occurredAt }
             .maxWithOrNull(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })

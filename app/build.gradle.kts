@@ -24,8 +24,8 @@ android {
         applicationId = "com.shihuaidexianyu.money"
         minSdk = 31
         targetSdk = 36
-        versionCode = 76
-        versionName = "1.0.76"
+        versionCode = 77
+        versionName = "1.0.77"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -58,6 +58,11 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        getByName("androidTest") {
+            assets.directories.add("$projectDir/schemas")
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -86,7 +91,6 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.material)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)

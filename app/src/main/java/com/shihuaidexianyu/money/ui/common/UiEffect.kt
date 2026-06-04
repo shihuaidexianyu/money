@@ -11,6 +11,8 @@ interface UiEffect {
     }
 }
 
+fun Throwable.userMessage(fallback: String): String = message ?: fallback
+
 @Composable
 fun <T> CollectUiEffects(
     effectFlow: SharedFlow<T>,

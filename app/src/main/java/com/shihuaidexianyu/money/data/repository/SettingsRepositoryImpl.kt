@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
+import com.shihuaidexianyu.money.domain.model.normalizeCurrencySymbol
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -26,7 +27,9 @@ class SettingsRepositoryImpl(
     }
 
     override suspend fun updateCurrencySymbol(symbol: String) {
-        context.appSettingsDataStore.edit { it[Keys.CurrencySymbol] = symbol.trim().ifEmpty { "¥" } }
+        context.appSettingsDataStore.edit {
+            it[Keys.CurrencySymbol] = normalizeCurrencySymbol(symbol)
+        }
     }
 
     override suspend fun updateShowStaleMark(show: Boolean) {

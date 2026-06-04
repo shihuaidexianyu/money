@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
+import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ data class EditAccountUiState(
     val isLoading: Boolean = true,
     val name: String = "",
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
+    val isArchived: Boolean = false,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
 )
@@ -38,6 +40,7 @@ class EditAccountViewModel(
     private val accountId: Long,
     private val accountRepository: AccountRepository,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
+    private val archiveAccountUseCase: ArchiveAccountUseCase,
     private val updateAccountUseCase: UpdateAccountUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(EditAccountUiState())
@@ -59,6 +62,7 @@ class EditAccountViewModel(
                     isLoading = false,
                     name = account.name,
                     colorName = account.colorName,
+                    isArchived = account.isArchived,
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
             } catch (e: Exception) {
@@ -90,6 +94,10 @@ class EditAccountViewModel(
 
     fun save() {
         val state = _uiState.value
+        if (state.isArchived) {
+            effects.tryEmit(EditAccountEffect.ShowMessage("归档账户不能修改账户"))
+            return
+        }
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true)
             runCatching {
@@ -113,10 +121,12 @@ class EditAccountViewModel(
     }
 
     fun archive() {
+        if (_uiState.value.isArchived) {
+            effects.tryEmit(EditAccountEffect.ShowMessage("账户已归档"))
+            return
+        }
         viewModelScope.launch {
-            runCatching {
-                accountRepository.archiveAccount(accountId, System.currentTimeMillis())
-            }.onSuccess {
+            runCatching { archiveAccountUseCase(accountId) }.onSuccess {
                 effects.emit(EditAccountEffect.Archived)
             }.onFailure { error ->
                 if (accountRepository.getAccountById(accountId) == null) {

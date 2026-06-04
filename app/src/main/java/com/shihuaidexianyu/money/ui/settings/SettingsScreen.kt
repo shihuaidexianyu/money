@@ -1,7 +1,10 @@
 package com.shihuaidexianyu.money.ui.settings
 
+import android.content.ClipData
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -10,10 +13,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.MAX_CURRENCY_SYMBOL_LENGTH
 import com.shihuaidexianyu.money.domain.model.ThemeMode
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -21,6 +27,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
+import kotlinx.coroutines.flow.SharedFlow
 
 private sealed interface SettingsDialog {
     data object HomePeriod : SettingsDialog
@@ -32,17 +39,39 @@ private sealed interface SettingsDialog {
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
+    effectFlow: SharedFlow<SettingsEffect>,
     onHomePeriodChange: (HomePeriod) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
     onShowStaleMarkChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
+    onExportData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings = state.settings
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
     var currencyDraft by remember(settings.currencySymbol) { mutableStateOf(settings.currencySymbol) }
+
+    CollectUiEffects(effectFlow, snackbarHostState) { effect ->
+        when (effect) {
+            is SettingsEffect.ExportReady -> {
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = effect.mimeType
+                    putExtra(Intent.EXTRA_STREAM, effect.uri)
+                    putExtra(Intent.EXTRA_TITLE, effect.fileName)
+                    putExtra(Intent.EXTRA_SUBJECT, effect.fileName)
+                    clipData = ClipData.newUri(context.contentResolver, effect.fileName, effect.uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "导出数据"))
+            }
+
+            is SettingsEffect.ShowMessage -> Unit
+        }
+    }
 
     dialog?.let { currentDialog ->
         when (currentDialog) {
@@ -92,7 +121,7 @@ fun SettingsScreen(
                 MoneyTextInputDialog(
                     title = "货币符号",
                     value = currencyDraft,
-                    onValueChange = { currencyDraft = it },
+                    onValueChange = { currencyDraft = it.take(MAX_CURRENCY_SYMBOL_LENGTH) },
                     onConfirm = {
                         onCurrencySymbolChange(currencyDraft)
                         dialog = null
@@ -107,6 +136,7 @@ fun SettingsScreen(
     MoneyFormPage(
         title = "设置",
         modifier = modifier,
+        snackbarHostState = snackbarHostState,
     ) {
         item { MoneySectionHeader(title = "显示") }
         item {
@@ -134,7 +164,7 @@ fun SettingsScreen(
                 MoneySectionDivider()
                 MoneyListRow(
                     title = "货币符号",
-                    subtitle = "影响金额显示格式",
+                    subtitle = "影响金额显示格式，最多 4 个字符",
                     trailing = settings.currencySymbol,
                     modifier = Modifier.clickable {
                         currencyDraft = settings.currencySymbol
@@ -156,6 +186,21 @@ fun SettingsScreen(
             }
         }
 
+        item { MoneySectionHeader(title = "数据") }
+        item {
+            MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                MoneyListRow(
+                    title = "导出数据",
+                    subtitle = "生成 JSON 文件并分享",
+                    trailing = if (state.isExporting) "导出中" else "JSON",
+                    modifier = Modifier.clickable(
+                        enabled = !state.isExporting,
+                        onClick = onExportData,
+                    ),
+                )
+            }
+        }
+
         item { MoneySectionHeader(title = "账户管理") }
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
@@ -167,7 +212,5 @@ fun SettingsScreen(
                 )
             }
         }
-
-
     }
 }

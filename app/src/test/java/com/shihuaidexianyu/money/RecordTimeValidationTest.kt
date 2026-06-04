@@ -30,6 +30,7 @@ class RecordTimeValidationTest {
             val useCase = CreateCashFlowRecordUseCase(
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,
+                recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository),
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
             )
 
@@ -67,6 +68,7 @@ class RecordTimeValidationTest {
             val useCase = CreateTransferRecordUseCase(
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,
+                recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository),
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
             )
 

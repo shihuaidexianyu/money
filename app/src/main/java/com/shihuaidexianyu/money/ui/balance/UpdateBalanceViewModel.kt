@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceResult
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.ui.common.userMessage
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -110,11 +111,11 @@ class UpdateBalanceViewModel(
         val state = _uiState.value
         viewModelScope.launch {
             val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
-                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请选择账户"))); return@launch }
             val actualBalance = runCatching { RecordValidator.requireNonNegativeAmount(state.actualBalanceText) }
-                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
-                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
 
             _uiState.value = state.copy(isSaving = true)
             runCatching {

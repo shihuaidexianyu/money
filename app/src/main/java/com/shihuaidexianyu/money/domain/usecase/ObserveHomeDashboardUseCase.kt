@@ -40,6 +40,7 @@ class ObserveHomeDashboardUseCase(
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<HomeDashboardSnapshot> {
@@ -65,9 +66,7 @@ class ObserveHomeDashboardUseCase(
     ): HomeDashboardSnapshot = coroutineScope {
         val range = TimeRangeUtils.currentRange(settings.homePeriod)
         val periodStartBaselineAt = (range.startAtMillis - 1L).coerceAtLeast(0L)
-        val balanceJobs = accounts.map { account ->
-            async { account.id to calculateCurrentBalanceUseCase(account.id) }
-        }
+        val balanceJob = async { calculateAccountBalancesUseCase(accounts) }
         val openingBalanceJobs = accounts
             .filter { it.createdAt <= periodStartBaselineAt }
             .map { account ->
@@ -76,7 +75,7 @@ class ObserveHomeDashboardUseCase(
         val inflowJob = async { transactionRepository.sumAllInflowBetween(range.startAtMillis, range.endAtMillis) }
         val outflowJob = async { transactionRepository.sumAllOutflowBetween(range.startAtMillis, range.endAtMillis) }
 
-        val balances = balanceJobs.associate { it.await() }
+        val balances = balanceJob.await()
         val totalAssets = balances.values.sum()
         val openingTotalAssets = openingBalanceJobs.sumOf { it.await() }
         val staleAccounts = accounts.filter { account ->

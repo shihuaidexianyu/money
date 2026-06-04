@@ -97,12 +97,20 @@ class ReminderUseCaseTest {
 
     @Test
     fun `confirm reminder advances overdue reminder into the future`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
         val reminderRepository = InMemoryRecurringReminderRepository()
+        val accountId = accountRepository.createAccount(
+            Account(
+                name = "信用卡",
+                initialBalance = 0,
+                createdAt = 1L,
+            ),
+        )
         val reminderId = reminderRepository.insertReminder(
             RecurringReminder(
                 name = "订阅",
                 type = ReminderType.SUBSCRIPTION.value,
-                accountId = 1L,
+                accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 3_000,
                 periodType = ReminderPeriodType.CUSTOM_DAYS.value,
@@ -113,7 +121,7 @@ class ReminderUseCaseTest {
                 updatedAt = 1L,
             ),
         )
-        val useCase = ConfirmReminderUseCase(reminderRepository)
+        val useCase = ConfirmReminderUseCase(accountRepository, reminderRepository)
 
         useCase(reminderId)
 

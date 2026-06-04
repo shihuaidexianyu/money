@@ -5,13 +5,24 @@ param(
     [string]$Branch = "",
     [switch]$RunTests,
     [switch]$Commit,
-    [switch]$Push
+    [switch]$Push,
+    [switch]$AllowDirty
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
+
+if (-not $AllowDirty) {
+    $gitStatus = git status --porcelain
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to check git working tree status."
+    }
+    if ($gitStatus) {
+        throw "Working tree is not clean. Commit or stash changes before release, or pass -AllowDirty if this is intentional."
+    }
+}
 
 $buildFile = Join-Path $repoRoot "app/build.gradle.kts"
 if (-not (Test-Path $buildFile)) {
@@ -20,7 +31,7 @@ if (-not (Test-Path $buildFile)) {
 
 $javaHome = "C:\Program Files\Android\Android Studio\jbr"
 if (-not (Test-Path $javaHome)) {
-    throw "JAVA_HOME not found: $javaHome"
+    throw "JAVA_HOME not found at '$javaHome'. Install Android Studio with its bundled JBR or update `$javaHome in this script."
 }
 
 $env:JAVA_HOME = $javaHome
@@ -70,15 +81,17 @@ if ($VersionName -ne $currentVersionName -or $VersionCode -ne $currentVersionCod
 }
 
 if ($RunTests) {
+    Write-Host "Running unit tests..."
     & ".\gradlew.bat" --no-daemon :app:testDebugUnitTest
     if ($LASTEXITCODE -ne 0) {
-        throw "Unit tests failed"
+        throw "Unit tests failed with exit code $LASTEXITCODE."
     }
 }
 
+Write-Host "Building release APK..."
 & ".\gradlew.bat" --no-daemon :app:assembleRelease
 if ($LASTEXITCODE -ne 0) {
-    throw "Release build failed"
+    throw "Release build failed with exit code $LASTEXITCODE."
 }
 
 $apkPath = Join-Path $repoRoot "app/build/outputs/apk/release/app-release.apk"
@@ -94,10 +107,16 @@ if ($Commit) {
     }
 
     git add app/build.gradle.kts
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git add failed for app/build.gradle.kts"
+    }
     git add scripts/build-release.ps1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git add failed for scripts/build-release.ps1"
+    }
     git commit -m $CommitMessage
     if ($LASTEXITCODE -ne 0) {
-        throw "Git commit failed"
+        throw "Git commit failed with exit code $LASTEXITCODE."
     }
 
     if ($Push) {
@@ -109,7 +128,7 @@ if ($Commit) {
         }
         git push origin $Branch
         if ($LASTEXITCODE -ne 0) {
-            throw "Git push failed"
+            throw "Git push failed with exit code $LASTEXITCODE."
         }
     }
 }

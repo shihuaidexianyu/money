@@ -9,7 +9,7 @@ import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,7 +49,7 @@ class AccountsViewModel(
     private val accountRepository: AccountRepository,
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
@@ -96,19 +96,21 @@ class AccountsViewModel(
         accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): List<AccountListItemUiModel> = withContext(Dispatchers.Default) {
-        val items = accounts.map { mapItem(it, reminderConfigs[it.id]) }
+        val balances = calculateAccountBalancesUseCase(accounts)
+        val items = accounts.map { mapItem(it, reminderConfigs[it.id], balances[it.id] ?: it.initialBalance) }
         items.sortedBy { it.displayOrder }
     }
 
     private suspend fun mapItem(
         account: Account,
         reminderConfig: BalanceUpdateReminderConfig?,
+        balance: Long,
     ): AccountListItemUiModel {
         return AccountListItemUiModel(
             id = account.id,
             name = account.name,
             colorName = account.colorName,
-            balance = calculateCurrentBalanceUseCase(account.id),
+            balance = balance,
             isArchived = account.isArchived,
             isStale = AccountStatusUtils.isStale(
                 account,

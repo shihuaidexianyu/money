@@ -1,0 +1,142 @@
+package com.shihuaidexianyu.money
+
+import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.TransferRecord
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import kotlin.test.assertEquals
+import kotlinx.coroutines.runBlocking
+import org.junit.Test
+
+class CalculateAccountBalancesUseCaseTest {
+    @Test
+    fun `batch balances match single account balances across record types`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val firstAccountId = accountRepository.createAccount(
+            Account(name = "主账户", initialBalance = 10_000, createdAt = 1_000),
+        )
+        val secondAccountId = accountRepository.createAccount(
+            Account(name = "备用金", initialBalance = 5_000, createdAt = 1_000),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = firstAccountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 2_000,
+                purpose = "工资",
+                occurredAt = 2_000,
+                createdAt = 2_000,
+                updatedAt = 2_000,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = firstAccountId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 300,
+                purpose = "餐饮",
+                occurredAt = 3_000,
+                createdAt = 3_000,
+                updatedAt = 3_000,
+            ),
+        )
+        transactionRepository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = firstAccountId,
+                toAccountId = secondAccountId,
+                amount = 500,
+                note = "调拨",
+                occurredAt = 4_000,
+                createdAt = 4_000,
+                updatedAt = 4_000,
+            ),
+        )
+        transactionRepository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = firstAccountId,
+                actualBalance = 12_000,
+                systemBalanceBeforeUpdate = 11_200,
+                delta = 800,
+                occurredAt = 5_000,
+                createdAt = 5_000,
+            ),
+        )
+        transactionRepository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = secondAccountId,
+                actualBalance = 6_000,
+                systemBalanceBeforeUpdate = 5_500,
+                delta = 500,
+                occurredAt = 5_500,
+                createdAt = 5_500,
+            ),
+        )
+        transactionRepository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecord(
+                accountId = firstAccountId,
+                delta = 700,
+                sourceUpdateRecordId = 0L,
+                occurredAt = 6_000,
+                createdAt = 6_000,
+            ),
+        )
+        transactionRepository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecord(
+                accountId = firstAccountId,
+                delta = 9_999,
+                sourceUpdateRecordId = 99L,
+                occurredAt = 6_100,
+                createdAt = 6_100,
+            ),
+        )
+        val deletedCashFlowId = transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = firstAccountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 9_999,
+                purpose = "应忽略",
+                occurredAt = 6_500,
+                createdAt = 6_500,
+                updatedAt = 6_500,
+            ),
+        )
+        transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, 6_600)
+        val deletedTransferId = transactionRepository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = secondAccountId,
+                toAccountId = firstAccountId,
+                amount = 9_999,
+                note = "应忽略",
+                occurredAt = 6_700,
+                createdAt = 6_700,
+                updatedAt = 6_700,
+            ),
+        )
+        transactionRepository.softDeleteTransferRecord(deletedTransferId, 6_800)
+
+        val accounts = listOf(
+            accountRepository.getAccountById(firstAccountId) ?: error("missing account"),
+            accountRepository.getAccountById(secondAccountId) ?: error("missing account"),
+        )
+        val single = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
+        val batch = CalculateAccountBalancesUseCase(transactionRepository)
+
+        assertEquals(singleExpected(accounts, single), batch(accounts))
+        assertEquals(singleExpected(accounts, single, atTimeMillis = 5_250), batch(accounts, atTimeMillis = 5_250))
+    }
+
+    private suspend fun singleExpected(
+        accounts: List<Account>,
+        single: CalculateCurrentBalanceUseCase,
+        atTimeMillis: Long = Long.MAX_VALUE,
+    ): Map<Long, Long> {
+        return accounts.associate { account -> account.id to single(account.id, atTimeMillis) }
+    }
+}

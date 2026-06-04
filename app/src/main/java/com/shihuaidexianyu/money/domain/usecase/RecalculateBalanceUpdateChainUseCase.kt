@@ -10,7 +10,7 @@ class RecalculateBalanceUpdateChainUseCase(
     private val transactionRepository: TransactionRepository,
 ) {
     suspend operator fun invoke(accountId: Long) {
-        val account = requireNotNull(accountRepository.getAccountById(accountId))
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
         val updates = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
             .sortedWith(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
 

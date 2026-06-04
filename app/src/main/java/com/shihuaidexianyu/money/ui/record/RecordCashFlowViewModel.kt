@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.userMessage
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
 import java.math.BigDecimal
@@ -143,11 +144,11 @@ class RecordCashFlowViewModel(
 
         viewModelScope.launch {
             val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
-                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("请选择账户"))); return@launch }
             val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
-                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
-                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
 
             _uiState.value = state.copy(isSaving = true, showPurposeConfirm = false)
             runCatching {

@@ -26,7 +26,8 @@ class UpdateBalanceUseCase(
     ): UpdateBalanceResult {
         require(occurredAt <= System.currentTimeMillis()) { "时间不能晚于当前时间" }
 
-        val account = requireNotNull(accountRepository.getAccountById(accountId))
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        account.requireActiveForMutation("核对余额")
         AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
         val context = resolveBalanceUpdateContextUseCase(accountId, occurredAt)
         val systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate

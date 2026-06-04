@@ -12,7 +12,7 @@ class CalculateCurrentBalanceUseCase(
         accountId: Long,
         atTimeMillis: Long = Long.MAX_VALUE,
     ): Long {
-        val account = requireNotNull(accountRepository.getAccountById(accountId))
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
         val latestUpdate = transactionRepository.getLatestBalanceUpdateAtOrBefore(accountId, atTimeMillis)
 
         val anchorBalance = latestUpdate?.actualBalance ?: account.initialBalance
@@ -28,4 +28,3 @@ class CalculateCurrentBalanceUseCase(
         return anchorBalance + inflow - outflow + transferIn - transferOut + adjustment
     }
 }
-

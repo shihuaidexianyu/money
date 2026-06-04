@@ -13,6 +13,7 @@ import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.util.TimeRangeUtils
@@ -75,6 +76,7 @@ class ObserveStatsDashboardUseCaseTest {
             settingsRepository = FakeSettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
         )
 
         val snapshot = useCase(
@@ -133,6 +135,7 @@ class ObserveStatsDashboardUseCaseTest {
             settingsRepository = FakeSettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
         )
 
         val snapshot = useCase(

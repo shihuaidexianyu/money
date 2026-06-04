@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class CreateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -19,23 +20,30 @@ class CreateTransferRecordUseCase(
         require(fromAccountId != toAccountId) { "请选择不同的转出和转入账户" }
         require(amount > 0) { "金额必须大于 0" }
         require(occurredAt <= System.currentTimeMillis()) { "时间不能晚于当前时间" }
-        val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId))
-        val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId))
+        val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户不存在" }
+        val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户不存在" }
+        fromAccount.requireActiveForMutation("记录转账")
+        toAccount.requireActiveForMutation("记录转账")
         AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(fromAccount, occurredAt)
         AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(toAccount, occurredAt)
 
         val now = System.currentTimeMillis()
-        val recordId = transactionRepository.insertTransferRecord(
-            TransferRecord(
-                fromAccountId = fromAccountId,
-                toAccountId = toAccountId,
-                amount = amount,
-                note = note.trim(),
-                occurredAt = occurredAt,
-                createdAt = now,
-                updatedAt = now,
-            ),
-        )
+        val recordId = transactionRepository.runInTransaction {
+            val insertedId = transactionRepository.insertTransferRecord(
+                TransferRecord(
+                    fromAccountId = fromAccountId,
+                    toAccountId = toAccountId,
+                    amount = amount,
+                    note = note.trim(),
+                    occurredAt = occurredAt,
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+            recalculateBalanceUpdateChainUseCase(fromAccountId)
+            recalculateBalanceUpdateChainUseCase(toAccountId)
+            insertedId
+        }
         refreshAccountActivityStateUseCase(fromAccountId)
         refreshAccountActivityStateUseCase(toAccountId)
         return recordId

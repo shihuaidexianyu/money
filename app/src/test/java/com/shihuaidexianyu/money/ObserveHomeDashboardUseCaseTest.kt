@@ -14,6 +14,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.util.TimeRangeUtils
@@ -91,6 +92,7 @@ class ObserveHomeDashboardUseCaseTest {
             settingsRepository = FakeSettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
         )
 
         val snapshot = useCase().first()
@@ -157,6 +159,7 @@ class ObserveHomeDashboardUseCaseTest {
             settingsRepository = FakeSettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
         )
 
         val snapshot = useCase().first()

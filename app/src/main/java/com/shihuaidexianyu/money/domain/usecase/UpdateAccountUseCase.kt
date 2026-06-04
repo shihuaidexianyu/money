@@ -18,6 +18,7 @@ class UpdateAccountUseCase(
         colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     ) {
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        account.requireActiveForMutation("修改账户")
         val normalizedName = name.trim()
         require(normalizedName.isNotEmpty()) { "账户名称不能为空" }
         require(normalizedName.length <= MAX_ACCOUNT_NAME_LENGTH) { "账户名称不能超过 ${MAX_ACCOUNT_NAME_LENGTH} 个字符" }

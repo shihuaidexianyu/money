@@ -97,6 +97,7 @@ internal fun NavGraphBuilder.addAccountsGraph(
                     accountId = accountId,
                     accountRepository = container.accountRepository,
                     accountReminderSettingsRepository = container.accountReminderSettingsRepository,
+                    archiveAccountUseCase = container.archiveAccountUseCase,
                     updateAccountUseCase = container.updateAccountUseCase,
                 )
             },

@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -23,9 +24,14 @@ class DeleteCashFlowBalanceTest {
         )
 
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+        )
         val createCashFlow = CreateCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         createCashFlow(
@@ -48,7 +54,9 @@ class DeleteCashFlowBalanceTest {
         assertEquals(3_000, accountRepository.getAccountById(accountId)?.lastUsedAt)
 
         val delete = DeleteCashFlowRecordUseCase(
+            accountRepository = accountRepository,
             transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         delete(outflowId)

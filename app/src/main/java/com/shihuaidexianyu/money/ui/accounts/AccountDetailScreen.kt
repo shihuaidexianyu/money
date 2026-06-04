@@ -61,19 +61,25 @@ fun AccountDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    text = "提醒时间 ${state.reminderConfig.displayText}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (state.isStale) {
+                if (state.isArchived) {
+                    MoneyStatusPill(text = "已归档", accent = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text(
+                        text = "提醒时间 ${state.reminderConfig.displayText}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (state.isStale && !state.isArchived) {
                     MoneyStatusPill(text = "待核对", accent = MaterialTheme.colorScheme.secondary)
                 }
-                Button(
-                    onClick = onStartUpdateBalance,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("核对余额")
+                if (!state.isArchived) {
+                    Button(
+                        onClick = onStartUpdateBalance,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("核对余额")
+                    }
                 }
             }
         }

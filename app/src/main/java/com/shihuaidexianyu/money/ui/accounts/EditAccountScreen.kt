@@ -1,7 +1,9 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,7 +79,7 @@ fun EditAccountScreen(
     }
 
     AccountSettingsPickerDialog(
-        picker = picker,
+        picker = if (state.isArchived) null else picker,
         colorName = state.colorName,
         reminderConfig = state.reminderConfig,
         onDismiss = { picker = null },
@@ -98,38 +100,53 @@ fun EditAccountScreen(
                 MoneyListRow(
                     title = "账户名称",
                     trailing = state.name,
-                    modifier = Modifier.clickable {
+                    showChevron = !state.isArchived,
+                    modifier = Modifier.clickable(enabled = !state.isArchived) {
                         nameDraft = state.name
                         dialog = EditAccountDialog.Name
                     },
                 )
-                AccountVisualListRows(
-                    colorName = state.colorName,
-                    onColorClick = { picker = AccountSettingsPicker.COLOR },
-                )
+                if (!state.isArchived) {
+                    AccountVisualListRows(
+                        colorName = state.colorName,
+                        onColorClick = { picker = AccountSettingsPicker.COLOR },
+                    )
+                }
             }
         }
-        item {
-            AccountReminderListSection(
-                reminderConfig = state.reminderConfig,
-                onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
-                onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
-            )
-        }
-        item {
-            MoneyCard {
-                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading)
+        if (state.isArchived) {
+            item {
+                MoneyCard {
+                    Text(
+                        text = "这个账户已归档，仅保留历史记录和余额查看。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-        }
-        item { MoneySectionHeader(title = "归档") }
-        item {
-            MoneyListSection {
-                MoneyListRow(
-                    title = "归档账户",
-                    subtitle = "移到已归档列表",
-                    showChevron = false,
-                    modifier = Modifier.clickable { dialog = EditAccountDialog.ArchiveConfirm },
+        } else {
+            item {
+                AccountReminderListSection(
+                    reminderConfig = state.reminderConfig,
+                    onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
+                    onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
                 )
+            }
+            item {
+                MoneyCard {
+                    MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading)
+                }
+            }
+            item { MoneySectionHeader(title = "归档") }
+            item {
+                MoneyListSection {
+                    MoneyListRow(
+                        title = "归档账户",
+                        subtitle = "移到已归档列表",
+                        showChevron = false,
+                        modifier = Modifier.clickable { dialog = EditAccountDialog.ArchiveConfirm },
+                    )
+                }
             }
         }
     }

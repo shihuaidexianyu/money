@@ -5,6 +5,7 @@ import android.content.pm.ApplicationInfo
 import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
 import com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
+import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
@@ -15,6 +16,9 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
@@ -87,6 +91,10 @@ class MoneyAppContainer(context: Context) {
         transactionRepository = transactionRepository,
     )
 
+    val calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(
+        transactionRepository = transactionRepository,
+    )
+
     val resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
@@ -109,6 +117,7 @@ class MoneyAppContainer(context: Context) {
         settingsRepository = settingsRepository,
         transactionRepository = transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
     )
 
     val observeStatsDashboardUseCase = ObserveStatsDashboardUseCase(
@@ -116,6 +125,7 @@ class MoneyAppContainer(context: Context) {
         settingsRepository = settingsRepository,
         transactionRepository = transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
     )
 
     fun observeAccountDetailUseCase(accountId: Long): ObserveAccountDetailUseCase {
@@ -137,34 +147,42 @@ class MoneyAppContainer(context: Context) {
     val createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val createTransferRecordUseCase = CreateTransferRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateCashFlowRecordUseCase = UpdateCashFlowRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteCashFlowRecordUseCase = DeleteCashFlowRecordUseCase(
+        accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateTransferRecordUseCase = UpdateTransferRecordUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteTransferRecordUseCase = DeleteTransferRecordUseCase(
+        accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
@@ -196,6 +214,12 @@ class MoneyAppContainer(context: Context) {
         accountReminderSettingsRepository = accountReminderSettingsRepository,
     )
 
+    val archiveAccountUseCase = ArchiveAccountUseCase(
+        accountRepository = accountRepository,
+        reminderRepository = recurringReminderRepository,
+        transactionRepository = transactionRepository,
+    )
+
     val updateAccountDisplayOrderUseCase = UpdateAccountDisplayOrderUseCase(
         accountRepository = accountRepository,
     )
@@ -211,14 +235,26 @@ class MoneyAppContainer(context: Context) {
     )
 
     val deleteReminderUseCase = DeleteReminderUseCase(
+        accountRepository = accountRepository,
         reminderRepository = recurringReminderRepository,
     )
 
     val confirmReminderUseCase = ConfirmReminderUseCase(
+        accountRepository = accountRepository,
         reminderRepository = recurringReminderRepository,
     )
 
     val observeDueRemindersUseCase = ObserveDueRemindersUseCase(
         reminderRepository = recurringReminderRepository,
     )
+
+    val buildExportJsonUseCase = BuildExportJsonUseCase(
+        accountReminderSettingsRepository = accountReminderSettingsRepository,
+        accountRepository = accountRepository,
+        recurringReminderRepository = recurringReminderRepository,
+        settingsRepository = settingsRepository,
+        transactionRepository = transactionRepository,
+    )
+
+    val exportJsonFileWriter = ExportJsonFileWriter(appContext)
 }

@@ -9,7 +9,7 @@ It supports multi-account management, cash flow recording, transfers, balance up
 
 - **Package**: `com.shihuaidexianyu.money`
 - **Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `1.0.32` (versionCode `33`)
+- **Version**: `1.0.77` (versionCode `77`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -25,7 +25,7 @@ It supports multi-account management, cash flow recording, transfers, balance up
 | Settings | DataStore Preferences 1.1.7 |
 | Navigation | Navigation Compose 2.9.5 |
 | DI | Manual (no Hilt/Dagger/Koin) via `MoneyAppContainer` |
-| Background Work | WorkManager 2.10.5 |
+| Reminders | In-app due reminder display only; no background Worker/notification pipeline |
 | Testing | JUnit 4 + `kotlin.test` assertions |
 
 ## Build and Test Commands
@@ -64,6 +64,7 @@ A PowerShell release script is provided at `scripts/build-release.ps1`:
 
 The script:
 - Auto-bumps `versionName` and `versionCode` in `app/build.gradle.kts` if not provided.
+- Checks that the git working tree is clean before modifying release files unless `-AllowDirty` is passed.
 - Sets isolated `GRADLE_USER_HOME` and `ANDROID_USER_HOME` for reproducible release builds.
 - Expects `JAVA_HOME` at `C:\Program Files\Android\Android Studio\jbr`.
 - Signs release builds using `../timeline/keystore.properties` and the keystore referenced there.
@@ -106,15 +107,15 @@ app/src/main/java/com/shihuaidexianyu/money/
 ### Clean Architecture Layers
 
 1. **Domain** (`domain/`): Pure Kotlin. No Android framework dependencies.
-   - `model/`: Enums like `AccountGroupType`, `CashFlowDirection`, `HomePeriod`, `ThemeMode`.
+   - `model/`: Enums and value objects like `CashFlowDirection`, `HomePeriod`, `ThemeMode`, `AppSettings`.
    - `repository/`: Interfaces only (`AccountRepository`, `TransactionRepository`, etc.).
    - `usecase/`: Single-responsibility business logic. Use cases accept repository interfaces via constructor.
 
 2. **Data** (`data/`):
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
-   - `dao/`: Room DAOs. Cash flow and transfer records use soft-delete (`deletedAt` field).
+   - `dao/`: Room DAOs. Cash flow and transfer records use soft-delete (`isDeleted` field).
    - `repository/`: Concrete implementations plus `InMemory*` variants for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 4, `exportSchema = true`).
+   - `db/MoneyDatabase.kt`: Room database (current version = 7, `exportSchema = true`).
 
 3. **UI** (`ui/`):
    - One package per feature.
@@ -128,8 +129,9 @@ All dependencies are wired manually in `MoneyAppContainer`. ViewModels are creat
 ### Mutation Side-Effect Pattern
 
 After any data mutation, use cases must refresh derived state:
-- Create/Update/Delete transactions call `RefreshAccountActivityStateUseCase`.
+- Create/Update/Delete cash flow and transfer records run the mutation and affected-account `RecalculateBalanceUpdateChainUseCase` calls in one transaction, then call `RefreshAccountActivityStateUseCase`.
 - Balance updates and adjustments call `RefreshAccountActivityStateUseCase`.
+- Archived accounts are read-only. Use mutation use cases rather than repositories directly so `requireActiveForMutation(...)` guards are applied.
 
 ## Code Style Guidelines
 
@@ -165,12 +167,15 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **4**.
+Room schema is exported to `app/schemas/`. Current database version is **7**.
 
 Existing migrations:
 - `1 → 2`: Re-created index on `balance_adjustment_records.sourceUpdateRecordId`.
 - `2 → 3`: Added `recurring_reminders` table.
 - `3 → 4`: Dropped `investment_settlements` table and related indexes.
+- `4 → 5`: Re-created `accounts` without the legacy group field.
+- `5 → 6`: Added legacy visual fields.
+- `6 → 7`: Re-created `accounts` without `iconName`, keeping `colorName`.
 
 When modifying entities:
 1. Bump `@Database(version = ...)`.
@@ -180,20 +185,21 @@ When modifying entities:
 
 ## Key Domain Concepts
 
-- **Account groups**: `PAYMENT` (支付类), `BANK` (银行类), `INVESTMENT` (投资类).
+- **Accounts**: Active accounts are user-ordered. Archived accounts are read-only and kept for historical records; there is no restore/unarchive flow.
 - **Transaction types**:
   - `CashFlow`: Inflow / outflow with purpose tagging.
   - `Transfer`: Between two accounts.
   - `BalanceUpdate`: Snapshot of actual balance; stores the delta directly on the record.
   - `BalanceAdjustment`: Manual correction only; no longer auto-generated from balance updates.
 - **Balance calculation**: Starts from the latest `BalanceUpdate.actualBalance` (or `initialBalance`), then applies all subsequent non-deleted cash flows, transfers, and adjustments.
-- **Reminders**: Recurring reminders with `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods. Stored in `RecurringReminderEntity`.
+- **Reminders**: Recurring reminders with `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods. Stored in `RecurringReminderEntity` and shown in-app when due; there is no WorkManager/notification implementation.
+- **Export**: `BuildExportJsonUseCase` builds a JSON dump containing metadata, settings, accounts, transactions, balance records, recurring reminders, and account reminder configs. `ExportJsonFileWriter` writes it to `cache/exports/` and shares it via `FileProvider`.
 
 ## Security Considerations
 
 - **No networking**: The app is entirely offline. No API keys, tokens, or remote endpoints.
-- **Data export**: `ExportJsonUseCase` writes a JSON dump to app-private storage and triggers a share intent. Ensure exported JSON does not leak to unintended apps.
-- **Backup**: `AndroidManifest.xml` enables `allowBackup="true"` with `data_extraction_rules.xml` and `backup_rules.xml`. Be mindful of what is backed up to Google cloud.
+- **Data export**: Manual JSON export writes to app-private cache and shares only through a `FileProvider` URI under `cache/exports/`.
+- **Backup**: `AndroidManifest.xml` sets `allowBackup="false"`. The app does not rely on Android automatic cloud/device-transfer backup; use manual export for user-controlled data transfer.
 - **Signing**: Release builds are signed with a keystore located outside the repo (`../timeline/`). Never commit keystore files or `keystore.properties`.
 - **Debug data**: `DebugSampleDataSeeder` seeds sample data only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.
 
@@ -201,7 +207,8 @@ When modifying entities:
 
 - Do **not** use `Float`/`Double` for monetary amounts. Use `Long` (cents).
 - Do **not** add new DI frameworks. Use `MoneyAppContainer`.
-- When deleting cash flow / transfer records, perform soft-delete (`deletedAt = now`) rather than hard-delete.
-- After any mutation use case, ensure `RefreshAccountActivityStateUseCase` is invoked.
+- When deleting cash flow / transfer records, perform soft-delete (`isDeleted = true`) rather than hard-delete.
+- After any mutation use case, ensure affected balance update chains are recalculated when needed and `RefreshAccountActivityStateUseCase` is invoked.
+- Do not mutate archived accounts through repositories directly; go through use cases so read-only guards and recurring-reminder disabling are preserved.
 - All new UI strings must be in Chinese (Simplified).
 - If changing Room entities, always provide a migration and update the schema export.

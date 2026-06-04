@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
+import com.shihuaidexianyu.money.ui.common.userMessage
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -123,9 +124,9 @@ class EditBalanceUpdateViewModel(
         val state = _uiState.value
         viewModelScope.launch {
             val actualBalance = runCatching { RecordValidator.requireNonNegativeAmount(state.actualBalanceText) }
-                .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
-                .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.message!!)); return@launch }
+                .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
 
             _uiState.value = state.copy(isSaving = true)
             runCatching {

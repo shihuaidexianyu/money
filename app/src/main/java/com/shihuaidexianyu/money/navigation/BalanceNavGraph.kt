@@ -150,7 +150,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
                     accountRepository = container.accountRepository,
                     settingsRepository = container.settingsRepository,
                     transactionRepository = container.transactionRepository,
-                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
+                    calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                     updateBalanceUseCase = container.updateBalanceUseCase,
                 )
             },

@@ -1,5 +1,13 @@
 package com.shihuaidexianyu.money.domain.model
 
+const val MAX_CURRENCY_SYMBOL_LENGTH = 4
+
+fun normalizeCurrencySymbol(value: String): String {
+    return value.trim()
+        .take(MAX_CURRENCY_SYMBOL_LENGTH)
+        .ifEmpty { "¥" }
+}
+
 data class AppSettings(
     val homePeriod: HomePeriod = HomePeriod.WEEK,
     val currencySymbol: String = "¥",

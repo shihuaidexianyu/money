@@ -3,16 +3,23 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlinx.coroutines.runBlocking
@@ -323,5 +330,148 @@ class BalanceUpdateMutationUseCaseTest {
         val laterRecord = transactionRepository.getBalanceUpdateRecordById(laterRecordId) ?: error("missing surviving record")
         assertEquals(11_000, laterRecord.systemBalanceBeforeUpdate)
         assertEquals(2_000, laterRecord.delta)
+    }
+
+    @Test
+    fun `cash flow mutations before balance update recalculate surviving snapshot`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
+        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
+        val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val updateBalanceUseCase = UpdateBalanceUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            resolveBalanceUpdateContextUseCase = resolveContext,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val createCashFlow = CreateCashFlowRecordUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val updateCashFlow = UpdateCashFlowRecordUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val deleteCashFlow = DeleteCashFlowRecordUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val accountId = accountRepository.createAccount(
+            Account(name = "现金", initialBalance = 10_000, createdAt = 1_000),
+        )
+        updateBalanceUseCase(accountId = accountId, actualBalance = 10_000, occurredAt = 5_000)
+        val balanceUpdateId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
+
+        val cashFlowId = createCashFlow(
+            accountId = accountId,
+            direction = CashFlowDirection.INFLOW,
+            amount = 2_000,
+            purpose = "工资",
+            occurredAt = 3_000,
+        )
+        assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 12_000, delta = -2_000)
+
+        updateCashFlow(
+            recordId = cashFlowId,
+            accountId = accountId,
+            direction = CashFlowDirection.OUTFLOW,
+            amount = 500,
+            purpose = "午餐",
+            occurredAt = 3_000,
+        )
+        assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 9_500, delta = 500)
+
+        deleteCashFlow(cashFlowId)
+
+        assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
+    }
+
+    @Test
+    fun `transfer mutations before balance update recalculate all affected account snapshots`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
+        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
+        val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val updateBalanceUseCase = UpdateBalanceUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            resolveBalanceUpdateContextUseCase = resolveContext,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val createTransfer = CreateTransferRecordUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val updateTransfer = UpdateTransferRecordUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val deleteTransfer = DeleteTransferRecordUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            recalculateBalanceUpdateChainUseCase = recalculateChain,
+            refreshAccountActivityStateUseCase = refreshActivity,
+        )
+        val firstAccountId = accountRepository.createAccount(
+            Account(name = "银行卡", initialBalance = 10_000, createdAt = 1_000),
+        )
+        val secondAccountId = accountRepository.createAccount(
+            Account(name = "零钱", initialBalance = 5_000, createdAt = 1_000),
+        )
+        updateBalanceUseCase(accountId = firstAccountId, actualBalance = 10_000, occurredAt = 5_000)
+        updateBalanceUseCase(accountId = secondAccountId, actualBalance = 5_000, occurredAt = 5_000)
+        val firstUpdateId = transactionRepository.getLatestBalanceUpdate(firstAccountId)?.id ?: error("missing first")
+        val secondUpdateId = transactionRepository.getLatestBalanceUpdate(secondAccountId)?.id ?: error("missing second")
+
+        val transferId = createTransfer(
+            fromAccountId = firstAccountId,
+            toAccountId = secondAccountId,
+            amount = 1_000,
+            note = "调拨",
+            occurredAt = 3_000,
+        )
+        assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 9_000, delta = 1_000)
+        assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 6_000, delta = -1_000)
+
+        updateTransfer(
+            recordId = transferId,
+            fromAccountId = secondAccountId,
+            toAccountId = firstAccountId,
+            amount = 500,
+            note = "调回",
+            occurredAt = 3_000,
+        )
+        assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 10_500, delta = -500)
+        assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 4_500, delta = 500)
+
+        deleteTransfer(transferId)
+
+        assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
+        assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 5_000, delta = 0)
+    }
+
+    private suspend fun assertBalanceUpdate(
+        transactionRepository: InMemoryTransactionRepository,
+        recordId: Long,
+        systemBalanceBeforeUpdate: Long,
+        delta: Long,
+    ) {
+        val record = transactionRepository.getBalanceUpdateRecordById(recordId) ?: error("missing balance update")
+        assertEquals(systemBalanceBeforeUpdate, record.systemBalanceBeforeUpdate)
+        assertEquals(delta, record.delta)
     }
 }

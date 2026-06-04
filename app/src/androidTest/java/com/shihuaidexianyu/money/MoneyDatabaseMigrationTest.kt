@@ -20,6 +20,21 @@ class MoneyDatabaseMigrationTest {
     )
 
     @Test
+    fun migrateAllHistoricalSchemasToVersion7() {
+        (1..6).forEach { version ->
+            val dbName = "$TEST_DB-v$version"
+            helper.createDatabase(dbName, version).close()
+
+            helper.runMigrationsAndValidate(
+                name = dbName,
+                version = 7,
+                validateDroppedTables = true,
+                *MONEY_DATABASE_MIGRATIONS,
+            ).close()
+        }
+    }
+
+    @Test
     fun migrateFromVersion4DropsAccountGroupTypeAndAddsColorDefault() {
         helper.createDatabase(TEST_DB, 4).apply {
             createVersion4AccountsTable()

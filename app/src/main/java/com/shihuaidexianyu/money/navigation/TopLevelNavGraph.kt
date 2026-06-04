@@ -108,7 +108,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     accountRepository = container.accountRepository,
                     settingsRepository = container.settingsRepository,
                     transactionRepository = container.transactionRepository,
-                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
+                    calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                 )
             },
         )
@@ -129,12 +129,14 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         SettingsScreen(
             state = state,
+            effectFlow = viewModel.effectFlow,
             onHomePeriodChange = viewModel::updateHomePeriod,
             onThemeModeChange = viewModel::updateThemeMode,
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onShowStaleMarkChange = viewModel::updateShowStaleMark,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
+            onExportData = viewModel::exportData,
         )
     }
 }

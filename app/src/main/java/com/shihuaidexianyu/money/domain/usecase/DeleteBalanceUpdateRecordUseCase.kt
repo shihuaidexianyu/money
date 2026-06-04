@@ -11,7 +11,8 @@ class DeleteBalanceUpdateRecordUseCase(
 ) {
     suspend operator fun invoke(recordId: Long) {
         val existing = transactionRepository.getBalanceUpdateRecordById(recordId) ?: return
-        requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        account.requireActiveForMutation("删除余额核对")
         transactionRepository.runInTransaction {
             transactionRepository.deleteBalanceAdjustmentBySourceUpdateRecordId(recordId)
             transactionRepository.deleteBalanceUpdateRecord(recordId)

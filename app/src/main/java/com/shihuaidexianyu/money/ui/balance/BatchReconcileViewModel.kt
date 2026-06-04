@@ -9,7 +9,7 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -54,7 +54,7 @@ class BatchReconcileViewModel(
     private val accountRepository: AccountRepository,
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val updateBalanceUseCase: UpdateBalanceUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(BatchReconcileUiState())
@@ -149,16 +149,18 @@ class BatchReconcileViewModel(
         accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): List<BatchReconcileAccountUiModel> = withContext(Dispatchers.Default) {
-        accounts.filter { account ->
+        val staleAccounts = accounts.filter { account ->
             AccountStatusUtils.isStale(
                 account,
                 reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
             )
-        }.map { account ->
+        }
+        val balances = calculateAccountBalancesUseCase(staleAccounts)
+        staleAccounts.map { account ->
             BatchReconcileAccountUiModel(
                 accountId = account.id,
                 name = account.name,
-                systemBalance = calculateCurrentBalanceUseCase(account.id),
+                systemBalance = balances[account.id] ?: account.initialBalance,
                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
             )
         }

@@ -62,6 +62,7 @@ class ObserveStatsDashboardUseCase(
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(selectionFlow: Flow<StatsRangeSelection>): Flow<StatsDashboardSnapshot> {
@@ -107,11 +108,7 @@ class ObserveStatsDashboardUseCase(
                 zoneOffsetSeconds = zoneOffsetSeconds,
             )
         }
-        val balanceJobs = accounts.map { account ->
-            async {
-                account to calculateCurrentBalanceUseCase(account.id, range.endAtMillis)
-            }
-        }
+        val balanceJob = async { calculateAccountBalancesUseCase(accounts, range.endAtMillis) }
         val openingBalanceJobs = accounts
             .filter { it.createdAt <= startBaselineAt }
             .map { account ->
@@ -122,12 +119,13 @@ class ObserveStatsDashboardUseCase(
         val outflowTotals = purposeBreakdownJob.await()
         val totalInflow = inflowTotals.sumOf { it.amount }
         val totalOutflow = outflowTotals.sumOf { it.amount }
-        val accountBalances = balanceJobs.map { it.await() }.map { (account, balance) ->
+        val balances = balanceJob.await()
+        val accountBalances = accounts.map { account ->
             StatsAccountBalance(
                 accountId = account.id,
                 name = account.name,
                 colorName = account.colorName,
-                balance = balance,
+                balance = balances[account.id] ?: account.initialBalance,
             )
         }.sortedByDescending { it.balance }
         val currentAssets = accountBalances.sumOf { it.balance }
