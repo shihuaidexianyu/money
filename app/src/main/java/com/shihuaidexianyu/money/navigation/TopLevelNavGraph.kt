@@ -137,6 +137,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onShowStaleMarkChange = viewModel::updateShowStaleMark,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
             onExportData = viewModel::exportData,
+            onImportData = viewModel::previewImport,
+            onConfirmImport = viewModel::confirmImport,
         )
     }
 }

@@ -26,6 +26,10 @@ internal fun rememberSettingsViewModel(
                 settingsRepository = container.settingsRepository,
                 buildExportJsonUseCase = container.buildExportJsonUseCase,
                 exportJsonFileWriter = container.exportJsonFileWriter,
+                backupFileReader = container.backupFileReader,
+                preImportBackupWriter = container.preImportBackupWriter,
+                importBackupUseCase = container.importBackupUseCase,
+                validateBackupSnapshotUseCase = container.validateBackupSnapshotUseCase,
             )
         },
     )

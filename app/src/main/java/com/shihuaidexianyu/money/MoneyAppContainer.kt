@@ -2,7 +2,9 @@ package com.shihuaidexianyu.money
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import com.shihuaidexianyu.money.data.backup.BackupFileReader
 import com.shihuaidexianyu.money.data.backup.BackupRepositoryImpl
+import com.shihuaidexianyu.money.data.backup.PreImportBackupWriter
 import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
 import com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
@@ -280,4 +282,8 @@ class MoneyAppContainer(context: Context) {
     )
 
     val exportJsonFileWriter = ExportJsonFileWriter(appContext)
+
+    val backupFileReader = BackupFileReader(appContext)
+
+    val preImportBackupWriter = PreImportBackupWriter(appContext)
 }
