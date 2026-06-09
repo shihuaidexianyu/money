@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettings
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
+import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -11,6 +12,13 @@ import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
+import com.shihuaidexianyu.money.domain.model.backup.BackupAccountReminderConfig
+import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
+import com.shihuaidexianyu.money.domain.model.backup.BackupSettings
+import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
+import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -19,6 +27,65 @@ import org.json.JSONObject
 import org.junit.Test
 
 class BackupJsonCodecTest {
+    @Test
+    fun `backup codec round trips snapshot and ignores unknown fields`() {
+        val snapshot = MoneyBackupSnapshot(
+            metadata = BackupMetadata(
+                schemaVersion = MONEY_BACKUP_SCHEMA_VERSION,
+                databaseVersion = 7,
+                exportedAt = Long.MAX_VALUE,
+            ),
+            settings = BackupSettings(
+                homePeriod = "week",
+                currencySymbol = "元\"\\\n",
+                showStaleMark = true,
+                themeMode = "system",
+                amountColorMode = "red_income_green_expense",
+                lastHistoryKeyword = "咖啡",
+                lastHistoryAccountId = -1L,
+                lastHistoryDateStartAt = 0L,
+                lastHistoryDateEndAt = 0L,
+                lastHistoryMinAmountText = "",
+                lastHistoryMaxAmountText = "",
+                lastHistoryAmountDirection = "all",
+            ),
+            accounts = listOf(
+                BackupAccount(
+                    id = 1L,
+                    name = "现金\n账户",
+                    initialBalance = Long.MAX_VALUE,
+                    createdAt = 1L,
+                    archivedAt = null,
+                    isArchived = false,
+                    lastUsedAt = null,
+                    lastBalanceUpdateAt = null,
+                    displayOrder = 0,
+                    colorName = "green",
+                ),
+            ),
+            cashFlowRecords = emptyList(),
+            transferRecords = emptyList(),
+            balanceUpdateRecords = emptyList(),
+            balanceAdjustmentRecords = emptyList(),
+            recurringReminders = emptyList(),
+            accountReminderConfigs = listOf(
+                BackupAccountReminderConfig(
+                    accountId = 1L,
+                    config = BackupBalanceUpdateReminderConfig(
+                        weekday = "friday",
+                        hour = 22,
+                        minute = 0,
+                    ),
+                ),
+            ),
+        )
+
+        val encoded = BackupJsonCodec.encode(snapshot)
+        val withUnknownField = encoded.dropLast(1) + ",\"unknownTopLevel\":true}"
+
+        assertEquals(snapshot, BackupJsonCodec.decode(withUnknownField))
+    }
+
     @Test
     fun `export json is parseable with empty collections`() = runBlocking {
         val json = buildUseCase()(exportedAt = 42L)
