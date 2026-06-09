@@ -1,15 +1,24 @@
 package com.shihuaidexianyu.money.data.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "cash_flow_records",
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["accountId"],
+            onDelete = ForeignKey.RESTRICT,
+            onUpdate = ForeignKey.NO_ACTION,
+        ),
+    ],
     indices = [
-        Index(value = ["accountId"]),
-        Index(value = ["occurredAt"]),
-        Index(value = ["isDeleted"]),
+        Index(value = ["accountId", "isDeleted", "occurredAt"]),
+        Index(value = ["direction", "isDeleted", "occurredAt"]),
     ],
 )
 data class CashFlowRecordEntity(

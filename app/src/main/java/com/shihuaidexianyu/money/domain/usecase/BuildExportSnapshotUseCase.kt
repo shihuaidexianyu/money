@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
@@ -27,8 +28,6 @@ import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.first
 
-private const val EXPORT_DATABASE_VERSION = 7
-
 class BuildExportSnapshotUseCase(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
@@ -42,7 +41,7 @@ class BuildExportSnapshotUseCase(
         return MoneyBackupSnapshot(
             metadata = BackupMetadata(
                 schemaVersion = MONEY_BACKUP_SCHEMA_VERSION,
-                databaseVersion = EXPORT_DATABASE_VERSION,
+                databaseVersion = MONEY_DATABASE_VERSION,
                 exportedAt = exportedAt,
             ),
             settings = settingsRepository.observeSettings().first().toBackup(),

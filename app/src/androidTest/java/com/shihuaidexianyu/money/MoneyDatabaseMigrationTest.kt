@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -20,14 +21,14 @@ class MoneyDatabaseMigrationTest {
     )
 
     @Test
-    fun migrateAllHistoricalSchemasToVersion7() {
-        (1..6).forEach { version ->
+    fun migrateAllHistoricalSchemasToVersion8() {
+        (1..7).forEach { version ->
             val dbName = "$TEST_DB-v$version"
             helper.createDatabase(dbName, version).close()
 
             helper.runMigrationsAndValidate(
                 name = dbName,
-                version = 7,
+                version = 8,
                 validateDroppedTables = true,
                 *MONEY_DATABASE_MIGRATIONS,
             ).close()
@@ -70,7 +71,7 @@ class MoneyDatabaseMigrationTest {
 
         val migrated = helper.runMigrationsAndValidate(
             name = TEST_DB,
-            version = 7,
+            version = 8,
             validateDroppedTables = true,
             *MONEY_DATABASE_MIGRATIONS,
         )
@@ -98,6 +99,49 @@ class MoneyDatabaseMigrationTest {
             assertEquals("blue", accountCursor.getString(3))
         } finally {
             accountCursor.close()
+        }
+    }
+
+    @Test(expected = SQLiteConstraintException::class)
+    fun migratedDatabaseRejectsCashFlowForMissingAccount() {
+        val dbName = "$TEST_DB-foreign-key"
+        helper.createDatabase(dbName, 7).close()
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 8,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+        try {
+            migrated.execSQL("PRAGMA foreign_keys=ON")
+            migrated.execSQL(
+                """
+                INSERT INTO cash_flow_records (
+                    id,
+                    accountId,
+                    direction,
+                    amount,
+                    purpose,
+                    occurredAt,
+                    createdAt,
+                    updatedAt,
+                    isDeleted
+                ) VALUES (
+                    1,
+                    99,
+                    'outflow',
+                    100,
+                    '孤儿记录',
+                    1000,
+                    1000,
+                    1000,
+                    0
+                )
+                """.trimIndent(),
+            )
+        } finally {
+            migrated.close()
         }
     }
 

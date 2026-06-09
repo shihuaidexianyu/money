@@ -136,7 +136,7 @@ class BuildExportJsonUseCaseTest {
 
         val snapshot = BackupJsonCodec.decode(json)
         assertEquals(1, snapshot.metadata.schemaVersion)
-        assertEquals(7, snapshot.metadata.databaseVersion)
+        assertEquals(8, snapshot.metadata.databaseVersion)
         assertEquals(42L, snapshot.metadata.exportedAt)
         assertEquals("元", snapshot.settings.currencySymbol)
         assertEquals(listOf(accountId, archivedAccountId), snapshot.accounts.map { it.id })
