@@ -83,3 +83,8 @@ data class CashFlowDailyTotal(
     val direction: String,
     val amount: Long,
 )
+
+data class CashFlowTemplate(
+    val purpose: String,
+    val amount: Long,
+)

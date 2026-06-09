@@ -71,6 +71,16 @@ class TransactionRepositoryImpl(
         return cashFlowRecordDao.queryRecentPurposes(direction = direction, accountId = accountId, limit = limit)
     }
 
+    override suspend fun queryRecentCashFlowTemplates(
+        direction: String,
+        accountId: Long?,
+        limit: Int,
+    ) = cashFlowRecordDao.queryRecentTemplates(
+        direction = direction,
+        accountId = accountId,
+        limit = limit,
+    ).map { it.toDomain() }
+
     override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
         direction: String,
         startAt: Long,

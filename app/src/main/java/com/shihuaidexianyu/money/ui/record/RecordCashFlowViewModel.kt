@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.userMessage
+import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
 import java.math.BigDecimal
@@ -30,8 +31,15 @@ data class RecordCashFlowUiState(
     val purpose: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     val purposeSuggestions: List<String> = emptyList(),
+    val templates: List<CashFlowTemplateUiModel> = emptyList(),
     val isSaving: Boolean = false,
     val showPurposeConfirm: Boolean = false,
+)
+
+data class CashFlowTemplateUiModel(
+    val purpose: String,
+    val amount: Long,
+    val label: String,
 )
 
 sealed interface RecordCashFlowEffect {
@@ -81,6 +89,7 @@ class RecordCashFlowViewModel(
                     selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
                 )
                 refreshPurposeSuggestions()
+                refreshTemplates()
             } catch (e: Exception) {
                 android.util.Log.e("RecordCashFlowViewModel", "Failed to load accounts", e)
             }
@@ -90,6 +99,7 @@ class RecordCashFlowViewModel(
     fun updateAccount(accountId: Long) {
         _uiState.value = _uiState.value.copy(selectedAccountId = accountId)
         refreshPurposeSuggestions()
+        refreshTemplates()
     }
 
     fun updateAmount(value: String) {
@@ -102,6 +112,13 @@ class RecordCashFlowViewModel(
 
     fun applyPurposeSuggestion(value: String) {
         _uiState.value = _uiState.value.copy(purpose = value)
+    }
+
+    fun applyTemplate(template: CashFlowTemplateUiModel) {
+        _uiState.value = _uiState.value.copy(
+            amountText = AmountFormatter.formatPlain(template.amount),
+            purpose = template.purpose,
+        )
     }
 
     fun updateOccurredAt(value: Long) {
@@ -131,6 +148,33 @@ class RecordCashFlowViewModel(
                 }
             }.onSuccess { suggestions ->
                 _uiState.value = _uiState.value.copy(purposeSuggestions = suggestions)
+            }
+        }
+    }
+
+    private fun refreshTemplates() {
+        val accountId = _uiState.value.selectedAccountId
+        viewModelScope.launch {
+            runCatching {
+                transactionRepository.queryRecentCashFlowTemplates(
+                    direction = direction.value,
+                    accountId = accountId,
+                    limit = 6,
+                ).ifEmpty {
+                    transactionRepository.queryRecentCashFlowTemplates(
+                        direction = direction.value,
+                        accountId = null,
+                        limit = 6,
+                    )
+                }.map { template ->
+                    CashFlowTemplateUiModel(
+                        purpose = template.purpose,
+                        amount = template.amount,
+                        label = "${template.purpose} ${AmountFormatter.formatPlain(template.amount)}",
+                    )
+                }
+            }.onSuccess { templates ->
+                _uiState.value = _uiState.value.copy(templates = templates)
             }
         }
     }

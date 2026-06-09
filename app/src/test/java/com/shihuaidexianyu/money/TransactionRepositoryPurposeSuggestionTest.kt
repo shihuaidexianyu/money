@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.CashFlowTemplate
 import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -31,15 +32,56 @@ class TransactionRepositoryPurposeSuggestionTest {
         assertEquals(listOf("地铁", "早餐"), globalSuggestions)
     }
 
+    @Test
+    fun `recent templates are purpose amount pairs and ignore deleted records`() = runBlocking {
+        val repository = InMemoryTransactionRepository()
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "早餐", amount = 1_200, occurredAt = 1_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "地铁", amount = 400, occurredAt = 2_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "早餐", amount = 1_300, occurredAt = 3_000))
+        val deletedId = repository.insertCashFlowRecord(
+            cashFlow(accountId = 1, purpose = "咖啡", amount = 1_800, occurredAt = 4_000),
+        )
+        repository.softDeleteCashFlowRecord(deletedId, updatedAt = 4_100)
+        repository.insertCashFlowRecord(cashFlow(accountId = 2, purpose = "咖啡", amount = 2_000, occurredAt = 5_000))
+
+        val accountTemplates = repository.queryRecentCashFlowTemplates(
+            direction = CashFlowDirection.OUTFLOW.value,
+            accountId = 1,
+            limit = 6,
+        )
+        val globalTemplates = repository.queryRecentCashFlowTemplates(
+            direction = CashFlowDirection.OUTFLOW.value,
+            accountId = null,
+            limit = 2,
+        )
+
+        assertEquals(
+            listOf(
+                CashFlowTemplate(purpose = "早餐", amount = 1_300),
+                CashFlowTemplate(purpose = "地铁", amount = 400),
+                CashFlowTemplate(purpose = "早餐", amount = 1_200),
+            ),
+            accountTemplates,
+        )
+        assertEquals(
+            listOf(
+                CashFlowTemplate(purpose = "咖啡", amount = 2_000),
+                CashFlowTemplate(purpose = "早餐", amount = 1_300),
+            ),
+            globalTemplates,
+        )
+    }
+
     private fun cashFlow(
         accountId: Long,
         purpose: String,
+        amount: Long = 100,
         occurredAt: Long,
     ): CashFlowRecord {
         return CashFlowRecord(
             accountId = accountId,
             direction = CashFlowDirection.OUTFLOW.value,
-            amount = 100,
+            amount = amount,
             purpose = purpose,
             occurredAt = occurredAt,
             createdAt = occurredAt,
