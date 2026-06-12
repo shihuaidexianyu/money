@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
@@ -80,9 +81,21 @@ class EditAccountViewModel(
         _uiState.value = _uiState.value.copy(colorName = normalizeAccountColorName(value))
     }
 
+    fun updateReminderPeriod(value: BalanceUpdateReminderPeriod) {
+        _uiState.value = _uiState.value.copy(
+            reminderConfig = _uiState.value.reminderConfig.copy(period = value),
+        )
+    }
+
     fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
         _uiState.value = _uiState.value.copy(
             reminderConfig = _uiState.value.reminderConfig.copy(weekday = value),
+        )
+    }
+
+    fun updateReminderMonthDay(value: Int) {
+        _uiState.value = _uiState.value.copy(
+            reminderConfig = _uiState.value.reminderConfig.copy(monthDay = value),
         )
     }
 

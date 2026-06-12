@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
@@ -51,7 +52,9 @@ class BuildExportJsonUseCaseTest {
         reminderSettingsRepository.updateReminderConfig(
             accountId,
             BalanceUpdateReminderConfig(
+                period = BalanceUpdateReminderPeriod.MONTHLY,
                 weekday = BalanceUpdateReminderWeekday.MONDAY,
+                monthDay = 28,
                 hour = 8,
                 minute = 30,
             ),
@@ -148,8 +151,11 @@ class BuildExportJsonUseCaseTest {
         assertEquals(12_000L, snapshot.balanceUpdateRecords.single().actualBalance)
         assertEquals(listOf(100L, -50L), snapshot.balanceAdjustmentRecords.map { it.delta })
         assertEquals(888L, snapshot.recurringReminders.single().amount)
-        assertEquals("monday", snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.weekday)
-        assertEquals(8, snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.hour)
-        assertEquals(30, snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.minute)
+        val reminderConfig = snapshot.accountReminderConfigs.first { it.accountId == accountId }.config
+        assertEquals("monthly", reminderConfig.period)
+        assertEquals("monday", reminderConfig.weekday)
+        assertEquals(28, reminderConfig.monthDay)
+        assertEquals(8, reminderConfig.hour)
+        assertEquals(30, reminderConfig.minute)
     }
 }

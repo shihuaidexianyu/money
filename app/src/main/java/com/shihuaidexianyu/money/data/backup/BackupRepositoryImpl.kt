@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HomePeriod
@@ -159,7 +160,9 @@ private fun BackupSettings.toDomain(): AppSettings =
 
 private fun BackupBalanceUpdateReminderConfig.toDomain(): BalanceUpdateReminderConfig =
     BalanceUpdateReminderConfig(
+        period = BalanceUpdateReminderPeriod.fromValue(period),
         weekday = BalanceUpdateReminderWeekday.fromValue(weekday),
+        monthDay = monthDay,
         hour = hour,
         minute = minute,
     )

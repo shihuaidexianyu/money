@@ -168,7 +168,9 @@ private fun AppSettings.toBackup(): BackupSettings =
 
 private fun BalanceUpdateReminderConfig.toBackup(): BackupBalanceUpdateReminderConfig =
     BackupBalanceUpdateReminderConfig(
+        period = period.value,
         weekday = weekday.value,
+        monthDay = monthDay,
         hour = hour,
         minute = minute,
     )

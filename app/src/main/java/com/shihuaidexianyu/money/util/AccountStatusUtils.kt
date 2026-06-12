@@ -2,8 +2,10 @@ package com.shihuaidexianyu.money.util
 
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -25,6 +27,19 @@ object AccountStatusUtils {
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): Long {
         val currentDateTime = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDateTime()
+        val reminderTime = LocalTime.of(reminderConfig.hour, reminderConfig.minute)
+        return when (reminderConfig.period) {
+            BalanceUpdateReminderPeriod.WEEKLY -> latestWeeklyReminderAt(currentDateTime, reminderConfig, reminderTime, zoneId)
+            BalanceUpdateReminderPeriod.MONTHLY -> latestMonthlyReminderAt(currentDateTime, reminderConfig, reminderTime, zoneId)
+        }
+    }
+
+    private fun latestWeeklyReminderAt(
+        currentDateTime: LocalDateTime,
+        reminderConfig: BalanceUpdateReminderConfig,
+        reminderTime: LocalTime,
+        zoneId: ZoneId,
+    ): Long {
         val currentDate = currentDateTime.toLocalDate()
         val targetValue = when (reminderConfig.weekday) {
             BalanceUpdateReminderWeekday.MONDAY -> 1
@@ -36,7 +51,6 @@ object AccountStatusUtils {
             BalanceUpdateReminderWeekday.SUNDAY -> 7
         }
         var daysSince = Math.floorMod(currentDate.dayOfWeek.value - targetValue, 7)
-        val reminderTime = LocalTime.of(reminderConfig.hour, reminderConfig.minute)
         if (daysSince == 0 && currentDateTime.toLocalTime().isBefore(reminderTime)) {
             daysSince = 7
         }
@@ -46,5 +60,30 @@ object AccountStatusUtils {
             .atZone(zoneId)
             .toInstant()
             .toEpochMilli()
+    }
+
+    private fun latestMonthlyReminderAt(
+        currentDateTime: LocalDateTime,
+        reminderConfig: BalanceUpdateReminderConfig,
+        reminderTime: LocalTime,
+        zoneId: ZoneId,
+    ): Long {
+        val currentDate = currentDateTime.toLocalDate()
+        val thisMonthReminderDate = reminderDateInMonth(currentDate, reminderConfig.monthDay)
+        val thisMonthReminder = thisMonthReminderDate.atTime(reminderTime)
+        val latestDate = if (currentDateTime.isBefore(thisMonthReminder)) {
+            reminderDateInMonth(currentDate.minusMonths(1), reminderConfig.monthDay)
+        } else {
+            thisMonthReminderDate
+        }
+        return latestDate
+            .atTime(reminderTime)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+    }
+
+    private fun reminderDateInMonth(date: LocalDate, dayOfMonth: Int): LocalDate {
+        return date.withDayOfMonth(dayOfMonth.coerceIn(1, date.lengthOfMonth()))
     }
 }

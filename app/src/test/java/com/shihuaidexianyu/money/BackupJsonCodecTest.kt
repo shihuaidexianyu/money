@@ -73,7 +73,9 @@ class BackupJsonCodecTest {
                 BackupAccountReminderConfig(
                     accountId = 1L,
                     config = BackupBalanceUpdateReminderConfig(
+                        period = "monthly",
                         weekday = "friday",
+                        monthDay = 28,
                         hour = 22,
                         minute = 0,
                     ),
@@ -139,6 +141,8 @@ class BackupJsonCodecTest {
         assertEquals(MONEY_BACKUP_SCHEMA_VERSION, decoded.metadata.schemaVersion)
         assertEquals(listOf(2L), decoded.balanceAdjustmentRecords.map { it.id })
         assertEquals(20L, decoded.balanceAdjustmentRecords.single().delta)
+        assertEquals("weekly", decoded.accountReminderConfigs.single().config.period)
+        assertEquals(1, decoded.accountReminderConfigs.single().config.monthDay)
     }
 
     @Test

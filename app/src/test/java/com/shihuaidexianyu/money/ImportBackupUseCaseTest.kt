@@ -86,6 +86,17 @@ class ImportBackupUseCaseTest {
                 ),
             )
         }
+        assertFailsWith<IllegalArgumentException> {
+            ValidateBackupSnapshotUseCase()(
+                validSnapshot().copy(
+                    accountReminderConfigs = listOf(
+                        validSnapshot().accountReminderConfigs.single().copy(
+                            config = validSnapshot().accountReminderConfigs.single().config.copy(period = "yearly"),
+                        ),
+                    ),
+                ),
+            )
+        }
     }
 
     private class FakeBackupRepository : BackupRepository {
@@ -199,7 +210,9 @@ class ImportBackupUseCaseTest {
                 BackupAccountReminderConfig(
                     accountId = 1L,
                     config = BackupBalanceUpdateReminderConfig(
+                        period = "monthly",
                         weekday = "friday",
+                        monthDay = 28,
                         hour = 22,
                         minute = 0,
                     ),

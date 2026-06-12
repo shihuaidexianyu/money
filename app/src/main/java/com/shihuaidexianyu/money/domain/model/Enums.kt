@@ -23,9 +23,26 @@ enum class AmountColorMode(val value: String, val displayName: String) {
     }
 }
 
+const val DEFAULT_BALANCE_UPDATE_REMINDER_PERIOD = "weekly"
 const val DEFAULT_BALANCE_UPDATE_REMINDER_WEEKDAY = "friday"
+const val DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY = 1
 const val DEFAULT_BALANCE_UPDATE_REMINDER_HOUR = 22
 const val DEFAULT_BALANCE_UPDATE_REMINDER_MINUTE = 0
+
+enum class BalanceUpdateReminderPeriod(
+    val value: String,
+    val displayName: String,
+) {
+    WEEKLY("weekly", "每周"),
+    MONTHLY("monthly", "每月"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): BalanceUpdateReminderPeriod {
+            return entries.firstOrNull { it.value == value } ?: WEEKLY
+        }
+    }
+}
 
 enum class BalanceUpdateReminderWeekday(
     val value: String,
@@ -48,11 +65,14 @@ enum class BalanceUpdateReminderWeekday(
 }
 
 data class BalanceUpdateReminderConfig(
+    val period: BalanceUpdateReminderPeriod = BalanceUpdateReminderPeriod.WEEKLY,
     val weekday: BalanceUpdateReminderWeekday = BalanceUpdateReminderWeekday.FRIDAY,
+    val monthDay: Int = DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY,
     val hour: Int = DEFAULT_BALANCE_UPDATE_REMINDER_HOUR,
     val minute: Int = DEFAULT_BALANCE_UPDATE_REMINDER_MINUTE,
 ) {
     init {
+        require(monthDay in 1..31) { "monthDay out of range" }
         require(hour in 0..23) { "hour out of range" }
         require(minute in 0..59) { "minute out of range" }
     }
@@ -61,7 +81,10 @@ data class BalanceUpdateReminderConfig(
         get() = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
 
     val displayText: String
-        get() = "${weekday.displayName} $timeText"
+        get() = when (period) {
+            BalanceUpdateReminderPeriod.WEEKLY -> "每${weekday.displayName} $timeText"
+            BalanceUpdateReminderPeriod.MONTHLY -> "每月${monthDay}日 $timeText"
+        }
 }
 
 enum class CashFlowDirection(

@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import kotlin.test.assertEquals
@@ -30,7 +31,9 @@ class UpdateAccountUseCaseTest {
             accountId = accountId,
             name = "理财账户",
             balanceUpdateReminderConfig = BalanceUpdateReminderConfig(
+                period = BalanceUpdateReminderPeriod.MONTHLY,
                 weekday = BalanceUpdateReminderWeekday.THURSDAY,
+                monthDay = 25,
                 hour = 20,
                 minute = 15,
             ),
@@ -42,7 +45,9 @@ class UpdateAccountUseCaseTest {
         assertEquals("purple", updated?.colorName)
         assertEquals(
             BalanceUpdateReminderConfig(
+                period = BalanceUpdateReminderPeriod.MONTHLY,
                 weekday = BalanceUpdateReminderWeekday.THURSDAY,
+                monthDay = 25,
                 hour = 20,
                 minute = 15,
             ),

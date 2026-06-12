@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
@@ -89,10 +91,16 @@ class ValidateBackupSnapshotUseCase {
         val configAccountIds = snapshot.accountReminderConfigs.map { config ->
             requireReference(config.accountId, accountIdSet, "accountReminderConfigs.accountId")
             requireKnown(
+                config.config.period,
+                BalanceUpdateReminderPeriod.entries.map { it.value },
+                "accountReminderConfigs.config.period",
+            )
+            requireKnown(
                 config.config.weekday,
-                com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday.entries.map { it.value },
+                BalanceUpdateReminderWeekday.entries.map { it.value },
                 "accountReminderConfigs.config.weekday",
             )
+            require(config.config.monthDay in 1..31) { "accountReminderConfigs.config.monthDay 超出范围" }
             require(config.config.hour in 0..23) { "accountReminderConfigs.config.hour 超出范围" }
             require(config.config.minute in 0..59) { "accountReminderConfigs.config.minute 超出范围" }
             config.accountId

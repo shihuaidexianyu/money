@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
@@ -64,7 +65,9 @@ class CreateAccountUseCaseTest {
             name = "信用卡",
             initialBalance = 100,
             balanceUpdateReminderConfig = BalanceUpdateReminderConfig(
+                period = BalanceUpdateReminderPeriod.MONTHLY,
                 weekday = BalanceUpdateReminderWeekday.FRIDAY,
+                monthDay = 28,
                 hour = 21,
                 minute = 30,
             ),
@@ -72,7 +75,9 @@ class CreateAccountUseCaseTest {
 
         assertEquals(
             BalanceUpdateReminderConfig(
+                period = BalanceUpdateReminderPeriod.MONTHLY,
                 weekday = BalanceUpdateReminderWeekday.FRIDAY,
+                monthDay = 28,
                 hour = 21,
                 minute = 30,
             ),

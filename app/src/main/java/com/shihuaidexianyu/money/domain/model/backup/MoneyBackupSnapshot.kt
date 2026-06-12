@@ -1,5 +1,7 @@
 package com.shihuaidexianyu.money.domain.model.backup
 
+import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY
+import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_PERIOD
 import kotlinx.serialization.Serializable
 
 const val MONEY_BACKUP_SCHEMA_VERSION = 2
@@ -129,7 +131,9 @@ data class BackupAccountReminderConfig(
 
 @Serializable
 data class BackupBalanceUpdateReminderConfig(
+    val period: String = DEFAULT_BALANCE_UPDATE_REMINDER_PERIOD,
     val weekday: String,
+    val monthDay: Int = DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY,
     val hour: Int,
     val minute: Int,
 )

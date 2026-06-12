@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 import com.shihuaidexianyu.money.ui.common.AccountColorOptions
@@ -19,7 +20,9 @@ import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 
 internal enum class AccountSettingsPicker {
     COLOR,
+    REMINDER_PERIOD,
     REMINDER_WEEKDAY,
+    REMINDER_MONTH_DAY,
     REMINDER_TIME,
 }
 
@@ -30,7 +33,9 @@ internal fun AccountSettingsPickerDialog(
     reminderConfig: BalanceUpdateReminderConfig,
     onDismiss: () -> Unit,
     onColorSelected: (String) -> Unit,
+    onReminderPeriodSelected: (BalanceUpdateReminderPeriod) -> Unit,
     onReminderWeekdaySelected: (BalanceUpdateReminderWeekday) -> Unit,
+    onReminderMonthDaySelected: (Int) -> Unit,
     onReminderTimeSelected: (Int, Int) -> Unit,
 ) {
     when (picker) {
@@ -48,6 +53,20 @@ internal fun AccountSettingsPickerDialog(
             )
         }
 
+        AccountSettingsPicker.REMINDER_PERIOD -> {
+            MoneyChoiceDialog(
+                title = "提醒周期",
+                options = BalanceUpdateReminderPeriod.entries,
+                selected = reminderConfig.period,
+                label = { it.displayName },
+                onSelect = {
+                    onReminderPeriodSelected(it)
+                    onDismiss()
+                },
+                onDismiss = onDismiss,
+            )
+        }
+
         AccountSettingsPicker.REMINDER_WEEKDAY -> {
             MoneyChoiceDialog(
                 title = "每周提醒日",
@@ -56,6 +75,20 @@ internal fun AccountSettingsPickerDialog(
                 label = { it.displayName },
                 onSelect = {
                     onReminderWeekdaySelected(it)
+                    onDismiss()
+                },
+                onDismiss = onDismiss,
+            )
+        }
+
+        AccountSettingsPicker.REMINDER_MONTH_DAY -> {
+            MoneyChoiceDialog(
+                title = "每月提醒日",
+                options = (1..31).toList(),
+                selected = reminderConfig.monthDay,
+                label = { "${it}日" },
+                onSelect = {
+                    onReminderMonthDaySelected(it)
                     onDismiss()
                 },
                 onDismiss = onDismiss,
@@ -85,15 +118,30 @@ internal fun AccountSettingsPickerDialog(
 @Composable
 internal fun AccountReminderFields(
     reminderConfig: BalanceUpdateReminderConfig,
+    onReminderPeriodClick: () -> Unit,
     onReminderWeekdayClick: () -> Unit,
+    onReminderMonthDayClick: () -> Unit,
     onReminderTimeClick: () -> Unit,
 ) {
     MoneySelectionField(
-        label = "每周提醒日",
-        value = reminderConfig.weekday.displayName,
+        label = "提醒周期",
+        value = reminderConfig.period.displayName,
         subtitle = "到了提醒时间后未核对会标记为待核对",
-        modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
+        modifier = Modifier.clickable(onClick = onReminderPeriodClick),
     )
+    when (reminderConfig.period) {
+        BalanceUpdateReminderPeriod.WEEKLY -> MoneySelectionField(
+            label = "每周几",
+            value = reminderConfig.weekday.displayName,
+            modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
+        )
+
+        BalanceUpdateReminderPeriod.MONTHLY -> MoneySelectionField(
+            label = "每月几号",
+            value = "${reminderConfig.monthDay}日",
+            modifier = Modifier.clickable(onClick = onReminderMonthDayClick),
+        )
+    }
     MoneySelectionField(
         label = "提醒时间",
         value = reminderConfig.timeText,
@@ -116,16 +164,32 @@ internal fun AccountVisualFields(
 @Composable
 internal fun AccountReminderListSection(
     reminderConfig: BalanceUpdateReminderConfig,
+    onReminderPeriodClick: () -> Unit,
     onReminderWeekdayClick: () -> Unit,
+    onReminderMonthDayClick: () -> Unit,
     onReminderTimeClick: () -> Unit,
 ) {
     MoneyListSection {
         MoneyListRow(
-            title = "每周提醒日",
+            title = "提醒周期",
             subtitle = "到了提醒时间后未核对会标记为待核对",
-            trailing = reminderConfig.weekday.displayName,
-            modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
+            trailing = reminderConfig.period.displayName,
+            modifier = Modifier.clickable(onClick = onReminderPeriodClick),
         )
+        MoneySectionDivider()
+        when (reminderConfig.period) {
+            BalanceUpdateReminderPeriod.WEEKLY -> MoneyListRow(
+                title = "每周几",
+                trailing = reminderConfig.weekday.displayName,
+                modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
+            )
+
+            BalanceUpdateReminderPeriod.MONTHLY -> MoneyListRow(
+                title = "每月几号",
+                trailing = "${reminderConfig.monthDay}日",
+                modifier = Modifier.clickable(onClick = onReminderMonthDayClick),
+            )
+        }
         MoneySectionDivider()
         MoneyListRow(
             title = "提醒时间",

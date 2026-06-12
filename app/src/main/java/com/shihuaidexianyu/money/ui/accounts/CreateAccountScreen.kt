@@ -35,7 +35,9 @@ fun CreateAccountScreen(
         reminderConfig = state.reminderConfig,
         onDismiss = { picker = null },
         onColorSelected = viewModel::updateColorName,
+        onReminderPeriodSelected = viewModel::updateReminderPeriod,
         onReminderWeekdaySelected = viewModel::updateReminderWeekday,
+        onReminderMonthDaySelected = viewModel::updateReminderMonthDay,
         onReminderTimeSelected = viewModel::updateReminderTime,
     )
 
@@ -63,7 +65,9 @@ fun CreateAccountScreen(
                 )
                 AccountReminderFields(
                     reminderConfig = state.reminderConfig,
+                    onReminderPeriodClick = { picker = AccountSettingsPicker.REMINDER_PERIOD },
                     onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
+                    onReminderMonthDayClick = { picker = AccountSettingsPicker.REMINDER_MONTH_DAY },
                     onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
                 )
                 MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving)
