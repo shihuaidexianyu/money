@@ -6,6 +6,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
+import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -97,15 +98,19 @@ class CreateAccountUseCaseTest {
             name = "旅行基金",
             initialBalance = 100,
             colorName = "teal",
+            iconName = "investment",
         )
         val fallbackId = useCase(
             name = "默认账户",
             initialBalance = 100,
             colorName = "missing",
+            iconName = "missing",
         )
 
         assertEquals("teal", repository.getAccountById(accountId)?.colorName)
+        assertEquals("investment", repository.getAccountById(accountId)?.iconName)
         assertEquals(DEFAULT_ACCOUNT_COLOR_NAME, repository.getAccountById(fallbackId)?.colorName)
+        assertEquals(DEFAULT_ACCOUNT_ICON_NAME, repository.getAccountById(fallbackId)?.iconName)
     }
 }
 

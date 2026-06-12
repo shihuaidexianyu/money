@@ -7,8 +7,10 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
+import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
+import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
@@ -23,6 +25,7 @@ data class EditAccountUiState(
     val isLoading: Boolean = true,
     val name: String = "",
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
+    val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
     val isArchived: Boolean = false,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
@@ -63,6 +66,7 @@ class EditAccountViewModel(
                     isLoading = false,
                     name = account.name,
                     colorName = account.colorName,
+                    iconName = account.iconName,
                     isArchived = account.isArchived,
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
@@ -79,6 +83,10 @@ class EditAccountViewModel(
 
     fun updateColorName(value: String) {
         _uiState.value = _uiState.value.copy(colorName = normalizeAccountColorName(value))
+    }
+
+    fun updateIconName(value: String) {
+        _uiState.value = _uiState.value.copy(iconName = normalizeAccountIconName(value))
     }
 
     fun updateReminderPeriod(value: BalanceUpdateReminderPeriod) {
@@ -119,6 +127,7 @@ class EditAccountViewModel(
                     name = state.name,
                     balanceUpdateReminderConfig = state.reminderConfig,
                     colorName = state.colorName,
+                    iconName = state.iconName,
                 )
             }.onSuccess {
                 effects.emit(EditAccountEffect.Saved)

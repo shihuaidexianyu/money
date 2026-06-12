@@ -38,6 +38,7 @@ class BuildExportJsonUseCaseTest {
                 initialBalance = 12_345,
                 createdAt = 1L,
                 colorName = "green",
+                iconName = "cash",
             ),
         )
         val archivedAccountId = accountRepository.createAccount(
@@ -137,12 +138,14 @@ class BuildExportJsonUseCaseTest {
 
         val snapshot = BackupJsonCodec.decode(json)
         assertEquals(2, snapshot.metadata.schemaVersion)
-        assertEquals(9, snapshot.metadata.databaseVersion)
+        assertEquals(10, snapshot.metadata.databaseVersion)
         assertEquals(42L, snapshot.metadata.exportedAt)
         assertEquals("元", snapshot.settings.currencySymbol)
         assertEquals(listOf(accountId, archivedAccountId), snapshot.accounts.map { it.id })
         assertTrue(snapshot.accounts.first { it.id == archivedAccountId }.isArchived)
-        assertEquals(12_345L, snapshot.accounts.first { it.id == accountId }.initialBalance)
+        val account = snapshot.accounts.first { it.id == accountId }
+        assertEquals(12_345L, account.initialBalance)
+        assertEquals("cash", account.iconName)
         assertEquals(1, snapshot.cashFlowRecords.size)
         assertEquals(123L, snapshot.cashFlowRecords.single().amount)
         assertTrue(snapshot.cashFlowRecords.single().isDeleted)

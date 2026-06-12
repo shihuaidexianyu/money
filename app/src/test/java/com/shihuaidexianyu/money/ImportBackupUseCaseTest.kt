@@ -97,6 +97,13 @@ class ImportBackupUseCaseTest {
                 ),
             )
         }
+        assertFailsWith<IllegalArgumentException> {
+            ValidateBackupSnapshotUseCase()(
+                validSnapshot().copy(
+                    accounts = listOf(validSnapshot().accounts.single().copy(iconName = "custom")),
+                ),
+            )
+        }
     }
 
     private class FakeBackupRepository : BackupRepository {
@@ -140,6 +147,7 @@ class ImportBackupUseCaseTest {
                     lastBalanceUpdateAt = null,
                     displayOrder = 0,
                     colorName = "blue",
+                    iconName = "wallet",
                 ),
             ),
             cashFlowRecords = listOf(

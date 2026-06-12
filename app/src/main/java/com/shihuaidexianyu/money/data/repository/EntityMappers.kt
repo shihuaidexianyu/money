@@ -28,6 +28,7 @@ internal fun AccountEntity.toDomain(): Account = Account(
     lastBalanceUpdateAt = lastBalanceUpdateAt,
     displayOrder = displayOrder,
     colorName = colorName,
+    iconName = iconName,
 )
 
 fun Account.toEntity(): AccountEntity = AccountEntity(
@@ -41,6 +42,7 @@ fun Account.toEntity(): AccountEntity = AccountEntity(
     lastBalanceUpdateAt = lastBalanceUpdateAt,
     displayOrder = displayOrder,
     colorName = colorName,
+    iconName = iconName,
 )
 
 internal fun CashFlowRecordEntity.toDomain(): CashFlowRecord = CashFlowRecord(

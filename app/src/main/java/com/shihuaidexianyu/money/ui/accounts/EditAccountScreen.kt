@@ -81,9 +81,11 @@ fun EditAccountScreen(
     AccountSettingsPickerDialog(
         picker = if (state.isArchived) null else picker,
         colorName = state.colorName,
+        iconName = state.iconName,
         reminderConfig = state.reminderConfig,
         onDismiss = { picker = null },
         onColorSelected = viewModel::updateColorName,
+        onIconSelected = viewModel::updateIconName,
         onReminderPeriodSelected = viewModel::updateReminderPeriod,
         onReminderWeekdaySelected = viewModel::updateReminderWeekday,
         onReminderMonthDaySelected = viewModel::updateReminderMonthDay,
@@ -111,7 +113,9 @@ fun EditAccountScreen(
                 if (!state.isArchived) {
                     AccountVisualListRows(
                         colorName = state.colorName,
+                        iconName = state.iconName,
                         onColorClick = { picker = AccountSettingsPicker.COLOR },
+                        onIconClick = { picker = AccountSettingsPicker.ICON },
                     )
                 }
             }

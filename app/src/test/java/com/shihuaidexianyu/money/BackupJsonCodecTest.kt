@@ -62,6 +62,7 @@ class BackupJsonCodecTest {
                     lastBalanceUpdateAt = null,
                     displayOrder = 0,
                     colorName = "green",
+                    iconName = "cash",
                 ),
             ),
             cashFlowRecords = emptyList(),
@@ -141,6 +142,7 @@ class BackupJsonCodecTest {
         assertEquals(MONEY_BACKUP_SCHEMA_VERSION, decoded.metadata.schemaVersion)
         assertEquals(listOf(2L), decoded.balanceAdjustmentRecords.map { it.id })
         assertEquals(20L, decoded.balanceAdjustmentRecords.single().delta)
+        assertEquals("wallet", decoded.accounts.single().iconName)
         assertEquals("weekly", decoded.accountReminderConfigs.single().config.period)
         assertEquals(1, decoded.accountReminderConfigs.single().config.monthDay)
     }

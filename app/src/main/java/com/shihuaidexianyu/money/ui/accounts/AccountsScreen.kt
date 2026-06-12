@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,10 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -284,8 +283,9 @@ private fun AccountCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AccountInitialBadge(
-                name = account.name,
+            AccountIconBadge(
+                iconName = account.iconName,
+                colorName = account.colorName,
                 isArchived = account.isArchived,
             )
             Column(
@@ -329,38 +329,4 @@ private fun AccountCard(
             }
         }
     }
-}
-
-@Composable
-private fun AccountInitialBadge(
-    name: String,
-    isArchived: Boolean,
-) {
-    val accent = if (isArchived) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
-    val initial = accountInitial(name)
-    Box(
-        modifier = Modifier
-            .size(46.dp)
-            .background(
-                color = accent.copy(alpha = 0.10f),
-                shape = RoundedCornerShape(14.dp),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = initial,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = accent,
-            maxLines = 1,
-        )
-    }
-}
-
-private fun accountInitial(name: String): String {
-    return name.trim().firstOrNull()?.toString() ?: "账"
 }

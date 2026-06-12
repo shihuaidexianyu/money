@@ -83,6 +83,7 @@ private fun Account.toBackup(): BackupAccount =
         lastBalanceUpdateAt = lastBalanceUpdateAt,
         displayOrder = displayOrder,
         colorName = colorName,
+        iconName = iconName,
     )
 
 private fun CashFlowRecord.toBackup(): BackupCashFlowRecord =

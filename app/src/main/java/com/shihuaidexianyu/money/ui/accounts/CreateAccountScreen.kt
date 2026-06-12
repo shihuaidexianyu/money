@@ -32,9 +32,11 @@ fun CreateAccountScreen(
     AccountSettingsPickerDialog(
         picker = picker,
         colorName = state.colorName,
+        iconName = state.iconName,
         reminderConfig = state.reminderConfig,
         onDismiss = { picker = null },
         onColorSelected = viewModel::updateColorName,
+        onIconSelected = viewModel::updateIconName,
         onReminderPeriodSelected = viewModel::updateReminderPeriod,
         onReminderWeekdaySelected = viewModel::updateReminderWeekday,
         onReminderMonthDaySelected = viewModel::updateReminderMonthDay,
@@ -61,7 +63,9 @@ fun CreateAccountScreen(
                 )
                 AccountVisualFields(
                     colorName = state.colorName,
+                    iconName = state.iconName,
                     onColorClick = { picker = AccountSettingsPicker.COLOR },
+                    onIconClick = { picker = AccountSettingsPicker.ICON },
                 )
                 AccountReminderFields(
                     reminderConfig = state.reminderConfig,

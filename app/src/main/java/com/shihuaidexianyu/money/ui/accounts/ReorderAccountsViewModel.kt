@@ -16,6 +16,7 @@ data class ReorderAccountItemUiModel(
     val id: Long,
     val name: String,
     val colorName: String,
+    val iconName: String,
     val balance: Long,
     val lastUsedAt: Long?,
 )
@@ -54,6 +55,7 @@ class ReorderAccountsViewModel(
                             id = it.id,
                             name = it.name,
                             colorName = it.colorName,
+                            iconName = it.iconName,
                             balance = calculateCurrentBalanceUseCase(it.id),
                             lastUsedAt = it.lastUsedAt,
                         )

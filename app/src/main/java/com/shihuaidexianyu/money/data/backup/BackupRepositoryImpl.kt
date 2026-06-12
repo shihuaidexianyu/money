@@ -16,6 +16,7 @@ import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
+import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
 import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateRecord
@@ -75,6 +76,7 @@ private fun BackupAccount.toDomain(): Account =
         lastBalanceUpdateAt = lastBalanceUpdateAt,
         displayOrder = displayOrder,
         colorName = colorName,
+        iconName = normalizeAccountIconName(iconName),
     )
 
 private fun BackupCashFlowRecord.toDomain(): CashFlowRecord =

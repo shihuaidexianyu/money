@@ -24,6 +24,7 @@ data class AccountListItemUiModel(
     val id: Long,
     val name: String,
     val colorName: String,
+    val iconName: String,
     val balance: Long,
     val isArchived: Boolean,
     val isStale: Boolean,
@@ -110,6 +111,7 @@ class AccountsViewModel(
             id = account.id,
             name = account.name,
             colorName = account.colorName,
+            iconName = account.iconName,
             balance = balance,
             isArchived = account.isArchived,
             isStale = AccountStatusUtils.isStale(

@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.domain.model.backup
 
 import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY
 import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_PERIOD
+import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import kotlinx.serialization.Serializable
 
 const val MONEY_BACKUP_SCHEMA_VERSION = 2
@@ -57,6 +58,7 @@ data class BackupAccount(
     val lastBalanceUpdateAt: Long?,
     val displayOrder: Int,
     val colorName: String,
+    val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
 )
 
 @Serializable

@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -50,6 +51,11 @@ fun AccountDetailScreen(
         }
         item {
             MoneyCard {
+                AccountIconBadge(
+                    iconName = state.iconName,
+                    colorName = state.colorName,
+                    isArchived = state.isArchived,
+                )
                 Text(
                     text = AmountFormatter.format(state.currentBalance, state.settings),
                     style = MaterialTheme.typography.displayLarge,

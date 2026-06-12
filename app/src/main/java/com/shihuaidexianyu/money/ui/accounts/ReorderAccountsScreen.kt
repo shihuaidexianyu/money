@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -91,6 +92,14 @@ fun ReorderAccountsScreen(
                         MoneyListRow(
                             title = account.name,
                             showChevron = false,
+                            leading = {
+                                AccountIconBadge(
+                                    iconName = account.iconName,
+                                    colorName = account.colorName,
+                                    size = 30.dp,
+                                    iconSize = 17.dp,
+                                )
+                            },
                             accessory = {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(

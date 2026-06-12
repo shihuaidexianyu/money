@@ -11,6 +11,7 @@ data class Account(
     val lastBalanceUpdateAt: Long? = null,
     val displayOrder: Int = 0,
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
+    val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
 )
 
 data class CashFlowRecord(

@@ -31,6 +31,7 @@ data class AccountOptionUiModel(
     val id: Long,
     val name: String,
     val colorName: String = "blue",
+    val iconName: String = "wallet",
     val balance: Long? = null,
     val lastUsedAt: Long? = null,
     val isStale: Boolean = false,
@@ -119,6 +120,14 @@ private fun AccountPickerList(
                         title = account.name,
                         subtitle = account.pickerSubtitle(settings),
                         showChevron = false,
+                        leading = {
+                            AccountIconBadge(
+                                iconName = account.iconName,
+                                colorName = account.colorName,
+                                size = 30.dp,
+                                iconSize = 17.dp,
+                            )
+                        },
                         modifier = Modifier
                             .alpha(if (isDisabled) 0.45f else 1f)
                             .clickable(enabled = !isDisabled) { onPick(account.id) },

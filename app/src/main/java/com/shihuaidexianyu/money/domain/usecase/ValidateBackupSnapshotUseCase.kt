@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
+import com.shihuaidexianyu.money.domain.model.ACCOUNT_ICON_NAMES
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -41,6 +42,7 @@ class ValidateBackupSnapshotUseCase {
             requireNullablePositive(account.archivedAt, "accounts.archivedAt")
             requireNullablePositive(account.lastUsedAt, "accounts.lastUsedAt")
             requireNullablePositive(account.lastBalanceUpdateAt, "accounts.lastBalanceUpdateAt")
+            requireKnown(account.iconName, ACCOUNT_ICON_NAMES, "accounts.iconName")
             account.id
         }
         requireNoDuplicates(accountIds, "accounts.id")

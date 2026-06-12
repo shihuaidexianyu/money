@@ -1,6 +1,15 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -8,8 +17,12 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
+import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.ui.common.AccountColorOptions
 import com.shihuaidexianyu.money.ui.common.AccountColorSwatch
+import com.shihuaidexianyu.money.ui.common.AccountIconBadge
+import com.shihuaidexianyu.money.ui.common.AccountIconOptions
+import com.shihuaidexianyu.money.ui.common.accountIconLabel
 import com.shihuaidexianyu.money.ui.common.accountColorLabel
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -20,6 +33,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 
 internal enum class AccountSettingsPicker {
     COLOR,
+    ICON,
     REMINDER_PERIOD,
     REMINDER_WEEKDAY,
     REMINDER_MONTH_DAY,
@@ -30,9 +44,11 @@ internal enum class AccountSettingsPicker {
 internal fun AccountSettingsPickerDialog(
     picker: AccountSettingsPicker?,
     colorName: String,
+    iconName: String,
     reminderConfig: BalanceUpdateReminderConfig,
     onDismiss: () -> Unit,
     onColorSelected: (String) -> Unit,
+    onIconSelected: (String) -> Unit,
     onReminderPeriodSelected: (BalanceUpdateReminderPeriod) -> Unit,
     onReminderWeekdaySelected: (BalanceUpdateReminderWeekday) -> Unit,
     onReminderMonthDaySelected: (Int) -> Unit,
@@ -47,6 +63,17 @@ internal fun AccountSettingsPickerDialog(
                 label = { it.label },
                 onSelect = {
                     onColorSelected(it.name)
+                    onDismiss()
+                },
+                onDismiss = onDismiss,
+            )
+        }
+
+        AccountSettingsPicker.ICON -> {
+            AccountIconChoiceDialog(
+                selectedIconName = iconName,
+                onSelect = {
+                    onIconSelected(it)
                     onDismiss()
                 },
                 onDismiss = onDismiss,
@@ -116,6 +143,56 @@ internal fun AccountSettingsPickerDialog(
 }
 
 @Composable
+private fun AccountIconChoiceDialog(
+    selectedIconName: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("账户图标") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                AccountIconOptions.forEach { option ->
+                    val selected = option.name == normalizeAccountIconName(selectedIconName)
+                    TextButton(
+                        onClick = { onSelect(option.name) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                imageVector = option.icon,
+                                contentDescription = null,
+                                tint = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                            Text(
+                                text = option.label,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+    )
+}
+
+@Composable
 internal fun AccountReminderFields(
     reminderConfig: BalanceUpdateReminderConfig,
     onReminderPeriodClick: () -> Unit,
@@ -152,8 +229,15 @@ internal fun AccountReminderFields(
 @Composable
 internal fun AccountVisualFields(
     colorName: String,
+    iconName: String,
     onColorClick: () -> Unit,
+    onIconClick: () -> Unit,
 ) {
+    MoneySelectionField(
+        label = "账户图标",
+        value = accountIconLabel(iconName),
+        modifier = Modifier.clickable(onClick = onIconClick),
+    )
     MoneySelectionField(
         label = "账户颜色",
         value = accountColorLabel(colorName),
@@ -202,8 +286,17 @@ internal fun AccountReminderListSection(
 @Composable
 internal fun AccountVisualListRows(
     colorName: String,
+    iconName: String,
     onColorClick: () -> Unit,
+    onIconClick: () -> Unit,
 ) {
+    MoneySectionDivider()
+    MoneyListRow(
+        title = "账户图标",
+        trailing = accountIconLabel(iconName),
+        leading = { AccountIconBadge(iconName = iconName, colorName = colorName, size = 28.dp, iconSize = 16.dp) },
+        modifier = Modifier.clickable(onClick = onIconClick),
+    )
     MoneySectionDivider()
     MoneyListRow(
         title = "账户颜色",

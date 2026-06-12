@@ -7,6 +7,7 @@ fun Account.toAccountOptionUiModel(): AccountOptionUiModel {
         id = id,
         name = name,
         colorName = colorName,
+        iconName = iconName,
         lastUsedAt = lastUsedAt,
     )
 }
@@ -20,6 +21,7 @@ fun Account.toAccountOptionUiModel(balance: Long): AccountOptionUiModel {
         id = id,
         name = name,
         colorName = colorName,
+        iconName = iconName,
         balance = balance,
         lastUsedAt = lastUsedAt,
     )
@@ -33,6 +35,7 @@ fun Account.toAccountOptionUiModel(
         id = id,
         name = name,
         colorName = colorName,
+        iconName = iconName,
         balance = balance,
         lastUsedAt = lastUsedAt,
         isStale = isStale,
