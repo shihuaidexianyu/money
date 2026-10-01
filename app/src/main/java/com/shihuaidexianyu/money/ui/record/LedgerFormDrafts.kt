@@ -14,6 +14,7 @@ data class CashFlowFormDraft(
     val occurredAtError: String? = null,
     val isDirty: Boolean,
     val operationId: String,
+    val direction: String? = null,
 ) : Serializable
 
 data class TransferFormDraft(

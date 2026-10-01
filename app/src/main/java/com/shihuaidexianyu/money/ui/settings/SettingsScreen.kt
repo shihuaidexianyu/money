@@ -1,23 +1,30 @@
 package com.shihuaidexianyu.money.ui.settings
 
 import android.content.ClipData
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -42,18 +49,17 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private sealed interface SettingsDialog {
     data object ExportWarning : SettingsDialog
+    data object ShareWarning : SettingsDialog
+    data class SafetyWarning(val receiptId: String) : SettingsDialog
     data object ThemeMode : SettingsDialog
     data object AmountColorMode : SettingsDialog
     data object CurrencySymbol : SettingsDialog
     data object RelockDelay : SettingsDialog
-    data class ImportConfirm(
-        val preview: BackupValidationResult,
-        val stageId: String,
-    ) : SettingsDialog
     data class ImportSuccess(val receiptId: String) : SettingsDialog
 }
 
@@ -69,6 +75,7 @@ fun SettingsScreen(
     onRelockDelayChange: (AppRelockDelay) -> Unit,
     onHideNotificationAmountsChange: (Boolean) -> Unit,
     onHideRecentTasksChange: (Boolean) -> Unit,
+    onHideInAppAmountsChange: (Boolean) -> Unit,
     notificationPermissionState: NotificationPermissionUiState,
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: (NotificationSettingsTarget) -> Unit,
@@ -80,6 +87,12 @@ fun SettingsScreen(
     onConfirmImport: (String) -> Unit,
     onRollbackImport: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onShareBackup: () -> Unit = {},
+    onSaveExportToDocument: (Uri?) -> Unit = {},
+    onResumeExport: () -> Unit = {},
+    onDismissImportPreview: () -> Unit = {},
+    onRefreshImportHistory: () -> Unit = {},
+    onExportSafetySnapshot: (String) -> Unit = {},
 ) {
     val settings = state.portableSettings
     val devicePreferences = state.devicePreferences
@@ -97,34 +110,49 @@ fun SettingsScreen(
         AppRelockDelay.FIVE_MINUTES to stringResource(R.string.settings_relock_5_minutes),
     )
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    fun launchFileAction(action: () -> Unit) {
+        try {
+            action()
+        } catch (_: ActivityNotFoundException) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(context.getString(R.string.settings_file_action_unavailable))
+            }
+        }
+    }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
     var rollbackTarget by remember { mutableStateOf<String?>(null) }
+    var receiptActionsTarget by rememberSaveable { mutableStateOf<String?>(null) }
+    val busy = state.isExporting || state.isImporting
+    BackHandler(enabled = busy) {}
     var currencyDraft by remember(settings.currencySymbol) { mutableStateOf(settings.currencySymbol) }
     val openDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
         uri?.let(onImportData)
     }
+    val saveDocumentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {
+        onSaveExportToDocument(it)
+    }
 
     CollectUiEffects(effectFlow, snackbarHostState) { effect ->
         when (effect) {
             is SettingsEffect.ExportReady -> {
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = effect.mimeType
-                    putExtra(Intent.EXTRA_STREAM, effect.uri)
-                    putExtra(Intent.EXTRA_TITLE, effect.fileName)
-                    putExtra(Intent.EXTRA_SUBJECT, effect.fileName)
-                    clipData = ClipData.newUri(context.contentResolver, effect.fileName, effect.uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                launchFileAction {
+                    if (effect.saveToDocument) {
+                        saveDocumentLauncher.launch(effect.fileName)
+                    } else {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = effect.mimeType
+                            putExtra(Intent.EXTRA_STREAM, effect.uri)
+                            putExtra(Intent.EXTRA_TITLE, effect.fileName)
+                            putExtra(Intent.EXTRA_SUBJECT, effect.fileName)
+                            clipData = ClipData.newUri(context.contentResolver, effect.fileName, effect.uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, exportChooserTitle))
+                    }
                 }
-                context.startActivity(Intent.createChooser(shareIntent, exportChooserTitle))
-            }
-
-            is SettingsEffect.ImportPreviewReady -> {
-                dialog = SettingsDialog.ImportConfirm(
-                    preview = effect.preview,
-                    stageId = effect.stageId,
-                )
             }
 
             is SettingsEffect.ImportFinished -> {
@@ -138,17 +166,26 @@ fun SettingsScreen(
 
     dialog?.let { currentDialog ->
         when (currentDialog) {
-            SettingsDialog.ExportWarning -> {
+            SettingsDialog.ExportWarning, SettingsDialog.ShareWarning -> {
                 MoneyConfirmDialog(
                     title = stringResource(R.string.settings_export_plaintext_title),
                     message = stringResource(R.string.settings_plaintext_export_message),
                     onConfirm = {
-                        onExportData()
+                        if (currentDialog == SettingsDialog.ShareWarning) onShareBackup() else onExportData()
                         dialog = null
                     },
                     onDismiss = { dialog = null },
                     confirmLabel = stringResource(R.string.settings_continue_export),
                     dismissLabel = stringResource(R.string.action_cancel),
+                )
+            }
+
+            is SettingsDialog.SafetyWarning -> {
+                MoneyConfirmDialog(
+                    title = stringResource(R.string.settings_safety_export),
+                    message = stringResource(R.string.settings_safety_export_hint),
+                    onConfirm = { dialog = null; onExportSafetySnapshot(currentDialog.receiptId) },
+                    onDismiss = { dialog = null },
                 )
             }
 
@@ -191,21 +228,6 @@ fun SettingsScreen(
                     },
                     onDismiss = { dialog = null },
                     confirmLabel = stringResource(R.string.action_save),
-                )
-            }
-
-            is SettingsDialog.ImportConfirm -> {
-                MoneyConfirmDialog(
-                    title = stringResource(R.string.settings_import_overwrite_title),
-                    message = currentDialog.preview.confirmMessage(),
-                    onConfirm = {
-                        onConfirmImport(currentDialog.stageId)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                    confirmLabel = stringResource(R.string.settings_confirm_import),
-                    dismissLabel = stringResource(R.string.action_cancel),
-                    destructive = true,
                 )
             }
 
@@ -255,15 +277,48 @@ fun SettingsScreen(
     val notificationPresentation = notificationSettingsPresentation(notificationPermissionState)
     val importReceiptRows = importReceiptHistoryRows(
         receipts = state.importHistory,
-        rollbackEligibleReceiptId = state.rollbackEligibleReceiptId,
+        rollbackEligibleReceiptId = state.rollbackEligibleReceiptId.takeUnless { state.isHistoryLoading },
+        availableSafetyReceiptIds = state.availableSafetyReceiptIds,
     )
+    state.pendingImportPreview?.takeUnless { state.isImporting }?.let { preview ->
+        MoneyConfirmDialog(
+            title = stringResource(R.string.settings_import_overwrite_title),
+            message = stringResource(R.string.settings_import_backup_time,
+                DateTimeTextFormatter.format(preview.validation.exportedAt)) + "\n\n" + preview.validation.confirmMessage(),
+            onConfirm = { onConfirmImport(preview.stageId) },
+            onDismiss = onDismissImportPreview,
+            confirmLabel = stringResource(R.string.settings_confirm_import),
+            destructive = true,
+        )
+    }
+    importReceiptRows.firstOrNull { it.receipt.id == receiptActionsTarget }?.let { row ->
+        val actions = buildList {
+            if (row.canRollback) add(R.string.settings_rollback)
+            if (row.canExportSafety) add(R.string.settings_safety_export)
+        }
+        MoneyChoiceDialog(
+            title = stringResource(R.string.settings_import_history), options = actions,
+            label = { stringResource(it) },
+            onSelect = { action ->
+                receiptActionsTarget = null
+                if (action == R.string.settings_rollback) rollbackTarget = row.receipt.id
+                else dialog = SettingsDialog.SafetyWarning(row.receipt.id)
+            }, onDismiss = { receiptActionsTarget = null },
+        )
+    }
     MoneyFormPage(
         title = stringResource(R.string.settings_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         // Settings is a pushed sub-page (not a bottom-bar tab) — without this it was the only
         // sub-page with no visible way back.
-        onBack = onBack,
+        onBack = { if (!busy) onBack() },
+        footer = if (busy) ({
+            Column {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(stringResource(R.string.settings_backup_busy), modifier = Modifier.padding(top = 8.dp))
+            }
+        }) else null,
     ) {
         item {
             MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[0].titleRes))
@@ -308,7 +363,7 @@ fun SettingsScreen(
                     accessory = {
                         Switch(
                             checked = devicePreferences.biometricLock,
-                            onCheckedChange = onBiometricLockChange,
+                            onCheckedChange = null,
                         )
                     },
                 )
@@ -330,6 +385,13 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_hide_notifications),
                     checked = devicePreferences.hideNotificationAmounts,
                     onCheckedChange = onHideNotificationAmountsChange,
+                )
+                MoneySectionDivider()
+                PrivacySwitchRow(
+                    title = stringResource(R.string.settings_hide_in_app_amounts),
+                    subtitle = stringResource(R.string.settings_hide_in_app_amounts_description),
+                    checked = devicePreferences.hideInAppAmounts,
+                    onCheckedChange = onHideInAppAmountsChange,
                 )
             }
         }
@@ -383,7 +445,7 @@ fun SettingsScreen(
                 )
                 MoneySectionDivider()
                 MoneyListRow(
-                    title = stringResource(R.string.settings_export_data),
+                    title = stringResource(R.string.settings_save_backup),
                     subtitle = stringResource(R.string.settings_plaintext_warning),
                     trailing = if (state.isExporting) stringResource(R.string.settings_exporting) else "JSON",
                     onClick = { dialog = SettingsDialog.ExportWarning },
@@ -391,11 +453,26 @@ fun SettingsScreen(
                 )
                 MoneySectionDivider()
                 MoneyListRow(
+                    title = stringResource(R.string.settings_share_backup),
+                    subtitle = stringResource(R.string.settings_plaintext_warning),
+                    onClick = { dialog = SettingsDialog.ShareWarning }, enabled = !busy,
+                )
+                state.pendingExport?.let { pending ->
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = stringResource(R.string.settings_backup_pending),
+                        subtitle = pending.fileName,
+                        trailing = stringResource(R.string.settings_backup_resume),
+                        onClick = onResumeExport, enabled = !busy,
+                    )
+                }
+                MoneySectionDivider()
+                MoneyListRow(
                     title = stringResource(R.string.settings_import_data),
                     subtitle = stringResource(R.string.settings_import_description),
                     trailing = if (state.isImporting) stringResource(R.string.settings_importing) else "JSON",
                     onClick = {
-                        openDocumentLauncher.launch(arrayOf("application/json", "text/*"))
+                        launchFileAction { openDocumentLauncher.launch(arrayOf("application/json", "text/*")) }
                     },
                     enabled = !state.isImporting && !state.isExporting,
                 )
@@ -411,23 +488,32 @@ fun SettingsScreen(
                                     R.string.settings_restore_history
                                 },
                             ),
-                            subtitle = receipt.historySubtitle(),
-                            trailing = if (row.canRollback) {
-                                stringResource(R.string.settings_rollback)
+                            subtitle = receipt.historySubtitle() + if (row.canRollback) "" else
+                                "\n" + stringResource(R.string.settings_receipt_unavailable),
+                            trailing = if (row.canRollback || row.canExportSafety) {
+                                stringResource(R.string.settings_receipt_options)
                             } else {
                                 null
                             },
-                            onClick = if (row.canRollback) {
-                                { rollbackTarget = receipt.id }
+                            onClick = if (row.canRollback || row.canExportSafety) {
+                                { receiptActionsTarget = receipt.id }
                             } else {
                                 null
                             },
                             enabled = !state.isImporting && !state.isExporting,
-                            showChevron = row.canRollback,
-                            isClickable = row.canRollback,
+                            showChevron = row.canRollback || row.canExportSafety,
+                            isClickable = row.canRollback || row.canExportSafety,
                         )
                         if (index != importReceiptRows.lastIndex) MoneySectionDivider()
                     }
+                }
+                if (state.isHistoryLoading || state.historyLoadFailed) {
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = stringResource(if (state.historyLoadFailed) R.string.settings_history_failed else R.string.settings_history_loading),
+                        onClick = onRefreshImportHistory.takeIf { state.historyLoadFailed },
+                        enabled = !busy, showChevron = state.historyLoadFailed,
+                    )
                 }
             }
         }
@@ -458,16 +544,18 @@ private fun PrivacySwitchRow(
     title: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    subtitle: String? = null,
 ) {
     MoneyListRow(
         title = title,
+        subtitle = subtitle,
         showChevron = false,
         switchChecked = checked,
         onClick = { onCheckedChange(!checked) },
         accessory = {
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
             )
         },
     )

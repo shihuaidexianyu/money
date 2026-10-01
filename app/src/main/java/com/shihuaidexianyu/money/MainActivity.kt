@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SideEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -33,6 +34,7 @@ import com.shihuaidexianyu.money.ui.lock.AppRootSurface
 import com.shihuaidexianyu.money.ui.lock.ElapsedRealtimeClock
 import com.shihuaidexianyu.money.ui.lock.resolveAppRootSurface
 import com.shihuaidexianyu.money.ui.theme.MoneyTheme
+import com.shihuaidexianyu.money.ui.theme.LocalDarkTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.catch
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
@@ -131,7 +133,15 @@ class MainActivity : FragmentActivity() {
                 themeMode = devicePreferences.themeMode,
                 amountColorMode = portableSettings.amountColorMode,
                 currencySymbol = portableSettings.currencySymbol,
+                hideInAppAmounts = devicePreferences.hideInAppAmounts,
             ) {
+                val darkTheme = LocalDarkTheme.current
+                SideEffect {
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = !darkTheme
+                        isAppearanceLightNavigationBars = !darkTheme
+                    }
+                }
                 val effectiveLockState = if (loadedDevicePreferences == null) {
                     com.shihuaidexianyu.money.ui.lock.AppLockState.Loading
                 } else {

@@ -42,7 +42,7 @@ class MoneyLanRequestRouter(
         if (!container.startupMigrationCoordinator.isReady) {
             throw MoneyLanProtocolException(MoneyLanErrorCodes.LEDGER_NOT_READY, "账本仍在完成启动迁移，请稍后重试")
         }
-        if (request.action in writeActions && !client.allowWrite) {
+        if (request.action in moneyLanWriteActions && !client.allowWrite) {
             throw MoneyLanProtocolException(MoneyLanErrorCodes.WRITE_DISABLED, "本次手机会话未允许 AI 修改账目")
         }
         return when (request.action) {
@@ -649,18 +649,6 @@ class MoneyLanRequestRouter(
             encodeDefaults = true
         }
 
-        // sync.push is a write for the WRITE_DISABLED gate; its rate budget is charged after the
-        // replay check inside the syncPush handler, not by the server's pre-routing pass.
-        val writeActions = setOf(
-            "journal.undo_latest",
-            "cashflow.create",
-            "cashflow.update",
-            "cashflow.delete",
-            "transfer.create",
-            "transfer.update",
-            "transfer.delete",
-            "sync.push",
-        )
     }
 }
 

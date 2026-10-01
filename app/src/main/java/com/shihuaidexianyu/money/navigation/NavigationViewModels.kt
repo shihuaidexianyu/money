@@ -36,7 +36,7 @@ internal fun rememberSettingsViewModel(container: MoneyAppContainer): SettingsVi
         // Scope to the activity so every destination shares the same instance.
         viewModelStoreOwner = context as? androidx.activity.ComponentActivity
             ?: error("SettingsViewModel requires a ComponentActivity context"),
-        factory = moneyViewModelFactory {
+        factory = moneySavedStateViewModelFactory { savedStateHandle ->
             SettingsViewModel(
                 portableSettingsRepository = container.portableSettingsRepository,
                 devicePreferencesRepository = container.devicePreferencesRepository,
@@ -45,6 +45,7 @@ internal fun rememberSettingsViewModel(container: MoneyAppContainer): SettingsVi
                 backupFileReader = container.backupFileReader,
                 backupImportCoordinator = container.backupImportCoordinator,
                 clockProvider = SystemClockProvider,
+                savedStateHandle = savedStateHandle,
                 forceRefreshNotificationPrivacy = {
                     container.syncMoneyNotificationsUseCase.forceRefreshPrivacy()
                 },

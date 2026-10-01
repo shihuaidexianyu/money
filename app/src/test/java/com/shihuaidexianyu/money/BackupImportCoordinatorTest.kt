@@ -33,6 +33,35 @@ class BackupImportCoordinatorTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
+    fun `safety snapshot can be exported after later changes without rolling back the ledger`() = runBlocking {
+        val original = fixtureV4()
+        val repository = FakeBackupRepository(original)
+        val coordinator = coordinator(repository)
+        val target = original.copy(portableSettings = original.portableSettings.copy(currencySymbol = "$"))
+        val stage = coordinator.stage(ByteArrayInputStream(BackupJsonCodec.encode(target).encodeToByteArray()))
+        val receipt = coordinator.confirm(stage.id)
+        repository.current = repository.current.copy(portableSettings = repository.current.portableSettings.copy(currencySymbol = "€"))
+        val history = coordinator.historyWithRollbackEligibility()
+        assertEquals(null, history.rollbackEligibleReceiptId)
+        assertTrue(receipt.id in history.availableSafetyReceiptIds)
+        assertEquals("¥", coordinator.readSafetySnapshot(receipt.id).portableSettings.currencySymbol)
+        assertEquals("€", repository.current.portableSettings.currencySymbol)
+        assertFailsWith<IllegalArgumentException> { coordinator.rollback(receipt.id) }
+        Unit
+    }
+
+    @Test
+    fun `recovery export rejects a tampered safety snapshot`() = runBlocking {
+        val repository = FakeBackupRepository(fixtureV4())
+        val coordinator = coordinator(repository)
+        val stage = coordinator.stage(ByteArrayInputStream(BackupJsonCodec.encode(repository.current).encodeToByteArray()))
+        val receipt = coordinator.confirm(stage.id)
+        java.io.File(temporaryFolder.root, "pre_import_backups/${receipt.safetySnapshotFileName}").writeText("{}")
+        assertFailsWith<IllegalArgumentException> { coordinator.readSafetySnapshot(receipt.id) }
+        Unit
+    }
+
+    @Test
     fun `successful import cannot replace device-local history filters`() = runBlocking {
         val original = fixtureV4()
         val devicePreferences = DevicePreferences(

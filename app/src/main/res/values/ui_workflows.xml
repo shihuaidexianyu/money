@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_filter_editor_hint">调整后点“应用筛选”生效；关闭面板不会改变当前结果。</string>
+    <string name="history_advanced_filters">更多条件</string>
+    <string name="history_amount_bounds_hint">按金额绝对值筛选，多个条件需同时满足。不选类型表示全部。</string>
+    <string name="history_reset_draft">重置条件</string>
+    <string name="history_apply_filters">应用筛选</string>
+    <string name="batch_actual_balance">实际余额</string>
+    <string name="batch_actual_balance_hint">请先查看银行或钱包的实际余额，再勾选已核对的账户。余额不同可直接修改；未修改的账户按账面余额确认。</string>
+    <string name="batch_reconcile_commit_count">确认核对（%1$d）</string>
+    <string name="batch_reconcile_review">核对确认</string>
+    <string name="batch_reconcile_review_message">将在 %1$s 为 %2$d 个账户记录核对结果，其中 %3$d 个账户将记录余额差额。请确认实际余额已查验。投资账户差额作为投资损益，其他账户作为对账调整。</string>
+    <string name="batch_delta_label">余额差额</string>
+    <string name="batch_investment_delta_label">投资损益差额</string>
+    <string name="batch_invalid_amounts">请检查已选账户的实际余额</string>
+    <string name="batch_retry_input_locked">已尝试保存，重试将沿用本次余额和核对时间，避免重复记账。</string>
+    <string name="batch_reconcile_review_changed">核对内容已变化，请检查余额后重新确认</string>
+    <string name="settings_save_backup">保存备份到文件</string>
+    <string name="settings_share_backup">分享备份</string>
+    <string name="settings_backup_saved">备份文件已保存</string>
+    <string name="settings_backup_save_failed">未能保存备份，可重选位置；若临时文件已失效，请重新生成备份</string>
+    <string name="settings_backup_pending">有一份待保存的备份</string>
+    <string name="settings_backup_resume">重新选择保存位置</string>
+    <string name="settings_backup_cancelled">已取消保存，仍可重新选择位置</string>
+    <string name="settings_backup_busy">正在处理备份，请等待完成</string>
+    <string name="settings_history_loading">正在检查导入记录…</string>
+    <string name="settings_history_failed">无法读取导入记录，点此重试</string>
+    <string name="settings_receipt_unavailable">当前不可直接撤销（账本已变更或非最新记录）</string>
+    <string name="settings_receipt_options">恢复选项</string>
+    <string name="settings_file_action_unavailable">无法打开文件或分享界面，请检查设备上的文件管理应用</string>
+    <string name="settings_safety_export">另存操作前备份</string>
+    <string name="settings_safety_export_hint">这是本次导入或恢复前的保护备份，不含之后的新记录。文件为未加密 JSON，请保存到可信位置。</string>
+    <string name="settings_import_backup_time">备份生成时间：%1$s</string>
+</resources>

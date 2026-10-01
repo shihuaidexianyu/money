@@ -52,7 +52,7 @@ fun EditAccountScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<EditAccountDialog?>(null) }
     var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
     val rootDispatcher = LocalRootSnackbarDispatcher.current
     val hiddenDoneMessage = stringResource(R.string.account_hidden_done)
     val unhiddenDoneMessage = stringResource(R.string.account_unhidden_done)

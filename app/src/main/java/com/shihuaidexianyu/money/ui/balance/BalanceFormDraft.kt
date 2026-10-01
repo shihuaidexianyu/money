@@ -31,4 +31,6 @@ data class BatchReconcileDraft(
     val occurredAtMillis: Long? = null,
     val operationIds: Map<Long, String> = emptyMap(),
     val isDirty: Boolean = false,
+    val actualBalanceTexts: Map<Long, String> = emptyMap(),
+    val timeEdited: Boolean = false,
 ) : Serializable

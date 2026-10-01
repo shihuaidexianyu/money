@@ -9,6 +9,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.Placeholder
@@ -19,13 +26,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.ui.unit.sp
+import com.shihuaidexianyu.money.domain.model.AmountVisibility
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 
 /** User-configured currency symbol ("¥" by default), provided app-wide from PortableSettings. */
 val LocalCurrencySymbol = compositionLocalOf { "¥" }
+val LocalAmountVisibility = compositionLocalOf { AmountVisibility.VISIBLE }
 
 @Composable
 fun formatInAppAmount(
@@ -34,6 +42,7 @@ fun formatInAppAmount(
 ): String = AmountFormatter.format(
     amountInMinor = amountInMinor,
     settings = settings,
+    visibility = LocalAmountVisibility.current,
 )
 
 /** Signed presentation for quantities where the plus sign carries meaning (P&L, net change). */
@@ -43,15 +52,44 @@ fun signedFormatInAppAmount(
     settings: PortableSettings,
 ): String {
     val formatted = formatInAppAmount(amountInMinor, settings)
-    return if (amountInMinor > 0L) "+$formatted" else formatted
+    return if (amountInMinor > 0L && LocalAmountVisibility.current == AmountVisibility.VISIBLE) "+$formatted" else formatted
+}
+
+@Composable
+fun maskInAppAmount(formatted: String): String =
+    if (LocalAmountVisibility.current == AmountVisibility.MASKED) "${LocalCurrencySymbol.current}••••" else formatted
+
+/** Fit read-only money to available space without wrapping digits or shrinking below body text. */
+@Composable
+fun MoneyAmountText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.titleMedium,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    textAlign: TextAlign? = null,
+) {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val candidates = listOf(style, MaterialTheme.typography.headlineSmall, MaterialTheme.typography.titleMedium,
+        MaterialTheme.typography.bodyLarge).filter { it.fontSize <= style.fontSize }.distinct()
+    BoxWithConstraints(modifier) {
+        val availableWidth = with(density) { maxWidth.toPx() }
+        val readableStyle = candidates.firstOrNull {
+            measurer.measure(text, style = it, softWrap = false).size.width <= availableWidth - 2f
+        } ?: candidates.last()
+        val fits = measurer.measure(text, style = readableStyle, softWrap = false).size.width <= availableWidth - 2f
+        val textModifier = if (fits) Modifier.fillMaxWidth()
+            else Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+        Text(text, modifier = textModifier,
+            style = readableStyle, color = color, textAlign = textAlign, maxLines = 1, softWrap = false)
+    }
 }
 
 /**
  * Statement-style "before → after" balance transition. The before-value stays neutral while the
  * arrow and the after-value carry the semantic income/expense color, and the arrow itself turns
  * with the direction (up-right when the balance grew, down-right when it shrank). Currency symbols
- * are dropped (the row's amount carries it); privacy masking applies. Over-long pairs shrink one
- * ad-hoc step below labelSmall instead of truncating.
+ * are dropped (the row's amount carries it); privacy masking applies. Long pairs use two lines.
  */
 @Composable
 fun BalanceTransitionText(
@@ -67,11 +105,8 @@ fun BalanceTransitionText(
     val moneyColors = LocalMoneyColors.current
     val beforeText = part(before)
     val afterText = part(after)
-    val style = if (beforeText.length + afterText.length > 22) {
-        MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 12.sp)
-    } else {
-        MaterialTheme.typography.labelSmall
-    }
+    val stack = beforeText.length + afterText.length > 22 || LocalDensity.current.fontScale > 1.3f
+    val style = MaterialTheme.typography.labelSmall
     val directionColor = when {
         after > before -> moneyColors.income
         after < before -> moneyColors.expense
@@ -84,7 +119,7 @@ fun BalanceTransitionText(
     }
     val text = buildAnnotatedString {
         append(beforeText)
-        append(' ')
+        append(if (stack) '\n' else ' ')
         appendInlineContent(balanceArrowInlineId, "→")
         append(' ')
         withStyle(SpanStyle(color = directionColor)) { append(afterText) }
@@ -106,8 +141,9 @@ fun BalanceTransitionText(
         style = style,
         color = color,
         textAlign = textAlign,
-        maxLines = 1,
-        modifier = modifier,
+        maxLines = if (stack) 2 else 1,
+        softWrap = false,
+        modifier = modifier.horizontalScroll(rememberScrollState()),
     )
 }
 

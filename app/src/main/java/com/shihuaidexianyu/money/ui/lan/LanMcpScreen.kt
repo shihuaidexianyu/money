@@ -71,6 +71,17 @@ fun LanMcpScreen(
     var discardTarget by remember { mutableStateOf<AiMutationJournalEntry?>(null) }
     var revokeTarget by remember { mutableStateOf<LanPairedDevice?>(null) }
     var manualPairingExpanded by remember { mutableStateOf(false) }
+    var confirmWriteAccess by remember { mutableStateOf(false) }
+    val writeAllowed = if (state.isRunning) state.runtime.allowWrite else state.allowWriteDraft
+    val canChangeWriteAccess = !state.isWritePermissionChanging && state.runtime.status != MoneyLanServerStatus.STARTING
+    if (confirmWriteAccess) {
+        MoneyConfirmDialog(
+            title = stringResource(R.string.lan_enable_write_title),
+            message = stringResource(R.string.lan_enable_write_message),
+            onConfirm = { confirmWriteAccess = false; onAllowWriteChange(true) },
+            onDismiss = { confirmWriteAccess = false },
+        )
+    }
     CollectUiEffects(effectFlow, snackbarHostState) { }
 
     // Confirmation-style pairing (session.device.v1): the client presented itself and is polling;
@@ -149,18 +160,21 @@ fun LanMcpScreen(
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.lan_allow_write),
-                    subtitle = stringResource(R.string.lan_allow_write_description),
+                    subtitle = stringResource(
+                        if (state.isWritePermissionChanging) R.string.lan_permission_changing
+                        else R.string.lan_write_access_hint,
+                    ),
                     showChevron = false,
-                    switchChecked = if (state.isRunning) state.runtime.allowWrite else state.allowWriteDraft,
-                    enabled = !state.isRunning,
-                    onClick = if (state.isRunning) null else {
-                        { onAllowWriteChange(!state.allowWriteDraft) }
+                    switchChecked = writeAllowed,
+                    enabled = canChangeWriteAccess,
+                    onClick = {
+                        if (writeAllowed) onAllowWriteChange(false) else confirmWriteAccess = true
                     },
                     accessory = {
                         Switch(
-                            checked = if (state.isRunning) state.runtime.allowWrite else state.allowWriteDraft,
-                            onCheckedChange = if (state.isRunning) null else onAllowWriteChange,
-                            enabled = !state.isRunning,
+                            checked = writeAllowed,
+                            onCheckedChange = null,
+                            enabled = canChangeWriteAccess,
                         )
                     },
                 )

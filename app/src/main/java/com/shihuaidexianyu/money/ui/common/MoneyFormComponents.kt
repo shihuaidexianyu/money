@@ -1,9 +1,11 @@
 package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -51,6 +54,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -244,24 +248,37 @@ fun <T> MoneyChoiceDialog(
     dismissLabel: String? = null,
 ) {
     val resolvedDismissLabel = dismissLabel ?: stringResource(R.string.action_close)
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = options.indexOf(selected).coerceAtLeast(0),
+    )
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                options.forEach { option ->
-                    TextButton(
-                        onClick = { onSelect(option) },
-                        modifier = Modifier.fillMaxWidth(),
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+            ) {
+                items(options.size) { index ->
+                    val option = options[index]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = option == selected,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(option) },
+                            )
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        RadioButton(selected = option == selected, onClick = null)
                         Text(
                             text = label(option),
-                            color = if (option == selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -474,8 +491,7 @@ fun MoneySaveButton(
     val haptics = LocalHapticFeedback.current
     Button(
         onClick = {
-            // A firmer confirm tick on the commit action of every form.
-            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
             onClick()
         },
         modifier = modifier

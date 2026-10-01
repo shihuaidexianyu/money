@@ -57,7 +57,7 @@ fun RecordTransferScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val fromAccount = state.accounts.firstOrNull { it.id == state.fromAccountId }
     val toAccount = state.accounts.firstOrNull { it.id == state.toAccountId }
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
     val moneyColors = LocalMoneyColors.current
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}

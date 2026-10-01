@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.Color
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
+import com.shihuaidexianyu.money.ui.common.LocalAmountVisibility
+import com.shihuaidexianyu.money.domain.model.AmountVisibility
 
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
@@ -99,6 +101,7 @@ fun MoneyTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
     currencySymbol: String = "¥",
+    hideInAppAmounts: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val darkTheme = when (themeMode) {
@@ -116,6 +119,7 @@ fun MoneyTheme(
         LocalMoneyColors provides moneyColors,
         LocalCurrencySymbol provides currencySymbol,
         LocalDarkTheme provides darkTheme,
+        LocalAmountVisibility provides if (hideInAppAmounts) AmountVisibility.MASKED else AmountVisibility.VISIBLE,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

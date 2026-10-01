@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="amount_keypad_clear">清空金额</string>
+    <string name="amount_keypad_plus">加</string>
+    <string name="amount_keypad_minus">减</string>
+    <string name="amount_keypad_decimal">小数点</string>
+    <string name="lan_enable_write_title">允许电脑修改账目？</string>
+    <string name="lan_enable_write_message">配对的电脑可在本次连接中新增、修改和删除记录，每次修改都会记入 AI 修改记录。请仅在可信局域网中开启；你可以随时关闭写权限，查询连接不受影响。</string>
+    <string name="lan_write_access_hint">默认只读。开启后允许修改账目；关闭后拒绝新写入，已开始的操作会完整结束。</string>
+    <string name="lan_permission_changing">正在更新权限，等待已开始的操作结束…</string>
+    <string name="lan_permission_update_failed">写入权限更新失败，请重试</string>
+    <string name="quick_record_optional_fields">备注与时间</string>
+    <string name="settings_hide_in_app_amounts">隐藏 App 内金额</string>
+    <string name="amount_visibility_show">显示金额</string>
+    <string name="amount_visibility_hide">隐藏金额</string>
+    <string name="amount_visibility_update_failed">金额显示设置更新失败，请重试</string>
+    <string name="settings_hide_in_app_amounts_description">浏览时隐藏金额。记账和编辑时，输入金额仍可见。</string>
+    <string name="home_pending_reminder_count">%1$d 条待处理</string>
+    <string name="home_pending_balance_count">%1$d 个账户待核对</string>
+</resources>

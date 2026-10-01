@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
@@ -11,10 +12,13 @@ import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.ui.balance.BatchReconcileUiState
 import com.shihuaidexianyu.money.ui.balance.BatchReconcileViewModel
+import com.shihuaidexianyu.money.ui.balance.review
 import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlin.test.assertEquals
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -29,12 +33,16 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class BatchReconcileViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
+    private val viewModels = mutableListOf<BatchReconcileViewModel>()
 
     @Before
     fun setUp() = Dispatchers.setMain(dispatcher)
 
     @After
-    fun tearDown() = Dispatchers.resetMain()
+    fun tearDown() = runBlocking {
+        viewModels.forEach { it.viewModelScope.coroutineContext[Job]?.cancelAndJoin() }
+        Dispatchers.resetMain()
+    }
 
     @Test
     fun `confirm time is pre-filled from the clock when the draft is fresh`() = runBlocking {
@@ -47,7 +55,7 @@ class BatchReconcileViewModelTest {
     }
 
     @Test
-    fun `updateConfirmTime floors to minute and does not touch selection dirtiness`() = runBlocking {
+    fun `editing confirm time is dirty without selecting untouched accounts`() = runBlocking {
         val accountRepo = InMemoryAccountRepository()
         accountRepo.createAccount(Account(name = "现金", initialBalance = 10_000, createdAt = 1L))
         val vm = buildViewModel(accountRepo = accountRepo)
@@ -57,7 +65,8 @@ class BatchReconcileViewModelTest {
         vm.updateConfirmTime(1_000_042L) // 16m 42s → floor to 960_000
 
         assertEquals(960_000L, vm.uiState.value.confirmTimeMillis)
-        assertEquals(false, vm.uiState.value.isDirty)
+        assertEquals(true, vm.uiState.value.isDirty)
+        assertEquals(0, vm.uiState.value.selectedCount)
     }
 
     @Test
@@ -69,6 +78,8 @@ class BatchReconcileViewModelTest {
         val loaded = awaitLoaded(vm)
         assertEquals(1, loaded.accounts.size)
         vm.updateConfirmTime(1_200_000L)
+        withTimeout(5_000L) { vm.uiState.first { !it.isRecalculating } }
+        vm.setAllSelected(true)
 
         vm.saveSelected()
         val terminal = withTimeout(5_000L) {
@@ -81,8 +92,51 @@ class BatchReconcileViewModelTest {
         assertEquals(1_200_000L, records.single().occurredAt)
     }
 
-    // buildItems hops to Dispatchers.Default (a real thread), so advanceUntilIdle alone can
-    // return before the first emission lands — await the loaded state with a real timeout.
+    @Test
+    fun `actual balances are validated as a whole before any account is written`() = runBlocking {
+        val accounts = InMemoryAccountRepository()
+        val first = accounts.createAccount(Account(name = "现金", initialBalance = 10_000, createdAt = 1L))
+        val second = accounts.createAccount(Account(name = "银行卡", initialBalance = 20_000, createdAt = 1L))
+        val transactions = InMemoryTransactionRepository()
+        val vm = buildViewModel(accountRepo = accounts, txnRepo = transactions)
+        val loaded = awaitLoaded(vm)
+        assertEquals(0, loaded.selectedCount)
+        vm.updateActualBalance(first, "95.50")
+        vm.updateActualBalance(second, "20+")
+        vm.saveSelected()
+        assertEquals(0, transactions.queryAllBalanceUpdateRecords().size)
+        assertEquals(true, vm.uiState.value.accounts.single { it.accountId == second }.amountError)
+        vm.updateActualBalance(second, "-1.25")
+        assertEquals(-125L, vm.uiState.value.accounts.single { it.accountId == second }.actualBalance)
+        vm.saveSelected()
+        withTimeout(5_000L) { vm.uiState.first { it.pendingTerminal != null } }
+        val saved = transactions.queryAllBalanceUpdateRecords().associateBy { it.accountId }
+        assertEquals(9_550L, saved.getValue(first).actualBalance)
+        assertEquals(-450L, saved.getValue(first).delta)
+        assertEquals(-125L, saved.getValue(second).actualBalance)
+    }
+
+    @Test
+    fun `actual balance draft survives recreation and a stale review cannot be saved`() = runBlocking {
+        val accounts = InMemoryAccountRepository()
+        val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 10_000, createdAt = 1L))
+        val transactions = InMemoryTransactionRepository()
+        val handle = SavedStateHandle()
+        val first = buildViewModel(accountRepo = accounts, txnRepo = transactions, handle = handle)
+        awaitLoaded(first)
+        first.updateActualBalance(accountId, "95.50")
+        val recreated = buildViewModel(accountRepo = accounts, txnRepo = transactions, handle = handle)
+        val restored = awaitLoaded(recreated)
+        assertEquals("95.50", restored.accounts.single().actualBalanceText)
+        assertEquals(1, restored.selectedCount)
+        val review = restored.review()
+        recreated.updateActualBalance(accountId, "90")
+        recreated.saveSelected(review)
+        assertEquals(0, transactions.queryAllBalanceUpdateRecords().size)
+        assertEquals(null, recreated.uiState.value.pendingTerminal)
+    }
+
+    // buildItems uses a real dispatcher; await the emission rather than only the test scheduler.
     private suspend fun awaitLoaded(vm: BatchReconcileViewModel): BatchReconcileUiState =
         withTimeout(5_000L) {
             vm.uiState.first { !it.isLoading || it.loadErrorMessageRes != null }
@@ -94,6 +148,7 @@ class BatchReconcileViewModelTest {
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository(),
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
         clockProvider: ClockProvider = testClockProvider,
+        handle: SavedStateHandle = SavedStateHandle(),
     ): BatchReconcileViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
         val resolveUseCase = ResolveBalanceUpdateContextUseCase(accountRepo, txnRepo)
@@ -110,9 +165,9 @@ class BatchReconcileViewModelTest {
                 refreshUseCase,
                 clockProvider,
             ),
-            savedStateHandle = SavedStateHandle(),
+            savedStateHandle = handle,
             operationIdFactory = LedgerOperationIdFactory { testOperationId() },
             clockProvider = clockProvider,
-        )
+        ).also { viewModels += it }
     }
 }

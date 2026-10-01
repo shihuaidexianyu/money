@@ -253,6 +253,27 @@ class RecordCashFlowViewModelTest {
         assertEquals(true, draft?.timeEdited)
     }
 
+    @Test
+    fun `quick record direction survives draft restoration and is used when saving`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        accountRepo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
+        val txnRepo = InMemoryTransactionRepository()
+        val handle = SavedStateHandle()
+        val first = buildViewModel(accountRepo, txnRepo, savedStateHandle = handle)
+        advanceUntilIdle()
+        first.updateAmount("12.34")
+        first.updateDirection(CashFlowDirection.OUTFLOW)
+        assertEquals("outflow", handle.get<CashFlowFormDraft>("record_cash_flow_draft")?.direction)
+        val restored = buildViewModel(accountRepo, txnRepo, savedStateHandle = handle)
+        advanceUntilIdle()
+        assertEquals(CashFlowDirection.OUTFLOW, restored.uiState.value.direction)
+        restored.save()
+        advanceUntilIdle()
+        val record = txnRepo.queryCashFlowRecordsByAccountId(requireNotNull(restored.uiState.value.selectedAccountId)).single()
+        assertEquals("outflow", record.direction)
+        assertEquals(1_234L, record.amount)
+    }
+
     private fun buildViewModel(
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository().also { repo ->
             kotlinx.coroutines.runBlocking { repo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L)) }

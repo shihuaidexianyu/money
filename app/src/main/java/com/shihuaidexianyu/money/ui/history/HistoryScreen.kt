@@ -15,20 +15,16 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Search
@@ -54,11 +50,11 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
@@ -70,32 +66,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
-import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.EmptyKind
-import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
-import com.shihuaidexianyu.money.ui.common.MoneyListRow
-import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.MoneySelectionField
-import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.BalanceTransitionText
@@ -105,9 +92,7 @@ import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
-import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.launch
 
@@ -121,10 +106,6 @@ private enum class HistoryFilterSheet {
     DIRECTION,
 }
 
-private enum class HistoryDateField {
-    START,
-    END,
-}
 
 private const val HISTORY_PREFETCH_ITEM_DISTANCE = 8
 
@@ -157,9 +138,9 @@ fun HistoryScreen(
     onRetryLoadMore: () -> Unit = onLoadMore,
     onRetry: () -> Unit = {},
     onScrolledChange: (Boolean) -> Unit = {},
+    onApplyFilters: ((HistoryFilterState) -> Unit)? = null,
 ) {
-    var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
-    var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
+    var sheet by rememberSaveable { mutableStateOf<HistoryFilterSheet?>(null) }
     val listState = rememberLazyListState()
     var searchExpanded by rememberSaveable { mutableStateOf(state.keyword.isNotBlank()) }
     val searchVisibility = remember { MutableTransitionState(searchExpanded) }
@@ -255,242 +236,26 @@ fun HistoryScreen(
         }
     }
 
-    if (sheet == HistoryFilterSheet.ACCOUNT && lockedAccountId == null) {
-        AccountPickerDialog(
-            title = stringResource(R.string.history_filter_account),
+    if (sheet != null) {
+        HistoryFiltersSheet(
+            initialFilters = state.filterDraft(),
             accounts = state.accountOptions,
-            selectedAccountId = state.selectedAccountId,
-            noSelectionLabel = stringResource(R.string.history_all_accounts),
+            lockedAccountId = lockedAccountId,
             onDismiss = { sheet = null },
-            onPick = { accountId ->
-                onAccountChange(accountId)
-                sheet = null
-            },
-            onClearSelection = {
-                onAccountChange(null)
+            onApply = { draft ->
+                if (onApplyFilters != null) onApplyFilters(draft) else {
+                    onExcludeKeywordChange(draft.excludeKeyword)
+                    onRecordTypesChange(draft.selectedRecordTypes)
+                    onBusinessSemanticChange(draft.businessSemantic)
+                    if (lockedAccountId == null) onAccountChange(draft.selectedAccountId)
+                    onDateRangeChange(draft.dateStartAt, draft.dateEndAt)
+                    onMinAmountChange(draft.minAmountText)
+                    onMaxAmountChange(draft.maxAmountText)
+                    onAmountDirectionChange(draft.amountDirectionFilter)
+                }
                 sheet = null
             },
         )
-    }
-
-    dateField?.let { currentField ->
-        val initialSelection = when (currentField) {
-            HistoryDateField.START -> state.dateStartAt ?: state.dateEndAt
-            HistoryDateField.END -> state.dateEndAt
-                ?.let(DateTimeTextFormatter::startOfDisplayedEndDateMillis)
-                ?: state.dateStartAt
-        }
-        MoneyDatePickerDialogHost(
-            initialSelectedDateMillis = initialSelection,
-            onDismiss = { dateField = null },
-            onConfirm = { selected ->
-                when (currentField) {
-                    HistoryDateField.START -> {
-                        onDateRangeChange(
-                            selected?.let { DateTimeTextFormatter.startOfDayMillis(it) },
-                            state.dateEndAt,
-                        )
-                    }
-                    HistoryDateField.END -> {
-                        onDateRangeChange(
-                            state.dateStartAt,
-                            selected?.let { DateTimeTextFormatter.endExclusiveOfDayMillis(it) },
-                        )
-                    }
-                }
-                dateField = null
-            },
-        )
-    }
-
-    sheet?.takeIf { it != HistoryFilterSheet.ACCOUNT }?.let { current ->
-        HistoryFilterSheetContent(
-            title = when (current) {
-                HistoryFilterSheet.OVERVIEW -> stringResource(R.string.history_filter)
-                HistoryFilterSheet.TYPE -> stringResource(R.string.history_type)
-                HistoryFilterSheet.BUSINESS -> stringResource(R.string.history_business_semantic)
-                HistoryFilterSheet.DATE -> stringResource(R.string.field_date)
-                HistoryFilterSheet.AMOUNT -> stringResource(R.string.field_amount)
-                HistoryFilterSheet.DIRECTION -> stringResource(R.string.history_direction)
-                else -> ""
-            },
-            onDismiss = { sheet = null },
-        ) {
-            when (current) {
-                HistoryFilterSheet.OVERVIEW -> {
-                    MoneySingleLineField(
-                        value = state.excludeKeyword,
-                        onValueChange = onExcludeKeywordChange,
-                        label = stringResource(R.string.history_exclude_keyword),
-                    )
-                    MoneyCard(contentPadding = PaddingValues(0.dp)) {
-                        MoneyListRow(
-                            title = stringResource(R.string.history_type),
-                            trailing = typeSheetSummary(state),
-                            onClick = { sheet = HistoryFilterSheet.TYPE },
-                        )
-                        MoneySectionDivider()
-                        MoneyListRow(
-                            title = stringResource(R.string.history_business_semantic),
-                            trailing = businessSemanticLabel(state.businessSemantic),
-                            onClick = { sheet = HistoryFilterSheet.BUSINESS },
-                        )
-                        MoneySectionDivider()
-                        if (lockedAccountId == null) {
-                            MoneyListRow(
-                                title = stringResource(R.string.accounts_title),
-                                trailing = accountSheetSummary(state),
-                                onClick = { sheet = HistoryFilterSheet.ACCOUNT },
-                            )
-                            MoneySectionDivider()
-                        }
-                        MoneyListRow(
-                            title = stringResource(R.string.field_date),
-                            trailing = dateSheetSummary(state),
-                            onClick = { sheet = HistoryFilterSheet.DATE },
-                        )
-                        MoneySectionDivider()
-                        MoneyListRow(
-                            title = stringResource(R.string.field_amount),
-                            trailing = amountChipLabel(state),
-                            onClick = { sheet = HistoryFilterSheet.AMOUNT },
-                        )
-                        MoneySectionDivider()
-                        MoneyListRow(
-                            title = stringResource(R.string.history_direction),
-                            trailing = directionChipLabel(state),
-                            onClick = { sheet = HistoryFilterSheet.DIRECTION },
-                        )
-                    }
-                }
-                HistoryFilterSheet.TYPE -> {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        HistoryRecordType.entries.forEach { option ->
-                            FilterChip(
-                                selected = option in state.selectedRecordTypes,
-                                onClick = {
-                                    onRecordTypesChange(
-                                        if (option in state.selectedRecordTypes) {
-                                            state.selectedRecordTypes - option
-                                        } else {
-                                            state.selectedRecordTypes + option
-                                        },
-                                    )
-                                },
-                                label = { Text(historyTypeLabel(option)) },
-                            )
-                        }
-                    }
-                    if (state.selectedRecordTypes.isNotEmpty()) {
-                        MoneyTonalButton(onClick = { onRecordTypesChange(emptySet()) }) {
-                            Text(stringResource(R.string.history_show_all_types))
-                        }
-                    }
-                }
-                HistoryFilterSheet.BUSINESS -> {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        HistoryBusinessSemantic.entries.forEach { option ->
-                            FilterChip(
-                                selected = state.businessSemantic == option,
-                                onClick = { onBusinessSemanticChange(option) },
-                                label = { Text(businessSemanticLabel(option)) },
-                            )
-                        }
-                    }
-                }
-                HistoryFilterSheet.DATE -> {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        QuickDateChip(
-                            label = stringResource(R.string.history_today),
-                            onClick = {
-                                val todayStart = DateTimeTextFormatter.startOfDayMillis(System.currentTimeMillis())
-                                val todayEnd = DateTimeTextFormatter.endExclusiveOfDayMillis(System.currentTimeMillis())
-                                onDateRangeChange(todayStart, todayEnd)
-                            },
-                        )
-                        QuickDateChip(
-                            label = stringResource(R.string.history_last_seven_days),
-                            onClick = {
-                                val today = LocalDate.now()
-                                val start = today.minusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                                val end = DateTimeTextFormatter.endExclusiveOfDayMillis(System.currentTimeMillis())
-                                onDateRangeChange(start, end)
-                            },
-                        )
-                        QuickDateChip(
-                            label = stringResource(R.string.history_this_month),
-                            onClick = {
-                                val range = TimeRangeCalculator.currentMonthRange(
-                                    zoneId = ZoneId.systemDefault(),
-                                    nowMillis = System.currentTimeMillis(),
-                                )
-                                onDateRangeChange(range.startInclusive, range.endExclusive)
-                            },
-                        )
-                        QuickDateChip(
-                            label = stringResource(R.string.action_clear),
-                            onClick = { onDateRangeChange(null, null) },
-                        )
-                    }
-                    MoneySelectionField(
-                        label = stringResource(R.string.history_start_date),
-                        value = state.dateStartAt?.let(DateTimeTextFormatter::formatDateOnly)
-                            ?: stringResource(R.string.history_unlimited),
-                        onClick = { dateField = HistoryDateField.START },
-                    )
-                    MoneySelectionField(
-                        label = stringResource(R.string.history_end_date),
-                        value = historyEndDateFieldText(
-                            state.dateEndAt,
-                            unlimitedLabel = stringResource(R.string.history_unlimited),
-                        ),
-                        onClick = { dateField = HistoryDateField.END },
-                    )
-                }
-                HistoryFilterSheet.AMOUNT -> {
-                    MoneySingleLineField(
-                        value = state.minAmountText,
-                        onValueChange = onMinAmountChange,
-                        label = stringResource(R.string.history_min_amount),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = state.minAmountErrorRes != null,
-                        supportingText = state.minAmountErrorRes?.let { stringResource(it) },
-                    )
-                    MoneySingleLineField(
-                        value = state.maxAmountText,
-                        onValueChange = onMaxAmountChange,
-                        label = stringResource(R.string.history_max_amount),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = state.maxAmountErrorRes != null,
-                        supportingText = state.maxAmountErrorRes?.let { stringResource(it) },
-                    )
-                }
-                HistoryFilterSheet.DIRECTION -> {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        AmountDirectionFilter.entries.forEach { option ->
-                            FilterChip(
-                                selected = state.amountDirectionFilter == option,
-                                onClick = { onAmountDirectionChange(option) },
-                                label = { Text(stringResource(option.labelRes)) },
-                            )
-                        }
-                    }
-                }
-                else -> Unit
-            }
-        }
     }
 
     val recordGroups = state.records.groupBy { DateTimeTextFormatter.formatDateOnly(it.occurredAt) }
@@ -989,27 +754,6 @@ private fun ActiveFilterChips(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-@Composable
-private fun HistoryFilterSheetContent(
-    title: String,
-    onDismiss: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            MoneySectionHeader(title = title)
-            content()
-        }
-    }
-}
 
 @Composable
 private fun historyRecordAmount(record: HistoryRecordUiModel, settings: PortableSettings): String =
@@ -1215,7 +959,7 @@ private fun directionChipLabel(state: HistoryUiState): String {
 }
 
 @Composable
-private fun businessSemanticLabel(semantic: HistoryBusinessSemantic): String = stringResource(
+internal fun businessSemanticLabel(semantic: HistoryBusinessSemantic): String = stringResource(
     when (semantic) {
         HistoryBusinessSemantic.ALL -> R.string.history_business_all
         HistoryBusinessSemantic.DAILY_EXPENSE -> R.string.history_daily_expense
@@ -1237,7 +981,7 @@ private fun typeSheetSummary(state: HistoryUiState): String = when (state.select
 }
 
 @Composable
-private fun historyTypeLabel(type: HistoryRecordType): String = when (type) {
+internal fun historyTypeLabel(type: HistoryRecordType): String = when (type) {
     HistoryRecordType.CASH_FLOW -> stringResource(R.string.history_cash_flow)
     HistoryRecordType.TRANSFER -> stringResource(R.string.history_transfer)
     HistoryRecordType.BALANCE_UPDATE -> stringResource(R.string.history_balance_update)
@@ -1291,16 +1035,4 @@ private fun historyKindLabel(record: HistoryRecordUiModel): String {
         )
         HistoryRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
     }
-}
-
-@Composable
-private fun QuickDateChip(
-    label: String,
-    onClick: () -> Unit,
-) {
-    FilterChip(
-        selected = false,
-        onClick = onClick,
-        label = { Text(label) },
-    )
 }

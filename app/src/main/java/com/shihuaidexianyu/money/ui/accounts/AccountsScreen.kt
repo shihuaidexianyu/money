@@ -1,12 +1,14 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +27,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -49,7 +53,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
-import com.shihuaidexianyu.money.ui.common.formatSharePercent
+import com.shihuaidexianyu.money.ui.common.MoneyAmountText
 
 data class AccountGroups(
     val normal: List<AccountListItemUiModel>,
@@ -327,7 +331,7 @@ fun AccountsScreen(
 }
 
 @Composable
-private fun AccountRow(
+internal fun AccountRow(
     account: AccountListItemUiModel,
     currencySettings: PortableSettings,
     totalBalance: Long,
@@ -351,6 +355,9 @@ private fun AccountRow(
         MaterialTheme.typography.titleMedium
     }
     val balanceSemantics = stringResource(R.string.account_balance_semantics_format, balanceText)
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val amountWidth = textMeasurer.measure(balanceText, style = balanceStyle, softWrap = false).size.width
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -374,10 +381,7 @@ private fun AccountRow(
             size = 40.dp,
             iconSize = 22.dp,
         )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+        val nameContent: @Composable () -> Unit = {
             Text(
                 text = account.name,
                 style = MaterialTheme.typography.titleMedium,
@@ -398,9 +402,10 @@ private fun AccountRow(
                 )
             }
         }
-        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-            Text(
+        val amountContent: @Composable (Modifier) -> Unit = { amountModifier ->
+            MoneyAmountText(
                 text = balanceText,
+                modifier = amountModifier,
                 style = balanceStyle,
                 color = if (account.isClosed) {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -408,7 +413,25 @@ private fun AccountRow(
                     MaterialTheme.colorScheme.onBackground
                 },
             )
-
+        }
+        BoxWithConstraints(Modifier.weight(1f)) {
+            val stackAmount = density.fontScale > 1.3f || amountWidth > with(density) { maxWidth.toPx() } * 0.55f
+            if (stackAmount) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    nameContent()
+                    amountContent(Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        nameContent()
+                    }
+                    amountContent(Modifier.width(with(density) { amountWidth.toDp() } + 2.dp))
+                }
+            }
         }
     }
 }

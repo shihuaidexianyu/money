@@ -51,7 +51,7 @@ fun EditBalanceUpdateScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val deletedMessage = stringResource(R.string.ledger_record_deleted)
     val undoLabel = stringResource(R.string.action_undo)

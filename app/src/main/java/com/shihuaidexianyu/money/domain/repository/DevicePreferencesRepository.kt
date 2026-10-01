@@ -16,6 +16,7 @@ interface DevicePreferencesRepository {
     suspend fun enableBiometricLockWithPrivacyDefaults()
     suspend fun updateRelockDelay(delay: AppRelockDelay)
     suspend fun updateHideNotificationAmounts(enabled: Boolean)
+    suspend fun updateHideInAppAmounts(enabled: Boolean)
     suspend fun updateHideRecentTasks(enabled: Boolean)
     suspend fun updateNotificationPermissionRequested(requested: Boolean)
     suspend fun updateHistoryFilters(filters: HistoryFilters)

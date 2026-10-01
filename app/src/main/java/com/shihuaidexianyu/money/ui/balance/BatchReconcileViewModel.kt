@@ -23,6 +23,8 @@ import com.shihuaidexianyu.money.ui.common.PENDING_FORM_TERMINAL_KEY
 import com.shihuaidexianyu.money.ui.common.pendingFormTerminal
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -32,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -40,10 +43,19 @@ data class BatchReconcileAccountUiModel(
     val name: String,
     val systemBalance: Long,
     val lastBalanceUpdateAt: Long?,
-    val isSelected: Boolean = true,
+    val isSelected: Boolean = false,
     val isFailed: Boolean = false,
     val isInvestment: Boolean = false,
-)
+    val actualBalanceText: String = "",
+    val amountError: Boolean = false,
+    val isInputLocked: Boolean = false,
+) {
+    val actualBalance: Long? get() = if (actualBalanceText.isBlank()) systemBalance
+        else AmountInputParser.parseSignedToMinor(actualBalanceText)
+    val delta: Long? get() = actualBalance?.let { actual ->
+        runCatching { Math.subtractExact(actual, systemBalance) }.getOrNull()
+    }
+}
 
 data class BatchReconcileUiState(
     val isLoading: Boolean = true,
@@ -54,10 +66,22 @@ data class BatchReconcileUiState(
     val isSaving: Boolean = false,
     val pendingTerminal: PendingFormTerminal? = null,
     val confirmTimeMillis: Long? = null,
+    val isRecalculating: Boolean = false,
+    val isTimeLocked: Boolean = false,
 ) {
     val selectedCount: Int
         get() = accounts.count { it.isSelected }
 }
+
+data class BatchReconcileReview(
+    val timestamp: Long?,
+    val balances: Map<Long, Pair<Long, Long>>,
+) : java.io.Serializable {
+    val changedCount: Int get() = balances.count { it.value.first != it.value.second }
+}
+
+fun BatchReconcileUiState.review() = BatchReconcileReview(confirmTimeMillis,
+    accounts.filter { it.isSelected }.associate { it.accountId to (it.systemBalance to requireNotNull(it.actualBalance)) })
 
 sealed interface BatchReconcileEffect {
     data class ShowMessage(
@@ -93,6 +117,7 @@ class BatchReconcileViewModel(
     val effectFlow = effects.asSharedFlow()
     private var saveInFlight = false
     private var observationJob: Job? = null
+    private val balanceTime = MutableStateFlow(draft.occurredAtMillis ?: DateTimeTextFormatter.floorToMinute(clockProvider.nowMillis()))
 
     init {
         observeAccounts()
@@ -112,16 +137,22 @@ class BatchReconcileViewModel(
                     accountReminderSettingsRepository.observeReminderConfigs(),
                     portableSettingsRepository.observe(),
                     transactionRepository.observeChangeVersion(),
-                ) { accounts, reminderConfigs, settings, _ ->
-                    Triple(accounts, reminderConfigs, settings)
-                }.collect { (accounts, reminderConfigs, settings) ->
+                    balanceTime,
+                ) { accounts, reminderConfigs, settings, _, timestamp ->
+                    Triple(accounts, reminderConfigs, settings) to timestamp
+                }.collectLatest { (inputs, timestamp) ->
+                    _uiState.value = _uiState.value.copy(isRecalculating = true)
+                    val (accounts, reminderConfigs, settings) = inputs
+                    val items = buildItems(accounts, reminderConfigs, timestamp)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         settings = settings,
-                        accounts = buildItems(accounts, reminderConfigs),
+                        accounts = items,
                         isDirty = draft.isDirty,
                         loadErrorMessageRes = null,
-                        confirmTimeMillis = draft.occurredAtMillis,
+                        confirmTimeMillis = timestamp,
+                        isRecalculating = false,
+                        isTimeLocked = draft.operationIds.isNotEmpty(),
                     )
                 }
             } catch (e: CancellationException) {
@@ -137,7 +168,7 @@ class BatchReconcileViewModel(
     }
 
     fun toggleAccount(accountId: Long) {
-        if (_uiState.value.isSaving) return
+        if (saveInFlight || _uiState.value.pendingTerminal != null) return
         val next = _uiState.value.copy(
             accounts = _uiState.value.accounts.map { account ->
                 if (account.accountId == accountId) {
@@ -160,7 +191,7 @@ class BatchReconcileViewModel(
     }
 
     fun setAllSelected(selected: Boolean) {
-        if (_uiState.value.isSaving) return
+        if (saveInFlight || _uiState.value.pendingTerminal != null) return
         val next = _uiState.value.copy(
             accounts = _uiState.value.accounts.map { it.copy(isSelected = selected, isFailed = false) },
             isDirty = true,
@@ -177,22 +208,50 @@ class BatchReconcileViewModel(
     }
 
     fun updateConfirmTime(value: Long) {
-        if (_uiState.value.isSaving) return
+        if (saveInFlight || _uiState.value.pendingTerminal != null || draft.operationIds.isNotEmpty()) return
         val occurredAt = DateTimeTextFormatter.floorToMinute(value)
-        // Dirtiness intentionally untouched: it tracks the selection set, and flipping it here
-        // would make buildItems read the empty selectedAccountIds as "user deselected all".
-        persistDraft(draft.copy(occurredAtMillis = occurredAt))
-        _uiState.value = _uiState.value.copy(confirmTimeMillis = occurredAt)
+        if (occurredAt == draft.occurredAtMillis) return
+        persistDraft(draft.copy(occurredAtMillis = occurredAt, timeEdited = true, isDirty = true))
+        _uiState.value = _uiState.value.copy(confirmTimeMillis = occurredAt, isDirty = true, isRecalculating = true)
+        balanceTime.value = occurredAt
     }
 
-    fun saveSelected() {
+    fun updateActualBalance(accountId: Long, value: String) {
+        if (saveInFlight || _uiState.value.pendingTerminal != null || accountId in draft.actualBalances) return
+        val next = _uiState.value.accounts.map {
+            if (it.accountId == accountId) it.copy(actualBalanceText = value, amountError = false, isSelected = true) else it
+        }
+        persistDraft(draft.copy(actualBalanceTexts = draft.actualBalanceTexts + (accountId to value),
+            selectedAccountIds = next.filter { it.isSelected }.map { it.accountId }, isDirty = true))
+        _uiState.value = _uiState.value.copy(accounts = next, isDirty = true)
+    }
+
+    fun saveSelected(review: BatchReconcileReview? = null) {
         if (saveInFlight || _uiState.value.pendingTerminal != null) return
+        if (_uiState.value.isRecalculating || _uiState.value.isLoading) {
+            if (review != null) effects.tryEmit(BatchReconcileEffect.ShowMessage("", messageRes = R.string.batch_reconcile_review_changed))
+            return
+        }
         saveInFlight = true
         val state = _uiState.value
         val selectedAccounts = state.accounts.filter { it.isSelected }
+        if (review != null && (state.confirmTimeMillis != review.timestamp ||
+                selectedAccounts.associate { it.accountId to (it.systemBalance to it.actualBalance) } != review.balances)) {
+            saveInFlight = false
+            effects.tryEmit(BatchReconcileEffect.ShowMessage("", messageRes = R.string.batch_reconcile_review_changed))
+            return
+        }
         if (selectedAccounts.isEmpty()) {
             saveInFlight = false
             effects.tryEmit(BatchReconcileEffect.ShowMessage("", messageRes = R.string.batch_select_at_least_one))
+            return
+        }
+        if (selectedAccounts.any { it.actualBalance == null || it.delta == null }) {
+            saveInFlight = false
+            _uiState.value = state.copy(accounts = state.accounts.map {
+                it.copy(amountError = it.isSelected && (it.actualBalance == null || it.delta == null))
+            })
+            effects.tryEmit(BatchReconcileEffect.ShowMessage("", messageRes = R.string.batch_invalid_amounts))
             return
         }
 
@@ -209,13 +268,14 @@ class BatchReconcileViewModel(
                 runCatching {
                     updateBalanceUseCase(
                         accountId = account.accountId,
-                        actualBalance = actualBalanceFor(account.accountId, account.systemBalance),
+                        actualBalance = actualBalanceFor(account.accountId, requireNotNull(account.actualBalance)),
                         occurredAt = occurredAt,
                         operationId = operationIdFor(account.accountId),
                     )
                 }.onSuccess {
                     savedCount += 1
                 }.onFailure { throwable ->
+                    if (throwable is CancellationException) throw throwable
                     failedIds += account.accountId
                     runCatching {
                         android.util.Log.e(
@@ -241,6 +301,7 @@ class BatchReconcileViewModel(
                 saveInFlight = false
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
+                    isTimeLocked = true,
                     accounts = _uiState.value.accounts
                         .filterNot { it.accountId !in failedIds && it.accountId in selectedIds }
                         .map { it.copy(isFailed = it.accountId in failedIds, isSelected = it.accountId in failedIds) },
@@ -304,6 +365,7 @@ class BatchReconcileViewModel(
     private suspend fun buildItems(
         accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
+        timestamp: Long,
     ): List<BatchReconcileAccountUiModel> = withContext(Dispatchers.Default) {
         val staleAccounts = accounts.filter { account ->
             AccountStatusUtils.isStale(
@@ -311,7 +373,7 @@ class BatchReconcileViewModel(
                 reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
             )
         }
-        val balances = calculateAccountBalancesUseCase(staleAccounts)
+        val balances = calculateAccountBalancesUseCase(staleAccounts, timestamp)
         // Rebuilds are triggered by every ledger change — including the partial-save's own
         // successful writes. Carry the failure markers over, or the rebuild that follows a
         // partial failure erases them and the user sees "部分账户保存失败" with nothing marked.
@@ -324,9 +386,13 @@ class BatchReconcileViewModel(
                 name = account.name,
                 systemBalance = balances[account.id] ?: account.initialBalance,
                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
-                isSelected = !draft.isDirty || account.id in draft.selectedAccountIds,
+                isSelected = account.id in draft.selectedAccountIds,
                 isFailed = account.id in failedIds,
                 isInvestment = account.kind == AccountKind.INVESTMENT,
+                actualBalanceText = draft.actualBalances[account.id]?.let(AmountFormatter::formatPlain)
+                    ?: draft.actualBalanceTexts[account.id].orEmpty(),
+                amountError = _uiState.value.accounts.firstOrNull { it.accountId == account.id }?.amountError == true,
+                isInputLocked = account.id in draft.actualBalances,
             )
         }
     }

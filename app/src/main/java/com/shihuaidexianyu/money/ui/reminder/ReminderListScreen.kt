@@ -1,5 +1,7 @@
 package com.shihuaidexianyu.money.ui.reminder
 
+import com.shihuaidexianyu.money.ui.common.maskInAppAmount
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -345,7 +347,7 @@ private fun BalanceReminderRow(
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(
-                    text = reminder.currentBalanceFormatted,
+                    text = maskInAppAmount(reminder.currentBalanceFormatted),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                 )
@@ -430,7 +432,7 @@ private fun ReminderListItem(
                     }
                     withStyle(SpanStyle(color = if (isInflow) moneyColors.income else moneyColors.expense)) {
                         append(if (isInflow) "+" else "-")
-                        append(reminder.amountFormatted)
+                        append(maskInAppAmount(reminder.amountFormatted))
                     }
                     append(" · ")
                     append(periodDescription)

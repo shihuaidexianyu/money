@@ -64,7 +64,7 @@ fun EditTransferScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val fromAccount = state.accounts.firstOrNull { it.id == state.fromAccountId }
     val toAccount = state.accounts.firstOrNull { it.id == state.toAccountId }
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val deletedMessage = stringResource(R.string.ledger_record_deleted)
     val undoLabel = stringResource(R.string.action_undo)

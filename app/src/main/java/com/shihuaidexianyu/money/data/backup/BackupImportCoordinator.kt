@@ -24,6 +24,7 @@ data class StagedImportPreview(
 data class ImportHistoryWithRollbackEligibility(
     val receipts: List<ImportReceipt>,
     val rollbackEligibleReceiptId: String?,
+    val availableSafetyReceiptIds: Set<String> = emptySet(),
 )
 
 class BackupImportCoordinator(
@@ -91,6 +92,13 @@ class BackupImportCoordinator(
 
     fun history(): List<ImportReceipt> = receiptStore.history()
 
+    /** Read-only recovery export; never bypasses the conditional rollback guard. */
+    fun readSafetySnapshot(receiptId: String): MoneyBackupSnapshot {
+        val receipt = requireNotNull(receiptStore.findCommitted(receiptId)) { "找不到已完成的导入记录" }
+        val raw = safetyStore.readVerified(receipt.safetySnapshotFileName, receipt.safetySnapshotSha256)
+        return BackupJsonCodec.decode(raw).also { validator(it) }
+    }
+
     suspend fun historyWithRollbackEligibility(): ImportHistoryWithRollbackEligibility {
         val receipts = receiptStore.history()
         if (receipts.isEmpty()) {
@@ -101,9 +109,11 @@ class BackupImportCoordinator(
         validator(current)
         val currentContentSha256 = BackupContentHasher.sha256(current)
         val latest = receipts.first()
+        val safetyFiles = safetyStore.list().mapTo(mutableSetOf()) { it.fileName }
         return ImportHistoryWithRollbackEligibility(
             receipts = receipts,
             rollbackEligibleReceiptId = latest.id.takeIf { latest.targetContentSha256 == currentContentSha256 },
+            availableSafetyReceiptIds = receipts.filter { it.safetySnapshotFileName in safetyFiles }.mapTo(mutableSetOf()) { it.id },
         )
     }
 

@@ -41,7 +41,6 @@ class MoneyLanService : Service() {
     private var server: MoneyLanServer? = null
     private var expiryJob: Job? = null
     private var manualStopRequested = false
-    private var lastAllowWrite = true
     private var nsdManager: NsdManager? = null
     private var nsdRegistrationListener: NsdManager.RegistrationListener? = null
 
@@ -70,7 +69,7 @@ class MoneyLanService : Service() {
                 getSystemService(NotificationManager::class.java).cancel(STOPPED_NOTIFICATION_ID)
                 stopSelf()
             }
-            ACTION_START -> startServer(intent.getBooleanExtra(EXTRA_ALLOW_WRITE, true))
+            ACTION_START -> startServer(intent.getBooleanExtra(EXTRA_ALLOW_WRITE, false))
             ACTION_APPROVE_PAIR -> intent.getStringExtra(EXTRA_PAIR_REQUEST_ID)?.let { requestId ->
                 server?.approvePairing(requestId)
             }
@@ -85,6 +84,7 @@ class MoneyLanService : Service() {
         expiryJob?.cancel()
         unregisterDiscovery()
         MoneyLanRuntime.pairingResponder = null
+        MoneyLanRuntime.writeAccessController = null
         val wasRunning = server != null
         server?.close()
         server = null
@@ -124,7 +124,6 @@ class MoneyLanService : Service() {
     private fun startServer(allowWrite: Boolean) {
         if (server != null) return
         manualStopRequested = false
-        lastAllowWrite = allowWrite
         MoneyLanRuntime.publish(
             MoneyLanRuntimeState(status = MoneyLanServerStatus.STARTING, allowWrite = allowWrite),
         )
@@ -146,6 +145,9 @@ class MoneyLanService : Service() {
                 it.start()
             }
         }.onSuccess { started ->
+            MoneyLanRuntime.writeAccessController = MoneyLanWriteAccessController { enabled ->
+                started.setAllowWrite(enabled)
+            }
             MoneyLanRuntime.pairingResponder = object : MoneyLanPairingResponder {
                 override fun approve(pairRequestId: String): Boolean = started.approvePairing(pairRequestId)
                 override fun deny(pairRequestId: String): Boolean = started.denyPairing(pairRequestId)
@@ -274,7 +276,7 @@ class MoneyLanService : Service() {
             REQUEST_RESTART,
             Intent(this, MoneyLanService::class.java)
                 .setAction(ACTION_START)
-                .putExtra(EXTRA_ALLOW_WRITE, lastAllowWrite),
+                .putExtra(EXTRA_ALLOW_WRITE, false),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         getSystemService(NotificationManager::class.java).notify(

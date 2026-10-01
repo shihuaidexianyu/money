@@ -16,11 +16,11 @@ val SETTINGS_SECTION_CONTRACTS: List<SettingsSectionContract> = listOf(
         R.string.settings_section_display,
         listOf("theme", "amount_color", "currency_symbol"),
     ),
-    SettingsSectionContract(R.string.settings_section_privacy, listOf("biometric", "relock", "hide_recents", "hide_notification")),
+    SettingsSectionContract(R.string.settings_section_privacy, listOf("biometric", "relock", "hide_recents", "hide_notification", "hide_in_app")),
     SettingsSectionContract(R.string.settings_section_notifications, listOf("permission_channels", "reminder_management", "account_reminder_config")),
     SettingsSectionContract(
         R.string.settings_section_data,
-        listOf("lan_ai", "export_json", "import_preview", "receipt_rollback"),
+        listOf("lan_ai", "export_json", "share_json", "pending_export", "import_preview", "receipt_rollback"),
     ),
     SettingsSectionContract(R.string.settings_section_about, listOf("version", "offline_data_safety")),
 )
@@ -28,14 +28,16 @@ val SETTINGS_SECTION_CONTRACTS: List<SettingsSectionContract> = listOf(
 data class ImportReceiptHistoryRow(
     val receipt: ImportReceipt,
     val canRollback: Boolean,
+    val canExportSafety: Boolean = false,
 )
 
 fun importReceiptHistoryRows(
     receipts: List<ImportReceipt>,
     rollbackEligibleReceiptId: String?,
+    availableSafetyReceiptIds: Set<String> = emptySet(),
 ): List<ImportReceiptHistoryRow> = receipts
-    .filter { it.id == rollbackEligibleReceiptId }
-    .map { ImportReceiptHistoryRow(receipt = it, canRollback = true) }
+    .map { ImportReceiptHistoryRow(receipt = it, canRollback = it.id == rollbackEligibleReceiptId,
+        canExportSafety = it.id in availableSafetyReceiptIds) }
 
 enum class NotificationSettingsAction {
     REQUEST_PERMISSION,

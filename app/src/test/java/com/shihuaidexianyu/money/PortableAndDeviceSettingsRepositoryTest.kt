@@ -21,6 +21,19 @@ import kotlin.test.assertEquals
 
 class PortableAndDeviceSettingsRepositoryTest {
     @Test
+    fun `in app masking persists locally and does not change notification privacy`() = runBlocking {
+        val repository = InMemoryDevicePreferencesRepository()
+        repository.updateHideInAppAmounts(true)
+        assertEquals(true, repository.query().hideInAppAmounts)
+        assertEquals(false, repository.query().hideNotificationAmounts)
+        val preferences = mutablePreferencesOf()
+        DevicePreferencesMapper.write(preferences, repository.query())
+        assertEquals(repository.query(), DevicePreferencesMapper.fromPreferences(preferences))
+        assertEquals(false, DevicePreferencesMapper.fromPreferences(mutablePreferencesOf()).hideInAppAmounts)
+        repository.updateHideInAppAmounts(false)
+        assertEquals(false, repository.query().hideInAppAmounts)
+    }
+    @Test
     fun `portable settings normalize currency and persist amount colors`() = runBlocking {
         val repository = InMemoryPortableSettingsRepository()
 
@@ -45,6 +58,7 @@ class PortableAndDeviceSettingsRepositoryTest {
             biometricLock = true,
             relockDelay = AppRelockDelay.FIVE_MINUTES,
             hideNotificationAmounts = true,
+            hideInAppAmounts = true,
             hideRecentTasks = true,
             notificationPermissionRequested = true,
             historyFilters = HistoryFilters(

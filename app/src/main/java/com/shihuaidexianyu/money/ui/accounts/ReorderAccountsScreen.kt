@@ -111,7 +111,7 @@ fun ReorderAccountsContent(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState? = null,
 ) {
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
     BackHandler(enabled = state.isSaving) { }
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current

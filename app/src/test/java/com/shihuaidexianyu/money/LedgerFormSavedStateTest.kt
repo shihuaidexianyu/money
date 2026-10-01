@@ -340,6 +340,7 @@ class LedgerFormSavedStateTest {
             attempts += 1
         }
         assertEquals(setOf(firstAccountId, secondAccountId), first.uiState.value.accounts.map { it.accountId }.toSet())
+        first.setAllSelected(true)
         first.saveSelected()
         first.saveSelected()
         advanceUntilIdle()
@@ -368,6 +369,10 @@ class LedgerFormSavedStateTest {
         }
         assertEquals(listOf(secondAccountId), recreated.uiState.value.accounts.map { it.accountId })
         assertEquals(250L, recreated.uiState.value.accounts.single().systemBalance)
+        val retryTimestamp = recreated.uiState.value.confirmTimeMillis
+        assertTrue(recreated.uiState.value.isTimeLocked)
+        recreated.updateConfirmTime(clock.now)
+        assertEquals(retryTimestamp, recreated.uiState.value.confirmTimeMillis)
         recreated.saveSelected()
         advanceUntilIdle()
 
@@ -410,8 +415,8 @@ class LedgerFormSavedStateTest {
             attempts += 1
         }
 
-        assertEquals(false, recreated.uiState.value.accounts.single { it.accountId == firstId }.isSelected)
-        assertEquals(true, recreated.uiState.value.accounts.single { it.accountId == secondId }.isSelected)
+        assertEquals(true, recreated.uiState.value.accounts.single { it.accountId == firstId }.isSelected)
+        assertEquals(false, recreated.uiState.value.accounts.single { it.accountId == secondId }.isSelected)
         assertTrue(recreated.uiState.value.isDirty)
     }
 
@@ -432,6 +437,7 @@ class LedgerFormSavedStateTest {
             attempts += 1
         }
 
+        first.setAllSelected(true)
         first.saveSelected()
         advanceUntilIdle()
         val terminal = requireNotNull(first.uiState.value.pendingTerminal)

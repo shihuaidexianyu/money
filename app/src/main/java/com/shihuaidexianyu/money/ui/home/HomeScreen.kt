@@ -1,6 +1,9 @@
 package com.shihuaidexianyu.money.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +19,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
@@ -40,6 +46,10 @@ import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.AmountVisibility
+import com.shihuaidexianyu.money.ui.common.LocalAmountVisibility
+import com.shihuaidexianyu.money.ui.common.MoneyAmountText
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
@@ -72,6 +82,7 @@ fun HomeScreen(
     onCreateAccount: () -> Unit = {},
     onRetry: () -> Unit = {},
     onSelectPeriod: (DashboardPeriod) -> Unit = {},
+    onToggleAmountVisibility: (() -> Unit)? = null,
 ) {
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val homeLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
@@ -153,6 +164,11 @@ fun HomeScreen(
                             investmentAssets = renderedState.investmentAssets,
                             periodInvestmentPnl = renderedState.periodInvestmentPnl,
                             onSelectPeriod = onSelectPeriod,
+                            onToggleAmountVisibility = onToggleAmountVisibility,
+                            dueCount = renderedState.dueReminders.size,
+                            staleCount = renderedState.staleAccountCount,
+                            onOpenReminders = onAllRemindersClick,
+                            onManageAccounts = onManageAccounts,
                         )
                     }
                     if (renderedState.accountOptions.isEmpty()) {
@@ -285,18 +301,38 @@ private fun PeriodOverviewBlock(
     investmentAssets: Long,
     periodInvestmentPnl: Long,
     onSelectPeriod: (DashboardPeriod) -> Unit,
+    onToggleAmountVisibility: (() -> Unit)?,
+    dueCount: Int,
+    staleCount: Int,
+    onOpenReminders: () -> Unit,
+    onManageAccounts: () -> Unit,
 ) {
     val colors = LocalMoneyColors.current
     Column(verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingXxl)) {
         Column(verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingMd)) {
-            Text(
-                text = stringResource(R.string.home_current_net_assets),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.home_current_net_assets),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                onToggleAmountVisibility?.let { toggle ->
+                    val masked = LocalAmountVisibility.current == AmountVisibility.MASKED
+                    IconButton(onClick = toggle) {
+                        Icon(
+                            if (masked) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                            contentDescription = stringResource(
+                                if (masked) R.string.amount_visibility_show else R.string.amount_visibility_hide,
+                            ),
+                        )
+                    }
+                }
+            }
             val amount = formatInAppAmount(totalAssets, settings)
-            Text(
+            MoneyAmountText(
                 text = amount,
+                modifier = Modifier.fillMaxWidth(),
                 style = if (amount.length > 12) MaterialTheme.typography.displayMedium
                     else MaterialTheme.typography.displayLarge,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -316,6 +352,18 @@ private fun PeriodOverviewBlock(
                         amount = formatInAppAmount(investmentAssets, settings),
                         modifier = Modifier.weight(1f),
                     )
+                }
+            }
+            if (dueCount > 0 || staleCount > 0) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (dueCount > 0) item {
+                        AssistChip(onClick = onOpenReminders,
+                            label = { Text(stringResource(R.string.home_pending_reminder_count, dueCount)) })
+                    }
+                    if (staleCount > 0) item {
+                        AssistChip(onClick = onManageAccounts,
+                            label = { Text(stringResource(R.string.home_pending_balance_count, staleCount)) })
+                    }
                 }
             }
         }
@@ -358,12 +406,20 @@ private fun PeriodOverviewBlock(
 private fun AssetAmount(label: String, amount: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingXs)) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(amount, style = MaterialTheme.typography.titleMedium)
+        Text(amount, modifier = Modifier.horizontalScroll(rememberScrollState()),
+            style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
     }
 }
 
 @Composable
 private fun PeriodAmountRow(label: String, value: String, color: Color) {
+    if (LocalDensity.current.fontScale > 1.3f) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            MoneyAmountText(value, Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleLarge, color = color)
+        }
+        return
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingLg),
@@ -375,7 +431,7 @@ private fun PeriodAmountRow(label: String, value: String, color: Color) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(value, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge,
+        MoneyAmountText(value, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge,
             color = color, textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }

@@ -4,12 +4,9 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
@@ -17,29 +14,18 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.FactCheck
-import androidx.compose.material.icons.automirrored.rounded.TrendingDown
-import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
@@ -59,8 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -82,8 +66,6 @@ import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.rootSnackbarDuration
 import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
-import com.shihuaidexianyu.money.ui.theme.LocalDarkTheme
-import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -101,57 +83,45 @@ private fun isTopLevelTransition(initial: String?, target: String?): Boolean {
     return initial in topLevelRouteSet && target in topLevelRouteSet
 }
 
-// === Top-level tab transitions: soft fade + scale ===
+// Top-level destinations are peers; a short fade avoids implying a change in depth.
 private fun topLevelEnterTransition(): EnterTransition {
-    return fadeIn(animationSpec = tween(280)) + scaleIn(
-        initialScale = 0.96f,
-        animationSpec = tween(280),
-    )
+    return fadeIn(animationSpec = tween(160))
 }
 
 private fun topLevelExitTransition(): ExitTransition {
-    return fadeOut(animationSpec = tween(200)) + scaleOut(
-        targetScale = 1.02f,
-        animationSpec = tween(200),
-    )
+    return fadeOut(animationSpec = tween(120))
 }
 
 // === Sub-page enter: slide in from right + fade ===
 private fun subPageEnterTransition(): EnterTransition {
     return slideInHorizontally(
-        initialOffsetX = { fullWidth -> (fullWidth * 0.25f).toInt() },
-        animationSpec = tween(300),
-    ) + fadeIn(animationSpec = tween(300))
+        initialOffsetX = { fullWidth -> (fullWidth * 0.12f).toInt() },
+        animationSpec = tween(240),
+    ) + fadeIn(animationSpec = tween(180))
 }
 
-// === Sub-page exit (forward): slide out to left + fade + slight scale ===
+// Forward and backward transitions use reciprocal offsets, without whole-page scaling.
 private fun subPageExitTransition(): ExitTransition {
     return slideOutHorizontally(
-        targetOffsetX = { fullWidth -> -(fullWidth * 0.10f).toInt() },
-        animationSpec = tween(300),
-    ) + fadeOut(animationSpec = tween(200)) + scaleOut(
-        targetScale = 0.98f,
-        animationSpec = tween(300),
-    )
+        targetOffsetX = { fullWidth -> -(fullWidth * 0.04f).toInt() },
+        animationSpec = tween(240),
+    ) + fadeOut(animationSpec = tween(160))
 }
 
 // === Pop enter: slide in from left + fade ===
 private fun popEnterTransition(): EnterTransition {
     return slideInHorizontally(
-        initialOffsetX = { fullWidth -> -(fullWidth * 0.10f).toInt() },
-        animationSpec = tween(300),
-    ) + fadeIn(animationSpec = tween(300)) + scaleIn(
-        initialScale = 1.02f,
-        animationSpec = tween(300),
-    )
+        initialOffsetX = { fullWidth -> -(fullWidth * 0.04f).toInt() },
+        animationSpec = tween(240),
+    ) + fadeIn(animationSpec = tween(180))
 }
 
 // === Pop exit: slide out to right + fade ===
 private fun popExitTransition(): ExitTransition {
     return slideOutHorizontally(
-        targetOffsetX = { fullWidth -> (fullWidth * 0.25f).toInt() },
-        animationSpec = tween(300),
-    ) + fadeOut(animationSpec = tween(250))
+        targetOffsetX = { fullWidth -> (fullWidth * 0.12f).toInt() },
+        animationSpec = tween(240),
+    ) + fadeOut(animationSpec = tween(160))
 }
 
 private suspend fun resolveNotificationDestination(
@@ -228,7 +198,6 @@ fun MoneyNavGraph(
     val openAccountAvailability by openAccountAvailabilityFlow.collectAsStateWithLifecycle(
         initialValue = OpenAccountAvailability.Loading,
     )
-    var fabExpanded by remember { mutableStateOf(false) }
     var historyScrolled by remember { mutableStateOf(false) }
     val createFirstAccountMessage = stringResource(R.string.ledger_fab_create_first_message)
     val createAccountLabel = stringResource(R.string.accounts_create)
@@ -243,7 +212,6 @@ fun MoneyNavGraph(
 
     fun handleFabAction(action: LedgerFabAction) {
         val availability = openAccountAvailability as? OpenAccountAvailability.Data ?: return
-        fabExpanded = false
         when (val decision = resolveLedgerFabAction(action, availability)) {
             LedgerFabDecision.CreateFirstAccount -> rootSnackbarQueue.enqueue(
                 message = createFirstAccountMessage,
@@ -265,13 +233,6 @@ fun MoneyNavGraph(
                 MoneyDestination.updateBalanceRoute(accountId = 0L),
             )
         }
-    }
-
-    if (fabExpanded) {
-        LedgerActionDialog(
-            onDismiss = { fabExpanded = false },
-            onAction = ::handleFabAction,
-        )
     }
 
     val appContext = LocalContext.current
@@ -376,7 +337,7 @@ fun MoneyNavGraph(
             floatingActionButton = {
                 if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
                     ExtendedFloatingActionButton(
-                        onClick = { fabExpanded = true },
+                        onClick = { handleFabAction(LedgerFabAction.EXPENSE) },
                         expanded = currentRoute != MoneyDestination.History.route || !historyScrolled,
                         icon = {
                             Icon(
@@ -496,42 +457,4 @@ fun MoneyNavGraph(
             }
         }
     }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun LedgerActionDialog(
-    onDismiss: () -> Unit,
-    onAction: (LedgerFabAction) -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(stringResource(R.string.ledger_fab_title), style = MaterialTheme.typography.headlineSmall)
-            LedgerActionRow(stringResource(R.string.ledger_expense), Icons.AutoMirrored.Rounded.TrendingDown) {
-                onAction(LedgerFabAction.EXPENSE)
-            }
-            LedgerActionRow(stringResource(R.string.ledger_income), Icons.AutoMirrored.Rounded.TrendingUp) {
-                onAction(LedgerFabAction.INCOME)
-            }
-            LedgerActionRow(stringResource(R.string.history_transfer), Icons.Rounded.SwapHoriz) {
-                onAction(LedgerFabAction.TRANSFER)
-            }
-            LedgerActionRow(stringResource(R.string.ledger_reconcile), Icons.AutoMirrored.Rounded.FactCheck) {
-                onAction(LedgerFabAction.RECONCILE)
-            }
-        }
-    }
-}
-
-@Composable
-private fun LedgerActionRow(label: String, icon: ImageVector, onClick: () -> Unit) {
-    com.shihuaidexianyu.money.ui.common.MoneyListRow(
-        title = label,
-        onClick = onClick,
-        leading = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        modifier = Modifier.heightIn(min = 64.dp),
-    )
 }

@@ -27,6 +27,17 @@ class ExportJsonFileWriter(
     private val backupJsonEncoder: BackupJsonEncoder,
     private val randomSuffix: () -> String = ::secureSuffix,
 ) {
+    suspend fun saveToDocument(source: Uri, destination: Uri) = withContext(Dispatchers.IO) {
+        require(source != destination) { "保存位置不能是备份源文件" }
+        val resolver = context.contentResolver
+        requireNotNull(resolver.openInputStream(source)) { "临时备份已不可用，请重新生成备份" }.use { input ->
+            requireNotNull(resolver.openOutputStream(destination, "wt")) { "无法写入所选位置" }.use { output ->
+                require(input.copyTo(output) > 0L) { "备份内容为空" }
+                output.flush()
+            }
+        }
+    }
+
     suspend fun write(snapshot: MoneyBackupSnapshot, timestamp: Long): ExportShareFile = withContext(Dispatchers.IO) {
         val exportDir = File(context.cacheDir, EXPORT_DIR_NAME).apply { mkdirs() }
         require(exportDir.isDirectory) { "无法创建导出目录" }

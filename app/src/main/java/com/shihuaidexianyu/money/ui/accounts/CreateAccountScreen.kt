@@ -28,7 +28,7 @@ fun CreateAccountScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         if (effect is CreateAccountEffect.Saved) onBack()

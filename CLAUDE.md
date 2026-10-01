@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Money** — an offline-first personal finance app for Android (Kotlin + Jetpack Compose, package `com.shihuaidexianyu.money`). It has no cloud backend; `INTERNET` is used only by a user-started temporary LAN service for a paired local Python MCP bridge. minSdk 31, target/compile SDK 36, Java 17.
 
+Current app version: **2.6.3** (versionCode **147**).
+
 **All user-facing strings are Chinese (Simplified); code, comments, and docs are English.**
 
 ## Commands

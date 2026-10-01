@@ -22,15 +22,16 @@ fun resolveFormBack(isDirty: Boolean): FormBackDecision {
 fun rememberDirtyFormBackAction(
     isDirty: Boolean,
     onExit: () -> Unit,
+    isSaving: Boolean = false,
 ): () -> Unit {
     var showDiscardConfirmation by remember { mutableStateOf(false) }
     val requestBack: () -> Unit = {
-        when (resolveFormBack(isDirty)) {
+        if (!isSaving) when (resolveFormBack(isDirty)) {
             FormBackDecision.EXIT -> onExit()
             FormBackDecision.CONFIRM_DISCARD -> showDiscardConfirmation = true
         }
     }
-    BackHandler(onBack = requestBack)
+    BackHandler(enabled = isDirty || isSaving, onBack = requestBack)
     if (showDiscardConfirmation) {
         MoneyConfirmDialog(
             title = stringResource(R.string.form_discard_title),

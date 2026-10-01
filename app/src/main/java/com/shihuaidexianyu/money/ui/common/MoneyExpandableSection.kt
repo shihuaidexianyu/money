@@ -1,5 +1,11 @@
 package com.shihuaidexianyu.money.ui.common
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -21,9 +27,11 @@ fun MoneyExpandableSection(
     modifier: Modifier = Modifier,
     summary: String? = null,
     initiallyExpanded: Boolean = false,
+    forceExpanded: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
+    val isExpanded = expanded || forceExpanded
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingMd)) {
         MoneyListRow(
             title = title,
@@ -32,12 +40,18 @@ fun MoneyExpandableSection(
             onClick = { expanded = !expanded },
             accessory = {
                 Text(
-                    stringResource(if (expanded) R.string.action_collapse else R.string.action_expand),
+                    stringResource(if (isExpanded) R.string.action_collapse else R.string.action_expand),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                 )
             },
         )
-        if (expanded) content()
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = expandVertically(tween(200)) + fadeIn(tween(160)),
+            exit = shrinkVertically(tween(200)) + fadeOut(tween(120)),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingMd), content = content)
+        }
     }
 }

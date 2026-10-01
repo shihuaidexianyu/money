@@ -49,6 +49,7 @@ data class RecordCashFlowUiState(
     val isDirty: Boolean = false,
     val isSaving: Boolean = false,
     val pendingTerminal: PendingFormTerminal? = null,
+    val canChangeDirection: Boolean = true,
 )
 
 sealed interface RecordCashFlowEffect {
@@ -83,7 +84,8 @@ class RecordCashFlowViewModel(
     private val _uiState = MutableStateFlow(
         restoredDraft?.let { draft ->
             RecordCashFlowUiState(
-                direction = direction,
+                direction = CashFlowDirection.fromValue(draft.direction ?: direction.value),
+                canChangeDirection = reminderId == null,
                 selectedAccountId = draft.selectedAccountId,
                 amountText = draft.amountText,
                 note = draft.note,
@@ -98,6 +100,7 @@ class RecordCashFlowViewModel(
             )
         } ?: RecordCashFlowUiState(
             direction = direction,
+            canChangeDirection = reminderId == null,
             selectedAccountId = initialAccountId,
             amountText = prefillAmount?.let {
                 BigDecimal.valueOf(it, 2)
@@ -165,6 +168,13 @@ class RecordCashFlowViewModel(
         updateDraft { copy(amountText = value, amountError = null, isDirty = true) }
     }
 
+    fun updateDirection(value: CashFlowDirection) {
+        val state = _uiState.value
+        if (!state.canChangeDirection || state.isSaving || state.pendingTerminal != null || state.direction == value) return
+        updateDraft { copy(direction = value, isDirty = true) }
+        refreshNoteSuggestions()
+    }
+
     fun updateNote(value: String) {
         updateDraft {
             copy(
@@ -192,21 +202,24 @@ class RecordCashFlowViewModel(
 
     private fun refreshNoteSuggestions() {
         val accountId = _uiState.value.selectedAccountId
+        val selectedDirection = _uiState.value.direction
         viewModelScope.launch {
             runCatching {
                 transactionRepository.queryRecentCashFlowNotes(
-                    direction = direction.value,
+                    direction = selectedDirection.value,
                     accountId = accountId,
                     limit = 6,
                 ).ifEmpty {
                     transactionRepository.queryRecentCashFlowNotes(
-                        direction = direction.value,
+                        direction = selectedDirection.value,
                         accountId = null,
                         limit = 6,
                     )
                 }
             }.onSuccess { suggestions ->
-                _uiState.value = _uiState.value.copy(noteSuggestions = suggestions)
+                if (_uiState.value.direction == selectedDirection && _uiState.value.selectedAccountId == accountId) {
+                    _uiState.value = _uiState.value.copy(noteSuggestions = suggestions)
+                }
             }
         }
     }
@@ -249,7 +262,7 @@ class RecordCashFlowViewModel(
                         reminderId = reminderId,
                         expectedDueAt = requireNotNull(expectedDueAt) { "提醒时间不存在" },
                         accountId = accountId,
-                        direction = direction,
+                        direction = state.direction,
                         occurredAt = state.occurredAtMillis,
                         amount = amount,
                         note = note,
@@ -257,7 +270,7 @@ class RecordCashFlowViewModel(
                 } else {
                     createCashFlowRecordUseCase(
                         accountId = accountId,
-                        direction = direction,
+                        direction = state.direction,
                         amount = amount,
                         note = note,
                         occurredAt = state.occurredAtMillis,
@@ -300,6 +313,7 @@ class RecordCashFlowViewModel(
     }
 
     private fun updateDraft(transform: RecordCashFlowUiState.() -> RecordCashFlowUiState) {
+        if (saveInFlight || _uiState.value.pendingTerminal != null) return
         val next = _uiState.value.transform()
         _uiState.value = next
         savedStateHandle[DRAFT_KEY] = CashFlowFormDraft(
@@ -314,6 +328,7 @@ class RecordCashFlowViewModel(
             occurredAtError = next.occurredAtError,
             isDirty = next.isDirty,
             operationId = operationId,
+            direction = next.direction.value,
         )
     }
 

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -57,6 +59,9 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
+        val privacyScope = rememberCoroutineScope()
+        val privacySnackbar = LocalRootSnackbarDispatcher.current
+        val privacyError = stringResource(R.string.amount_visibility_update_failed)
         HomeScreen(
                 state = state,
                 snackbarMessage = batchReconcileMessage,
@@ -74,6 +79,18 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
                 onSelectPeriod = viewModel::selectPeriod,
+                onToggleAmountVisibility = {
+                    privacyScope.launch {
+                        try {
+                            val preferences = container.devicePreferencesRepository.query()
+                            container.devicePreferencesRepository.updateHideInAppAmounts(!preferences.hideInAppAmounts)
+                        } catch (error: kotlinx.coroutines.CancellationException) {
+                            throw error
+                        } catch (_: Exception) {
+                            privacySnackbar?.dispatch(rootSnackbarEffect(privacyError))
+                        }
+                    }
+                },
                 modifier = Modifier.padding(LocalTopLevelContentPadding.current)
                     .consumeWindowInsets(LocalTopLevelContentPadding.current),
             )
@@ -151,6 +168,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onRelockDelayChange = viewModel::updateRelockDelay,
             onHideNotificationAmountsChange = viewModel::updateHideNotificationAmounts,
             onHideRecentTasksChange = viewModel::updateHideRecentTasks,
+            onHideInAppAmountsChange = viewModel::updateHideInAppAmounts,
             notificationPermissionState = notificationPermissionGateway.state,
             onRequestNotificationPermission = { notificationPermissionGateway.requestContextually() },
             onOpenNotificationSettings = notificationPermissionGateway.openSettings,
@@ -163,6 +181,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,
             onRollbackImport = viewModel::rollbackImport,
+            onShareBackup = viewModel::shareData,
+            onSaveExportToDocument = viewModel::saveExportToDocument,
+            onResumeExport = viewModel::resumeExport,
+            onDismissImportPreview = viewModel::dismissImportPreview,
+            onRefreshImportHistory = viewModel::refreshImportHistory,
+            onExportSafetySnapshot = viewModel::exportSafetySnapshot,
         )
     }
 
@@ -240,6 +264,7 @@ private fun HistoryScreenHost(
         onMaxAmountChange = viewModel::updateMaxAmount,
         onAmountDirectionChange = viewModel::updateAmountDirectionFilter,
         onClearAllFilters = viewModel::clearFilters,
+        onApplyFilters = viewModel::applyFilterDraft,
         onLoadMore = viewModel::loadMore,
         onRetryLoadMore = viewModel::loadMore,
         onRetry = viewModel::retry,

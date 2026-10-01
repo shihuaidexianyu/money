@@ -6,6 +6,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.compose.ui.platform.LocalContext
+import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.UuidLedgerOperationIdFactory
@@ -73,9 +78,29 @@ internal fun NavGraphBuilder.addRecordGraph(
                 )
             },
         )
+        val context = LocalContext.current
+        val rootSnackbar = LocalRootSnackbarDispatcher.current
         RecordCashFlowScreen(
             viewModel = viewModel,
             onBack = { navController.popBackStack() },
+            onTransfer = {
+                if (viewModel.uiState.value.accounts.size < 2) {
+                    rootSnackbar?.dispatch(rootSnackbarEffect(
+                        message = context.getString(R.string.ledger_fab_need_second_message),
+                        actionLabel = context.getString(R.string.accounts_management),
+                        action = RootSnackbarAction.ManageAccounts,
+                    ))
+                } else {
+                    navController.navigate(MoneyDestination.recordTransferRoute()) {
+                        popUpTo(entry.destination.id) { inclusive = true }
+                    }
+                }
+            },
+            onReconcile = {
+                navController.navigate(MoneyDestination.updateBalanceRoute(accountId = accountId)) {
+                    popUpTo(entry.destination.id) { inclusive = true }
+                }
+            },
             onSaved = {
                 navController.previousBackStackEntry
                     ?.takeIf { it.destination.route == MoneyDestination.UpdateBalanceRoute }

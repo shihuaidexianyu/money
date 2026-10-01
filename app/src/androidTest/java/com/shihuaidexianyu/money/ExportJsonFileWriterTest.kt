@@ -18,6 +18,20 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ExportJsonFileWriterTest {
     @Test
+    fun documentSaveCopiesThePreparedSnapshotWithoutRebuildingIt() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val writer = ExportJsonFileWriter(context, { java.time.ZoneId.of("Asia/Shanghai") }, BackupJsonCodec)
+        val source = writer.write(emptySnapshot(), 1_700_000_000_000L)
+        val destination = writer.write(emptySnapshot().copy(metadata = emptySnapshot().metadata.copy(exportedAt = 2L)),
+            1_700_000_000_001L)
+        writer.saveToDocument(source.uri, destination.uri)
+        val saved = context.contentResolver.openInputStream(destination.uri)!!.bufferedReader().use { it.readText() }
+        assertEquals(BackupJsonCodec.encode(emptySnapshot()), saved)
+        val failure = runCatching { writer.saveToDocument(source.uri, source.uri) }.exceptionOrNull()
+        assertTrue(failure is IllegalArgumentException)
+    }
+
+    @Test
     fun writeCreatesShareableFileProviderUri() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val writer = ExportJsonFileWriter(

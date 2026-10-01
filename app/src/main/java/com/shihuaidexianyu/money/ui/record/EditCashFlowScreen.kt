@@ -53,7 +53,7 @@ fun EditCashFlowScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val deletedMessage = stringResource(R.string.ledger_record_deleted)
     val undoLabel = stringResource(R.string.action_undo)

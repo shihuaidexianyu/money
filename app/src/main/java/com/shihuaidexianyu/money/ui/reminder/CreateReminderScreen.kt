@@ -44,7 +44,7 @@ fun CreateReminderScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAccountPicker by remember { mutableStateOf(false) }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
 
     MoneyDateTimePickerHost(
         field = dateTimeField,

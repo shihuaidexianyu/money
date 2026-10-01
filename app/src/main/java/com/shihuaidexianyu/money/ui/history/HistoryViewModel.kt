@@ -139,7 +139,7 @@ data class HistoryUiState(
     val hasMoreRecords: Boolean = false,
 )
 
-internal data class HistoryFilterState(
+data class HistoryFilterState(
     val keyword: String = "",
     val excludeKeyword: String = "",
     val selectedRecordTypes: Set<HistoryRecordType> = emptySet(),
@@ -150,7 +150,7 @@ internal data class HistoryFilterState(
     val maxAmountText: String = "",
     val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
     val businessSemantic: HistoryBusinessSemantic = HistoryBusinessSemantic.ALL,
-) {
+) : java.io.Serializable {
     fun hasAnyFilter(): Boolean = this != HistoryFilterState()
 }
 
@@ -244,6 +244,16 @@ class HistoryViewModel(
         applyLocalFilter { copy(amountDirectionFilter = filter) }
     fun updateBusinessSemantic(semantic: HistoryBusinessSemantic) =
         applyLocalFilter { copy(businessSemantic = semantic) }
+
+    /** Commit the editor as one generation; never query intermediate combinations. */
+    fun applyFilterDraft(draft: HistoryFilterState) {
+        if (!draft.validateAmounts().isValid) return
+        val (start, end) = normalizeHistoryDateRange(draft.dateStartAt, draft.dateEndAt)
+        applyLocalFilter {
+            draft.copy(keyword = keyword, selectedAccountId = lockedAccountId ?: draft.selectedAccountId,
+                dateStartAt = start, dateEndAt = end)
+        }
+    }
 
     fun clearFilters() {
         // Clearing never drops the locked account scope — it is the page, not a filter.
@@ -619,7 +629,7 @@ private fun HistoryUiState.hasActiveFilters(): Boolean =
         amountDirectionFilter != AmountDirectionFilter.ALL ||
         businessSemantic != HistoryBusinessSemantic.ALL
 
-private data class HistoryAmountValidation(
+internal data class HistoryAmountValidation(
     val minAmount: Long?,
     val maxAmount: Long?,
     @param:StringRes val minErrorRes: Int?,
@@ -628,7 +638,7 @@ private data class HistoryAmountValidation(
     val isValid: Boolean get() = minErrorRes == null && maxErrorRes == null
 }
 
-private fun HistoryFilterState.validateAmounts(): HistoryAmountValidation {
+internal fun HistoryFilterState.validateAmounts(): HistoryAmountValidation {
     val minAmount = minAmountText.takeIf(String::isNotBlank)?.let(AmountInputParser::parseUnsignedToMinor)
     val maxAmount = maxAmountText.takeIf(String::isNotBlank)?.let(AmountInputParser::parseUnsignedToMinor)
     val minErrorRes = if (minAmountText.isNotBlank() && minAmount == null) R.string.validation_valid_amount else null

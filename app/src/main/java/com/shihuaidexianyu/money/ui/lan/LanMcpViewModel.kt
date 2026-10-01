@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
 
 data class LanMcpUiState(
     val runtime: MoneyLanRuntimeState = MoneyLanRuntimeState(),
-    val allowWriteDraft: Boolean = true,
+    val allowWriteDraft: Boolean = false,
+    val isWritePermissionChanging: Boolean = false,
     val pairedDevices: List<LanPairedDevice> = emptyList(),
     val journalEntries: List<AiMutationJournalEntry> = emptyList(),
     val latestAppliedEntry: AiMutationJournalEntry? = null,
@@ -51,7 +52,8 @@ class LanMcpViewModel(
     private val aiJournaledLedgerUseCase: AiJournaledLedgerUseCase,
 ) : ViewModel() {
     private val appContext = context.applicationContext
-    private val allowWriteDraft = MutableStateFlow(true)
+    private val allowWriteDraft = MutableStateFlow(false)
+    private val isWritePermissionChanging = MutableStateFlow(false)
     private val isJournalActionRunning = MutableStateFlow(false)
     private val effects = MutableSharedFlow<LanMcpEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
@@ -67,23 +69,37 @@ class LanMcpViewModel(
         journalState,
         journalRepository.observeAppliedCount(),
         isJournalActionRunning,
+        isWritePermissionChanging,
     ) { values ->
         @Suppress("UNCHECKED_CAST")
+        val devices = values[2] as List<LanPairedDevice>
         val journal = values[3] as JournalState
         LanMcpUiState(
             runtime = values[0] as MoneyLanRuntimeState,
             allowWriteDraft = values[1] as Boolean,
-            pairedDevices = values[2] as List<LanPairedDevice>,
+            pairedDevices = devices,
             journalEntries = journal.entries,
             latestAppliedEntry = journal.latestApplied,
             appliedCount = values[4] as Int,
             isJournalActionRunning = values[5] as Boolean,
+            isWritePermissionChanging = values[6] as Boolean,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = LanMcpUiState(),
     )
+
+    init {
+        viewModelScope.launch {
+            var hadSession = false
+            MoneyLanRuntime.state.collect { runtime ->
+                val hasSession = runtime.status == MoneyLanServerStatus.STARTING || runtime.status == MoneyLanServerStatus.RUNNING
+                if (hadSession && !hasSession) allowWriteDraft.value = false
+                hadSession = hasSession
+            }
+        }
+    }
 
     /** Answer a pending confirmation-style pairing request from the in-app dialog. */
     fun approvePairing() {
@@ -117,7 +133,25 @@ class LanMcpViewModel(
     }
 
     fun setAllowWrite(enabled: Boolean) {
-        if (!uiState.value.isRunning) allowWriteDraft.value = enabled
+        if (isWritePermissionChanging.value) return
+        if (!uiState.value.isRunning) {
+            allowWriteDraft.value = enabled
+            return
+        }
+        val controller = MoneyLanRuntime.writeAccessController ?: return
+        isWritePermissionChanging.value = true
+        viewModelScope.launch {
+            try {
+                controller.setAllowWrite(enabled)
+                allowWriteDraft.value = enabled
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                effects.emit(LanMcpEffect.ShowMessage(error.userMessage(appContext.getString(R.string.lan_permission_update_failed))))
+            } finally {
+                isWritePermissionChanging.value = false
+            }
+        }
     }
 
     fun startServer() {

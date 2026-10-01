@@ -62,6 +62,7 @@ class DevicePreferencesRepositoryImpl(
     }
     override suspend fun updateRelockDelay(delay: AppRelockDelay) = edit { copy(relockDelay = delay) }
     override suspend fun updateHideNotificationAmounts(enabled: Boolean) = edit { copy(hideNotificationAmounts = enabled) }
+    override suspend fun updateHideInAppAmounts(enabled: Boolean) = edit { copy(hideInAppAmounts = enabled) }
     override suspend fun updateHideRecentTasks(enabled: Boolean) = edit { copy(hideRecentTasks = enabled) }
     override suspend fun updateNotificationPermissionRequested(requested: Boolean) =
         edit { copy(notificationPermissionRequested = requested) }
@@ -103,6 +104,7 @@ object DevicePreferencesMapper {
             biometricLock = preferences[Keys.BiometricLock] ?: false,
             relockDelay = AppRelockDelay.fromValue(preferences[Keys.RelockDelay]),
             hideNotificationAmounts = preferences[Keys.HideNotificationAmounts] ?: false,
+            hideInAppAmounts = preferences[Keys.HideInAppAmounts] ?: false,
             hideRecentTasks = preferences[Keys.HideRecentTasks] ?: false,
             notificationPermissionRequested = preferences[Keys.NotificationPermissionRequested] ?: false,
             historyFilters = history,
@@ -121,6 +123,7 @@ object DevicePreferencesMapper {
         preferences[Keys.BiometricLock] = value.biometricLock
         preferences[Keys.RelockDelay] = value.relockDelay.value
         preferences[Keys.HideNotificationAmounts] = value.hideNotificationAmounts
+        preferences[Keys.HideInAppAmounts] = value.hideInAppAmounts
         preferences[Keys.HideRecentTasks] = value.hideRecentTasks
         preferences[Keys.NotificationPermissionRequested] = value.notificationPermissionRequested
         writeNullableLong(preferences, Keys.HistoryAccountId, value.historyFilters.accountId)
@@ -147,6 +150,7 @@ object DevicePreferencesMapper {
         val BiometricLock = booleanPreferencesKey("biometric_lock")
         val RelockDelay = stringPreferencesKey("relock_delay")
         val HideNotificationAmounts = booleanPreferencesKey("hide_notification_amounts")
+        val HideInAppAmounts = booleanPreferencesKey("hide_in_app_amounts")
         val HideRecentTasks = booleanPreferencesKey("hide_recent_tasks")
         val NotificationPermissionRequested = booleanPreferencesKey("notification_permission_requested")
         val ExternalPrivacyDefaultsMigrated = booleanPreferencesKey("external_privacy_defaults_migrated_v1")

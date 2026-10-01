@@ -17,17 +17,21 @@ import org.junit.Test
 
 class SettingsSectionContractTest {
     @Test
-    fun `only the rollback eligible receipt is shown`() {
+    fun `all receipts remain visible but only eligible receipt can rollback`() {
         val older = receipt("older", importedAt = 100L)
         val latest = receipt("latest", importedAt = 200L)
 
         val rows = importReceiptHistoryRows(
             receipts = listOf(latest, older),
             rollbackEligibleReceiptId = older.id,
+            availableSafetyReceiptIds = setOf(latest.id),
         )
 
-        assertEquals(listOf("older"), rows.map { it.receipt.id })
-        assertTrue(rows.single().canRollback)
+        assertEquals(listOf("latest", "older"), rows.map { it.receipt.id })
+        assertFalse(rows.first().canRollback)
+        assertTrue(rows.first().canExportSafety)
+        assertTrue(rows.last().canRollback)
+        assertFalse(rows.last().canExportSafety)
     }
 
     @Test
@@ -39,9 +43,9 @@ class SettingsSectionContractTest {
                     "amount_color",
                     "currency_symbol",
                 ),
-                R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_notification"),
+                R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_notification", "hide_in_app"),
                 R.string.settings_section_notifications to listOf("permission_channels", "reminder_management", "account_reminder_config"),
-                R.string.settings_section_data to listOf("lan_ai", "export_json", "import_preview", "receipt_rollback"),
+                R.string.settings_section_data to listOf("lan_ai", "export_json", "share_json", "pending_export", "import_preview", "receipt_rollback"),
                 R.string.settings_section_about to listOf("version", "offline_data_safety"),
             ),
             SETTINGS_SECTION_CONTRACTS.map { it.titleRes to it.itemKeys },

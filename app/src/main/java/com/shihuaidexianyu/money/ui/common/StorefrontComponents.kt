@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -347,7 +348,11 @@ fun MoneyListRow(
             .fillMaxWidth()
             .then(
                 if (onClick != null) {
-                    Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                    if (switchChecked != null) {
+                        Modifier.toggleable(value = switchChecked, enabled = enabled, role = Role.Switch) { onClick() }
+                    } else {
+                        Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                    }
                 } else {
                     Modifier
                 },

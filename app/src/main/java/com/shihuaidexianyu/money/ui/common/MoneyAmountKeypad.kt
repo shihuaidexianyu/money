@@ -3,10 +3,12 @@ package com.shihuaidexianyu.money.ui.common
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -37,13 +40,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import androidx.annotation.StringRes
 import com.shihuaidexianyu.money.R
@@ -103,47 +109,75 @@ internal fun MoneyAmountKeypadSheet(
         parseAmountKeypadPreview(value, allowSigned)
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val haptics = LocalHapticFeedback.current
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AmountKeypadDisplay(
-                label = label,
-                value = value,
-                previewAmount = previewAmount,
-                currencySymbol = currencySymbol,
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                amountKeypadRows.forEach { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        row.forEach { spec ->
-                            AmountKeypadButton(
-                                spec = spec,
-                                onClick = {
-                                    if (spec.isDone) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                                        onDismiss()
-                                    } else {
-                                        haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                                        onValueChange(appendAmountKey(value, requireNotNull(spec.key), allowSigned))
-                                    }
-                                },
-                                modifier = Modifier.weight(spec.weight),
-                            )
-                        }
-                    }
+            val compact = maxHeight < 400.dp
+            val contentModifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp)
+            if (compact) {
+                Row(
+                    modifier = contentModifier,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    AmountKeypadDisplay(label, value, previewAmount, currencySymbol, Modifier.weight(0.35f))
+                    MoneyAmountKeypad(
+                        value, onValueChange, onDismiss,
+                        modifier = Modifier.weight(0.65f), allowSigned = allowSigned, compact = true,
+                    )
+                }
+            } else {
+                Column(modifier = contentModifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    AmountKeypadDisplay(label, value, previewAmount, currencySymbol)
+                    MoneyAmountKeypad(value, onValueChange, onDismiss, allowSigned = allowSigned)
+                }
+            }
+        }
+    }
+}
+
+/** Reusable keypad: the commit action is supplied by the host, not coupled to sheet dismissal. */
+@Composable
+internal fun MoneyAmountKeypad(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    allowSigned: Boolean = false,
+    compact: Boolean = false,
+    enabled: Boolean = true,
+    doneLabel: String = stringResource(R.string.action_done),
+    isSaving: Boolean = false,
+) {
+    val haptics = LocalHapticFeedback.current
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        amountKeypadRows.forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                row.forEach { spec ->
+                    AmountKeypadButton(
+                        spec = spec,
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                            if (spec.isDone) onDone()
+                            else onValueChange(appendAmountKey(value, requireNotNull(spec.key), allowSigned))
+                        },
+                        modifier = Modifier.weight(spec.weight),
+                        keyHeight = if (compact) 48.dp else 58.dp,
+                        enabled = enabled,
+                        doneLabel = doneLabel,
+                        isSaving = isSaving,
+                    )
                 }
             }
         }
@@ -156,6 +190,7 @@ private fun AmountKeypadDisplay(
     value: String,
     previewAmount: Long?,
     currencySymbol: String,
+    modifier: Modifier = Modifier,
 ) {
     val expressionScrollState = rememberScrollState()
     val hasPreview = previewAmount != null && value.isNotBlank()
@@ -170,7 +205,10 @@ private fun AmountKeypadDisplay(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clearAndSetSemantics {
+            contentDescription = label
+            stateDescription = value.ifBlank { "0" } + if (hasPreview) "，$previewText" else ""
+        },
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.large,
     ) {
@@ -220,8 +258,19 @@ private fun AmountKeypadButton(
     spec: AmountKeypadButtonSpec,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    keyHeight: Dp = 58.dp,
+    enabled: Boolean = true,
+    doneLabel: String = stringResource(R.string.action_done),
+    isSaving: Boolean = false,
 ) {
-    val resolvedLabel = spec.labelRes?.let { stringResource(it) } ?: requireNotNull(spec.label)
+    val resolvedLabel = if (spec.isDone) doneLabel else spec.labelRes?.let { stringResource(it) } ?: requireNotNull(spec.label)
+    val accessibleLabel = when (spec.key) {
+        AmountKey.Clear -> stringResource(R.string.amount_keypad_clear)
+        AmountKey.Plus -> stringResource(R.string.amount_keypad_plus)
+        AmountKey.Minus -> stringResource(R.string.amount_keypad_minus)
+        AmountKey.Decimal -> stringResource(R.string.amount_keypad_decimal)
+        else -> resolvedLabel
+    }
     val isDelete = spec.key == AmountKey.Delete
     // Three key weights: digits on a quiet surface, the operator column (delete included) on the
     // secondary container, and clear on the error container.
@@ -235,26 +284,28 @@ private fun AmountKeypadButton(
         spec.isOperator || isDelete -> MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.onSurface
     }
-    val keyHeight = 58.dp
     // Keys are shorter than the 56dp save pill, so a full capsule would pinch into a lozenge;
     // 20dp is the roundest corner the 58dp height still holds as a slab.
     val keyShape = MaterialTheme.shapes.large
-    // Physical press feedback: keys dip to 94% on a quick spring instead of relying on elevation.
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(dampingRatio = 1f, stiffness = 800f),
         label = "amountKeyPressScale",
     )
 
     val buttonModifier = modifier
         .height(keyHeight)
         .scale(pressScale)
-        .semantics { contentDescription = resolvedLabel }
+        .semantics { contentDescription = accessibleLabel }
     val content: @Composable () -> Unit = {
         Box(contentAlignment = Alignment.Center) {
             when {
+                spec.isDone && isSaving -> CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp), strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
                 isDelete -> Icon(
                     imageVector = Icons.AutoMirrored.Rounded.Backspace,
                     contentDescription = null,
@@ -267,7 +318,8 @@ private fun AmountKeypadButton(
                 )
                 else -> Text(
                     text = resolvedLabel,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = if (keyHeight <= 48.dp || LocalDensity.current.fontScale > 1.3f)
+                        MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Medium,
                 )
             }
@@ -276,6 +328,7 @@ private fun AmountKeypadButton(
     if (spec.isDone) {
         Button(
             onClick = onClick,
+            enabled = enabled,
             modifier = buttonModifier,
             contentPadding = PaddingValues(0.dp),
             // The keypad's commit key is a capsule, echoing the form's save pill one step below.
@@ -291,6 +344,7 @@ private fun AmountKeypadButton(
     } else {
         FilledTonalButton(
             onClick = onClick,
+            enabled = enabled,
             modifier = buttonModifier,
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = containerColor,

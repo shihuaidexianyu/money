@@ -44,6 +44,27 @@ class MoneyLanServerPairingTest {
     private val wireJson = Json { ignoreUnknownKeys = true }
 
     @Test
+    fun `write permission changes keep paired session and read access alive`() = withServer { server, _ ->
+        val requestId = beginPairing(server)
+        assertTrue(server.approvePairing(requestId))
+        val paired = call(server, "session.pair.poll", pairPollArgs(requestId))
+        val token = paired.dataObject().getValue("token").jsonPrimitive.content
+        val emptyArgs = JsonObject(emptyMap())
+        assertTrue(call(server, "cashflow.create", emptyArgs, token).ok)
+        server.setAllowWrite(false)
+        assertFalse(MoneyLanRuntime.state.value.allowWrite)
+        listOf("cashflow.create", "transfer.delete", "journal.undo_latest", "sync.push").forEach { action ->
+            val rejected = call(server, action, emptyArgs, token)
+            assertFalse(rejected.ok)
+            assertEquals(MoneyLanErrorCodes.WRITE_DISABLED, rejected.error?.code)
+        }
+        assertTrue(call(server, "accounts.list", emptyArgs, token).ok)
+        server.setAllowWrite(true)
+        assertTrue(call(server, "cashflow.create", emptyArgs, token).ok)
+        assertEquals(CLIENT_NAME, MoneyLanRuntime.state.value.pairedClientName)
+    }
+
+    @Test
     fun `pair begin then approve issues a credential and occupies the session`() = withServer { server, store ->
         val begin = call(server, "session.pair.begin", pairBeginArgs())
         assertTrue(begin.ok)

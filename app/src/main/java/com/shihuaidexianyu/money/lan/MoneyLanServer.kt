@@ -23,6 +23,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -56,11 +58,13 @@ class MoneyLanServer(
     private val scope: CoroutineScope,
     private val router: MoneyLanRouteHandler,
     private val pairedDeviceStore: LanPairedDeviceStore,
-    private val allowWrite: Boolean,
+    allowWrite: Boolean,
     private val startedAt: Long,
     private val expiresAt: Long,
     private val writeRateLimiter: MoneyLanWriteRateLimiter = MoneyLanWriteRateLimiter(),
 ) {
+    private val writeAccess = MoneyLanWriteAccess(allowWrite)
+    private val allowWrite: Boolean get() = writeAccess.isAllowed
     private val session = AtomicReference<PairedSession?>(null)
     private val failedPairAttempts = AtomicInteger(0)
     private val connectionSlots = Semaphore(MAX_CONCURRENT_CONNECTIONS)
@@ -72,6 +76,13 @@ class MoneyLanServer(
     private var acceptJob: Job? = null
 
     val port: Int get() = serverSocket.localPort
+
+    suspend fun setAllowWrite(enabled: Boolean) {
+        withContext(NonCancellable) {
+            writeAccess.setAllowed(enabled)
+            if (!serverSocket.isClosed) MoneyLanRuntime.update { it.copy(allowWrite = writeAccess.isAllowed) }
+        }
+    }
 
     fun start() {
         val addresses = localIpv4Addresses()
@@ -188,15 +199,21 @@ class MoneyLanServer(
                     "session.resume" -> resume(request)
                     else -> {
                         val paired = authenticate(request.token)
-                        enforceWriteRate(request.action)
-                        router.route(
-                            request,
-                            MoneyLanClient(
-                                sessionId = paired.sessionId,
-                                name = paired.clientName,
-                                allowWrite = allowWrite,
-                            ),
-                        )
+                        val route: suspend () -> JsonElement = {
+                            authenticate(request.token)
+                            enforceWriteRate(request.action)
+                            router.route(
+                                request,
+                                MoneyLanClient(
+                                    sessionId = paired.sessionId,
+                                    name = paired.clientName,
+                                    allowWrite = allowWrite,
+                                ),
+                            )
+                        }
+                        if (request.action in moneyLanWriteActions) {
+                            writeAccess.withWriteAccess(route)
+                        } else route()
                     }
                 }
                 MoneyLanResponse(requestId = request.requestId, ok = true, data = data)

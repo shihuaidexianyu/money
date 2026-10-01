@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.lan
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 enum class MoneyLanServerStatus {
     STOPPED,
@@ -16,7 +17,7 @@ data class MoneyLanRuntimeState(
     val port: Int? = null,
     val pairingCode: String? = null,
     val pairedClientName: String? = null,
-    val allowWrite: Boolean = true,
+    val allowWrite: Boolean = false,
     val startedAt: Long? = null,
     val expiresAt: Long? = null,
     val errorMessage: String? = null,
@@ -39,13 +40,20 @@ object MoneyLanRuntime {
     @Volatile
     var pairingResponder: MoneyLanPairingResponder? = null
 
+    @Volatile
+    var writeAccessController: MoneyLanWriteAccessController? = null
+
     internal fun publish(state: MoneyLanRuntimeState) {
         mutableState.value = state
     }
 
     internal fun update(transform: (MoneyLanRuntimeState) -> MoneyLanRuntimeState) {
-        mutableState.value = transform(mutableState.value)
+        mutableState.update(transform)
     }
+}
+
+fun interface MoneyLanWriteAccessController {
+    suspend fun setAllowWrite(enabled: Boolean)
 }
 
 /** User-facing pairing decisions and device revocation, answered by the live server. */

@@ -46,9 +46,11 @@ data class DevicePreferences(
     val notificationPermissionRequested: Boolean = false,
     val historyFilters: HistoryFilters = HistoryFilters(),
     val recentAccountIds: List<Long> = emptyList(),
+    val hideInAppAmounts: Boolean = false,
 )
 
 fun failClosedDevicePreferences(): DevicePreferences = DevicePreferences(
+    hideInAppAmounts = true,
     hideNotificationAmounts = true,
     hideRecentTasks = true,
 )

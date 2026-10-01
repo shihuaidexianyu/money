@@ -63,7 +63,7 @@ fun UpdateBalanceScreen(
     val isInvestment = selectedAccount?.isInvestment == true
     val rootDispatcher = LocalRootSnackbarDispatcher.current
     val savedMessage = stringResource(if (isInvestment) R.string.balance_value_saved_brief else R.string.balance_saved_brief)
-    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
@@ -299,6 +299,8 @@ internal fun investmentDeltaText(delta: Long, systemBalance: Long): String {
     val base = stringResource(
         if (delta > 0L) R.string.history_investment_gain else R.string.history_investment_loss,
     )
+    if (com.shihuaidexianyu.money.ui.common.LocalAmountVisibility.current ==
+        com.shihuaidexianyu.money.domain.model.AmountVisibility.MASKED) return base
     val percent = calculatePeriodDelta(
         currentAmount = systemBalance + delta,
         baselineAmount = systemBalance,

@@ -86,6 +86,6 @@ class HistoryScreenLockedModeTest {
 
         composeRule.onNodeWithText("筛选 1").assertIsDisplayed()
         composeRule.onNodeWithText("筛选 1").performClick()
-        composeRule.onNodeWithText("账户").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("账户，微信零钱").assertIsDisplayed()
     }
 }
