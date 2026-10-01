@@ -8,7 +8,7 @@ This file contains essential context for AI coding agents working on the **Money
 It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, app shortcuts, biometric app lock, amount privacy masking, dark mode, and journaled AI-assisted ledger access over the local network.
 
 - **Package / Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.6.3` (versionCode `147`)
+- **Version**: `2.6.4` (versionCode `148`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -182,6 +182,7 @@ app/src/main/java/com/shihuaidexianyu/money/
    - Compose UI collects state and triggers events back to the ViewModel.
    - Product/interaction reference: `docs/design/money-redesign-v2.md`. Top-level navigation is overview, accounts, then activity. `MoneyFormPage.footer` keeps primary form actions reachable; optional account setup uses `MoneyExpandableSection`. Balance checking returns to its origin after saving, with a root snackbar. The computer connection and AI mutation journal are presented as `连接电脑` and `AI 修改记录`.
    - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost. Consume applied system/chrome padding before child IME padding to avoid reserving it twice when the keyboard opens.
+   - New ledger entry uses independent full-screen type/account/amount/confirmation steps in `LedgerEntryScreen`, owned by one `LedgerEntryViewModel` and a serializable SavedStateHandle draft. Existing cash-flow, transfer, reconciliation, reminder, and supplemental-entry routes enter this same workflow and skip only explicit context. Recent accounts affect ordering, never implicit selection. The inline keypad only advances to confirmation; only final confirmation invokes mutation use cases. Reconciliation accepts signed/zero balances and keeps investment P&L semantics. Editing and batch reconciliation retain their existing flows.
 
 ### Dependency Injection
 

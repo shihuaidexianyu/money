@@ -3,6 +3,8 @@ package com.shihuaidexianyu.money.ui.common
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
 import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
 import java.io.Serializable
@@ -39,6 +41,9 @@ internal fun rootSnackbarDuration(effect: RootSnackbarEffect): SnackbarDuration 
 fun interface RootSnackbarDispatcher {
     fun dispatch(effect: RootSnackbarEffect)
 }
+
+/** Entry forms reserve layout space for the shared queue, keeping keypad and Save reachable. */
+internal val LocalRootSnackbarHostState = staticCompositionLocalOf<SnackbarHostState?> { null }
 
 class RootSnackbarQueueViewModel(
     private val savedStateHandle: SavedStateHandle,

@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,6 +59,7 @@ import androidx.navigation.compose.rememberNavController
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarHostState
 import com.shihuaidexianyu.money.ui.common.RootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.RootSnackbarQueueViewModel
@@ -183,6 +185,10 @@ fun MoneyNavGraph(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val isTopLevel = currentRoute in topLevelRoutes
+    val entryHostsSnackbar = currentRoute == MoneyDestination.LedgerEntryRoute ||
+        currentRoute == MoneyDestination.RecordTransferRoute ||
+        currentRoute == MoneyDestination.UpdateBalanceRoute ||
+        currentRoute?.substringBefore('?') == MoneyDestination.RecordCashFlowRoute
     val windowWidthDp = with(LocalDensity.current) {
         LocalWindowInfo.current.containerSize.width.toDp().value.toInt()
     }
@@ -321,6 +327,7 @@ fun MoneyNavGraph(
     }
 
     CompositionLocalProvider(
+        LocalRootSnackbarHostState provides snackbarHostState,
         LocalRootSnackbarDispatcher provides RootSnackbarDispatcher { effect ->
             rootSnackbarQueue.enqueue(effect)
         },
@@ -333,11 +340,19 @@ fun MoneyNavGraph(
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(
                 WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
             ),
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            snackbarHost = { if (!entryHostsSnackbar) SnackbarHost(snackbarHostState) },
             floatingActionButton = {
                 if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
                     ExtendedFloatingActionButton(
-                        onClick = { handleFabAction(LedgerFabAction.EXPENSE) },
+                        modifier = Modifier.testTag("ledger_entry_fab"),
+                        onClick = {
+                            val availability = openAccountAvailability as? OpenAccountAvailability.Data
+                            if (availability != null && availability.openAccountCount > 0) {
+                                navController.navigate(MoneyDestination.LedgerEntryRoute)
+                            } else {
+                                handleFabAction(LedgerFabAction.EXPENSE)
+                            }
+                        },
                         expanded = currentRoute != MoneyDestination.History.route || !historyScrolled,
                         icon = {
                             Icon(

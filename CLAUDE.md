@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Money** — an offline-first personal finance app for Android (Kotlin + Jetpack Compose, package `com.shihuaidexianyu.money`). It has no cloud backend; `INTERNET` is used only by a user-started temporary LAN service for a paired local Python MCP bridge. minSdk 31, target/compile SDK 36, Java 17.
 
-Current app version: **2.6.3** (versionCode **147**).
+Current app version: **2.6.4** (versionCode **148**).
 
 **All user-facing strings are Chinese (Simplified); code, comments, and docs are English.**
 
@@ -52,6 +52,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
 - UI/UX reference: `docs/design/money-redesign-v2.md`. Navigation order is overview, accounts, activity. Use `MoneyFormPage.footer` for primary form actions and `MoneyExpandableSection` for optional setup. Successful balance checking returns to its origin with a snackbar. Computer connection and AI journal labels are `连接电脑` and `AI 修改记录`.
 - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost. Consume applied system/chrome padding before child IME padding to avoid reserving it twice when the keyboard opens.
+- Ledger creation uses full-screen type/account/amount/confirmation steps (`LedgerEntryScreen` + one `LedgerEntryViewModel` with a SavedStateHandle draft). Existing shortcuts/reminder/reconciliation routes reuse the flow, skipping only explicit context. Recent accounts reorder choices, never select silently. Only final confirmation writes; signed/zero reconciliation and investment P&L remain intact. Editing and batch reconciliation are unchanged.
 - **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
 - **`lan/`** — temporary foreground LAN server, NSD advertising, confirmed pairing with persistent device credentials, framed JSON protocol and router. AI ledger writes must go through `AiJournaledLedgerUseCase`, which atomically records them in the persistent LIFO Journal.
 

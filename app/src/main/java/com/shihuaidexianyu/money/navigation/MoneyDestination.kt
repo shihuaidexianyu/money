@@ -35,6 +35,7 @@ sealed class MoneyDestination(
         const val EditAccountRoute = "accounts/{accountId}/edit"
         const val AccountDetailRoute = "accounts/{accountId}"
         const val RecordCashFlowRoute = "records/cashflow/{direction}/{accountId}"
+        const val LedgerEntryRoute = "records/new"
         const val RecordTransferRoute = "records/transfer/{fromAccountId}"
         const val EditCashFlowRoute = "history/cashflow/{recordId}"
         const val AccountHistoryRoute = "history/account/{accountId}"

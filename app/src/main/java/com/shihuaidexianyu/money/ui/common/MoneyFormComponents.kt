@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -79,66 +83,67 @@ fun MoneyFormPage(
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(MoneyDimens.SpacingXl),
     footer: (@Composable () -> Unit)? = null,
     header: (@Composable () -> Unit)? = null,
+    compactWhenImeVisible: Boolean = false,
+    rootSnackbarHostState: SnackbarHostState? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val defaultListState = rememberLazyListState()
     val resolvedListState = listState ?: defaultListState
     val appBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val hostState = snackbarHostState?.takeIf { it.currentSnackbarData != null } ?: rootSnackbarHostState ?: snackbarHostState
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
-                .imePadding()
-                .nestedScroll(appBarScrollBehavior.nestedScrollConnection),
+                .imePadding(),
         ) {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+            // Measure AFTER IME padding: a short keyboard-open window must reserve the
+            // primary action before optional chrome. Other form screens keep their layout.
+            val compact = compactWhenImeVisible && maxHeight < 320.dp &&
+                WindowInsets.ime.getBottom(LocalDensity.current) > 0
+            Column(Modifier.fillMaxSize().nestedScroll(appBarScrollBehavior.nestedScrollConnection)) {
+                if (!compact) {
+                    TopAppBar(
+                        title = {
+                            Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        navigationIcon = {
+                            if (onBack != null) MoneyBackButton(onClick = onBack)
+                        },
+                        actions = { trailing?.invoke() },
+                        scrollBehavior = appBarScrollBehavior,
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                        ),
                     )
-                },
-                navigationIcon = {
-                    if (onBack != null) {
-                        MoneyBackButton(onClick = onBack)
-                    }
-                },
-                actions = { trailing?.invoke() },
-                scrollBehavior = appBarScrollBehavior,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
-            header?.invoke()
-            LazyColumn(
-                state = resolvedListState,
-                modifier = Modifier.weight(1f),
-                contentPadding = contentPadding,
-                verticalArrangement = verticalArrangement,
-            ) {
-                content()
-            }
-            if (footer != null) {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = MoneyDimens.screenHorizontalPadding, vertical = MoneyDimens.SpacingMd),
-                    ) {
-                        footer()
+                    header?.invoke()
+                }
+                LazyColumn(
+                    state = resolvedListState,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = contentPadding,
+                    verticalArrangement = verticalArrangement,
+                ) {
+                    content()
+                }
+                // Reserve real layout space for feedback. It must not intercept the keypad's
+                // Continue action or the pinned Save button, including while the IME is open.
+                hostState?.let {
+                    SnackbarHost(hostState = it, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+                if (footer != null) {
+                    Surface(color = MaterialTheme.colorScheme.background) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = MoneyDimens.screenHorizontalPadding, vertical = MoneyDimens.SpacingMd),
+                        ) {
+                            footer()
+                        }
                     }
                 }
             }
-        }
-        snackbarHostState?.let { hostState ->
-            SnackbarHost(
-                hostState = hostState,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-            )
         }
     }
 }

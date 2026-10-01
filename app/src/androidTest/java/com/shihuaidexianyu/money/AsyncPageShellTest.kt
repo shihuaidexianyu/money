@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.shihuaidexianyu.money.ui.history.HistoryScreen
 import com.shihuaidexianyu.money.ui.history.HistoryUiState
 import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
@@ -46,10 +47,9 @@ class AsyncPageShellTest {
         composeRule.onNodeWithText("投资盈亏").performClick()
         composeRule.runOnIdle { assertEquals(HistoryBusinessSemantic.ALL, removed) }
         composeRule.onNodeWithText("筛选 1").performClick()
-        composeRule.onNodeWithText("账目内容").performClick()
-        composeRule.onNodeWithText("日常消费").assertIsDisplayed()
-        composeRule.onNodeWithText("投资收益").assertIsDisplayed()
-        composeRule.onNodeWithText("投资亏损").assertIsDisplayed()
+        composeRule.onNodeWithText("日常消费").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("投资收益").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("投资亏损").performScrollTo().assertIsDisplayed()
     }
 
     @get:Rule
@@ -111,8 +111,9 @@ class AsyncPageShellTest {
         composeRule.onNodeWithText("没有符合筛选条件的记录").assertIsDisplayed()
         composeRule.onNodeWithText("排除关键词").assertDoesNotExist()
         composeRule.onNodeWithText("筛选 1").performClick()
-        composeRule.onNodeWithText("排除关键词").assertIsDisplayed()
-        composeRule.onNodeWithText("类型").assertIsDisplayed()
+        composeRule.onNodeWithText("更多条件").performScrollTo().performClick()
+        composeRule.onNodeWithText("排除关键词").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("类型").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -142,7 +143,6 @@ class AsyncPageShellTest {
         }
 
         composeRule.onNodeWithText("筛选 1").performClick()
-        composeRule.onNodeWithText("金额").performClick()
-        composeRule.onNodeWithText("请输入有效金额").assertIsDisplayed()
+        composeRule.onNodeWithText("请输入有效金额").performScrollTo().assertIsDisplayed()
     }
 }

@@ -21,8 +21,8 @@ import com.shihuaidexianyu.money.ui.balance.BatchReconcileScreen
 import com.shihuaidexianyu.money.ui.balance.BatchReconcileViewModel
 import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateScreen
 import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateViewModel
-import com.shihuaidexianyu.money.ui.balance.UpdateBalanceScreen
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceViewModel
+import com.shihuaidexianyu.money.ui.record.LedgerEntryKind
 
 internal const val SupplementalEntrySavedTokenKey = "supplemental_entry_saved_token"
 
@@ -180,49 +180,9 @@ internal fun NavGraphBuilder.addBalanceGraph(
         arguments = listOf(navArgument("accountId") { type = NavType.LongType }),
     ) { entry ->
         val accountId = entry.arguments?.getLong("accountId") ?: 0L
-        val viewModel = viewModel<UpdateBalanceViewModel>(
-            key = "update_balance_$accountId",
-            factory = moneySavedStateViewModelFactory { savedStateHandle ->
-                UpdateBalanceViewModel(
-                    initialAccountId = accountId.takeIf { it > 0 },
-                    accountRepository = container.accountRepository,
-                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
-                    updateBalanceUseCase = container.updateBalanceUseCase,
-                    savedStateHandle = savedStateHandle,
-                    operationIdFactory = UuidLedgerOperationIdFactory,
-                )
-            },
-        )
-        val settingsViewModel = rememberSettingsViewModel(
-            container = container,
-        )
-        val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-        val supplementalToken by entry.savedStateHandle
-            .getStateFlow(SupplementalEntrySavedTokenKey, 0L)
-            .collectAsStateWithLifecycle()
-        LaunchedEffect(supplementalToken) {
-            if (supplementalToken != 0L) {
-                viewModel.refreshLedgerBalanceAfterSupplementalEntry()
-                entry.savedStateHandle.remove<Long>(SupplementalEntrySavedTokenKey)
-            }
-        }
-        UpdateBalanceScreen(
-            viewModel = viewModel,
-            settings = settingsState.portableSettings,
-            onSaved = { navController.popBackStack() },
-            onStartCashFlow = { direction, targetAccountId, amount ->
-                navController.navigate(
-                    MoneyDestination.recordCashFlowRoute(
-                        direction = direction,
-                        accountId = targetAccountId,
-                        amount = amount,
-                        note = "余额核对补记",
-                        reminderId = null,
-                        expectedDueAt = null,
-                    ),
-                )
-            },
-            onBack = { navController.popBackStack() },
+        LedgerEntryDestination(
+            entry, navController, container, initialKind = LedgerEntryKind.RECONCILE,
+            initialAccountId = accountId.takeIf { it > 0 },
         )
     }
 

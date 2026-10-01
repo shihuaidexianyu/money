@@ -6,11 +6,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import androidx.compose.ui.platform.LocalContext
-import com.shihuaidexianyu.money.R
-import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
-import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
-import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.UuidLedgerOperationIdFactory
@@ -18,10 +18,9 @@ import com.shihuaidexianyu.money.ui.record.EditCashFlowScreen
 import com.shihuaidexianyu.money.ui.record.EditCashFlowViewModel
 import com.shihuaidexianyu.money.ui.record.EditTransferScreen
 import com.shihuaidexianyu.money.ui.record.EditTransferViewModel
-import com.shihuaidexianyu.money.ui.record.RecordCashFlowScreen
-import com.shihuaidexianyu.money.ui.record.RecordCashFlowViewModel
-import com.shihuaidexianyu.money.ui.record.RecordTransferScreen
-import com.shihuaidexianyu.money.ui.record.RecordTransferViewModel
+import com.shihuaidexianyu.money.ui.record.LedgerEntryKind
+import com.shihuaidexianyu.money.ui.record.LedgerEntryScreen
+import com.shihuaidexianyu.money.ui.record.LedgerEntryViewModel
 
 internal fun NavGraphBuilder.addRecordGraph(
     navController: NavHostController,
@@ -37,6 +36,10 @@ internal fun NavGraphBuilder.addRecordGraph(
                 }
             }
         }
+    }
+
+    composable(MoneyDestination.LedgerEntryRoute) { entry ->
+        LedgerEntryDestination(entry, navController, container)
     }
 
     composable(
@@ -57,57 +60,12 @@ internal fun NavGraphBuilder.addRecordGraph(
         val prefillNote = NavigationQueryCodec.decode(entry.arguments?.getString("purpose") ?: "")
         val reminderId = entry.arguments?.getLong("reminderId") ?: 0L
         val expectedDueAt = entry.arguments?.getLong("expectedDueAt") ?: 0L
-        val viewModel = viewModel<RecordCashFlowViewModel>(
-            key = "cash_flow_${direction.value}_${accountId}_${reminderId}_$expectedDueAt",
-            factory = moneySavedStateViewModelFactory { savedStateHandle ->
-                RecordCashFlowViewModel(
-                    direction = direction,
-                    initialAccountId = accountId.takeIf { it > 0 },
-                    prefillAmount = prefillAmount.takeIf { it > 0 },
-                    prefillNote = prefillNote.takeIf { it.isNotEmpty() },
-                    reminderId = reminderId.takeIf { it > 0 },
-                    expectedDueAt = expectedDueAt.takeIf { it > 0 },
-                    accountRepository = container.accountRepository,
-                    transactionRepository = container.transactionRepository,
-                    calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
-                    createCashFlowRecordUseCase = container.createCashFlowRecordUseCase,
-                    processDueReminderUseCase = container.processDueReminderUseCase,
-                    savedStateHandle = savedStateHandle,
-                    operationIdFactory = UuidLedgerOperationIdFactory,
-                    devicePreferencesRepository = container.devicePreferencesRepository,
-                )
-            },
-        )
-        val context = LocalContext.current
-        val rootSnackbar = LocalRootSnackbarDispatcher.current
-        RecordCashFlowScreen(
-            viewModel = viewModel,
-            onBack = { navController.popBackStack() },
-            onTransfer = {
-                if (viewModel.uiState.value.accounts.size < 2) {
-                    rootSnackbar?.dispatch(rootSnackbarEffect(
-                        message = context.getString(R.string.ledger_fab_need_second_message),
-                        actionLabel = context.getString(R.string.accounts_management),
-                        action = RootSnackbarAction.ManageAccounts,
-                    ))
-                } else {
-                    navController.navigate(MoneyDestination.recordTransferRoute()) {
-                        popUpTo(entry.destination.id) { inclusive = true }
-                    }
-                }
-            },
-            onReconcile = {
-                navController.navigate(MoneyDestination.updateBalanceRoute(accountId = accountId)) {
-                    popUpTo(entry.destination.id) { inclusive = true }
-                }
-            },
-            onSaved = {
-                navController.previousBackStackEntry
-                    ?.takeIf { it.destination.route == MoneyDestination.UpdateBalanceRoute }
-                    ?.savedStateHandle
-                    ?.set(SupplementalEntrySavedTokenKey, System.nanoTime())
-                navController.popBackStack()
-            },
+        LedgerEntryDestination(
+            entry, navController, container,
+            initialKind = if (direction == CashFlowDirection.INFLOW) LedgerEntryKind.INCOME else LedgerEntryKind.EXPENSE,
+            initialAccountId = accountId.takeIf { it > 0 },
+            prefillAmount = prefillAmount.takeIf { it > 0 }, prefillNote = prefillNote.takeIf { it.isNotEmpty() },
+            reminderId = reminderId.takeIf { it > 0 }, expectedDueAt = expectedDueAt.takeIf { it > 0 },
         )
     }
 
@@ -116,24 +74,9 @@ internal fun NavGraphBuilder.addRecordGraph(
         arguments = listOf(navArgument("fromAccountId") { type = NavType.LongType }),
     ) { entry ->
         val fromAccountId = entry.arguments?.getLong("fromAccountId") ?: 0L
-        val viewModel = viewModel<RecordTransferViewModel>(
-            key = "transfer_$fromAccountId",
-            factory = moneySavedStateViewModelFactory { savedStateHandle ->
-                RecordTransferViewModel(
-                    initialFromAccountId = fromAccountId.takeIf { it > 0 },
-                    accountRepository = container.accountRepository,
-                    transactionRepository = container.transactionRepository,
-                    calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
-                    createTransferRecordUseCase = container.createTransferRecordUseCase,
-                    savedStateHandle = savedStateHandle,
-                    operationIdFactory = UuidLedgerOperationIdFactory,
-                    devicePreferencesRepository = container.devicePreferencesRepository,
-                )
-            },
-        )
-        RecordTransferScreen(
-            viewModel = viewModel,
-            onBack = { navController.popBackStack() },
+        LedgerEntryDestination(
+            entry, navController, container, initialKind = LedgerEntryKind.TRANSFER,
+            initialAccountId = fromAccountId.takeIf { it > 0 },
         )
     }
 
@@ -188,4 +131,58 @@ internal fun NavGraphBuilder.addRecordGraph(
             onDeleted = closeHistoryEditFlow,
         )
     }
+}
+
+@Composable
+internal fun LedgerEntryDestination(
+    entry: NavBackStackEntry,
+    navController: NavHostController,
+    container: MoneyAppContainer,
+    initialKind: LedgerEntryKind? = null,
+    initialAccountId: Long? = null,
+    prefillAmount: Long? = null,
+    prefillNote: String? = null,
+    reminderId: Long? = null,
+    expectedDueAt: Long? = null,
+) {
+    val viewModel = viewModel<LedgerEntryViewModel>(
+        key = "ledger_entry",
+        factory = moneySavedStateViewModelFactory { savedStateHandle ->
+            LedgerEntryViewModel(
+                initialKind = initialKind, initialAccountId = initialAccountId,
+                prefillAmount = prefillAmount, prefillNote = prefillNote,
+                reminderId = reminderId, expectedDueAt = expectedDueAt,
+                accountRepository = container.accountRepository,
+                transactionRepository = container.transactionRepository,
+                devicePreferencesRepository = container.devicePreferencesRepository,
+                calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
+                resolveBalanceUpdateContextUseCase = container.resolveBalanceUpdateContextUseCase,
+                createCashFlowRecordUseCase = container.createCashFlowRecordUseCase,
+                createTransferRecordUseCase = container.createTransferRecordUseCase,
+                updateBalanceUseCase = container.updateBalanceUseCase,
+                processDueReminderUseCase = container.processDueReminderUseCase,
+                savedStateHandle = savedStateHandle, operationIdFactory = UuidLedgerOperationIdFactory,
+            )
+        },
+    )
+    val settings by rememberSettingsViewModel(container).uiState.collectAsStateWithLifecycle()
+    val supplementalToken by entry.savedStateHandle.getStateFlow(SupplementalEntrySavedTokenKey, 0L).collectAsStateWithLifecycle()
+    LaunchedEffect(supplementalToken) {
+        if (supplementalToken != 0L) {
+            viewModel.refreshPreview()
+            entry.savedStateHandle.remove<Long>(SupplementalEntrySavedTokenKey)
+        }
+    }
+    LedgerEntryScreen(
+        viewModel = viewModel, settings = settings.portableSettings,
+        onBack = { navController.popBackStack() },
+        onSaved = {
+            navController.previousBackStackEntry?.savedStateHandle?.set(SupplementalEntrySavedTokenKey, System.nanoTime())
+            navController.popBackStack()
+        },
+        onManageAccounts = { navController.navigate(MoneyDestination.CreateAccountRoute) },
+        onStartCashFlow = { direction, accountId, amount ->
+            navController.navigate(MoneyDestination.recordCashFlowRoute(direction, accountId, amount, "余额核对补记", null, null))
+        },
+    )
 }
