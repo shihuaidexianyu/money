@@ -34,7 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
@@ -286,7 +286,7 @@ private fun AmountKeypadButton(
     val keyShape = MaterialTheme.shapes.large
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
+    val pressScale = animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
         animationSpec = spring(dampingRatio = 1f, stiffness = 800f),
         label = "amountKeyPressScale",
@@ -294,7 +294,8 @@ private fun AmountKeypadButton(
 
     val buttonModifier = modifier
         .height(keyHeight)
-        .scale(pressScale)
+        // Read animation values in the layer phase, not composition on every frame.
+        .graphicsLayer { scaleX = pressScale.value; scaleY = pressScale.value }
         .semantics { contentDescription = accessibleLabel }
     val content: @Composable () -> Unit = {
         Box(contentAlignment = Alignment.Center) {

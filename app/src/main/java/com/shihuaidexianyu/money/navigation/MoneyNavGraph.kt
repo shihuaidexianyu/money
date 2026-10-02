@@ -34,10 +34,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
@@ -55,7 +55,6 @@ import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarHostState
 import com.shihuaidexianyu.money.ui.common.RootSnackbarDispatcher
-import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.RootSnackbarQueueViewModel
 import com.shihuaidexianyu.money.ui.common.executeRootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
@@ -76,13 +75,14 @@ private fun isTopLevelTransition(initial: String?, target: String?): Boolean {
     return initial in topLevelRouteSet && target in topLevelRouteSet
 }
 
-// Top-level destinations are peers; a short fade avoids implying a change in depth.
+// Peer tabs switch directly. Crossfading two full ledger surfaces adds rendering work
+// and briefly superimposes financial text; selection feedback stays in the navigation bar.
 private fun topLevelEnterTransition(): EnterTransition {
-    return fadeIn(animationSpec = tween(160))
+    return EnterTransition.None
 }
 
 private fun topLevelExitTransition(): ExitTransition {
-    return fadeOut(animationSpec = tween(120))
+    return ExitTransition.None
 }
 
 // === Sub-page enter: slide in from right + fade ===
@@ -172,7 +172,6 @@ fun MoneyNavGraph(
         factory = moneySavedStateViewModelFactory { RootSnackbarQueueViewModel(it) },
     )
     val rootSnackbarItems by rootSnackbarQueue.queue.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val isTopLevel = currentRoute in topLevelRoutes
@@ -195,41 +194,11 @@ fun MoneyNavGraph(
     val openAccountAvailability by openAccountAvailabilityFlow.collectAsStateWithLifecycle(
         initialValue = OpenAccountAvailability.Loading,
     )
-    var historyScrolled by remember { mutableStateOf(false) }
-    val createFirstAccountMessage = stringResource(R.string.ledger_fab_create_first_message)
-    val createAccountLabel = stringResource(R.string.accounts_create)
-    val needSecondAccountMessage = stringResource(R.string.ledger_fab_need_second_message)
-    val manageAccountsLabel = stringResource(R.string.ledger_fab_manage_accounts)
     val notificationStateChangedMessage = stringResource(R.string.notification_state_changed)
     val retryLabel = stringResource(R.string.action_retry)
 
     fun navigateTopLevel(destination: MoneyDestination) {
         navController.navigateToTopLevelTab(destination)
-    }
-
-    fun handleFabAction(action: LedgerFabAction) {
-        val availability = openAccountAvailability as? OpenAccountAvailability.Data ?: return
-        when (val decision = resolveLedgerFabAction(action, availability)) {
-            LedgerFabDecision.CreateFirstAccount -> rootSnackbarQueue.enqueue(
-                message = createFirstAccountMessage,
-                actionLabel = createAccountLabel,
-                action = RootSnackbarAction.CreateAccount,
-            )
-            is LedgerFabDecision.OpenCashForm -> navController.navigate(
-                MoneyDestination.recordCashFlowRoute(decision.direction, accountId = 0L),
-            )
-            LedgerFabDecision.NeedSecondAccount -> rootSnackbarQueue.enqueue(
-                message = needSecondAccountMessage,
-                actionLabel = manageAccountsLabel,
-                action = RootSnackbarAction.ManageAccounts,
-            )
-            LedgerFabDecision.OpenTransferForm -> navController.navigate(
-                MoneyDestination.recordTransferRoute(),
-            )
-            LedgerFabDecision.OpenReconcileForm -> navController.navigate(
-                MoneyDestination.updateBalanceRoute(accountId = 0L),
-            )
-        }
     }
 
     val appContext = LocalContext.current
@@ -339,9 +308,9 @@ fun MoneyNavGraph(
                         onClick = {
                             val availability = openAccountAvailability as? OpenAccountAvailability.Data
                             if (availability != null && availability.openAccountCount > 0) {
-                                navController.navigate(MoneyDestination.LedgerEntryRoute)
+                                navController.navigate(MoneyDestination.LedgerEntryRoute) { launchSingleTop = true }
                             } else {
-                                navController.navigate(MoneyDestination.CreateAccountRoute)
+                                navController.navigate(MoneyDestination.CreateAccountRoute) { launchSingleTop = true }
                             }
                         },
                         shape = CircleShape,
@@ -386,7 +355,7 @@ fun MoneyNavGraph(
                     NavHost(
                         navController = navController,
                         startDestination = MoneyDestination.Accounts.route,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().clipToBounds(),
                         enterTransition = {
                             val initial = initialState.destination.route
                             val target = targetState.destination.route
@@ -432,7 +401,6 @@ fun MoneyNavGraph(
                             navController = navController,
                             container = container,
                             onBiometricLockChange = onBiometricLockChange,
-                            onHistoryScrolledChange = { historyScrolled = it },
                         )
                         addAccountsGraph(navController = navController, container = container)
                         addRecordGraph(navController = navController, container = container)

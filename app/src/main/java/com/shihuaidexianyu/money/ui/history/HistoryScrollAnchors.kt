@@ -9,6 +9,38 @@ package com.shihuaidexianyu.money.ui.history
  */
 internal const val HISTORY_HEADER_ITEM_COUNT = 1
 
+internal data class HistoryViewportAnchor(
+    val itemKey: String?,
+    val scrollOffset: Int,
+    val dateLabel: String?,
+)
+
+internal data class HistoryScrollTarget(val index: Int, val offset: Int = 0)
+
+/** Preserve the exact row/offset when it survives; a date header is only a fallback. */
+internal fun historyAnchorScrollTarget(
+    anchor: HistoryViewportAnchor,
+    groups: List<HistoryDateGroup>,
+): HistoryScrollTarget? {
+    if (anchor.itemKey == "history_controls") return HistoryScrollTarget(0, anchor.scrollOffset)
+    var index = HISTORY_HEADER_ITEM_COUNT
+    var dateFallback: Int? = null
+    groups.forEach { group ->
+        if (group.dateLabel == anchor.dateLabel) dateFallback = index
+        if (anchor.itemKey == "history_date_${group.dateLabel}") {
+            return HistoryScrollTarget(index, anchor.scrollOffset)
+        }
+        index++
+        group.records.forEach { record ->
+            if (anchor.itemKey == "history_record_${record.id}") {
+                return HistoryScrollTarget(index, anchor.scrollOffset)
+            }
+            index++
+        }
+    }
+    return dateFallback?.let { HistoryScrollTarget(it) }
+}
+
 /**
  * Index of the sticky date-header item for [anchorDateLabel], or null when the anchor is absent
  * from the loaded page (the mutation removed that day, or the first page does not reach it).

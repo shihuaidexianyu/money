@@ -5,6 +5,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -28,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -127,14 +129,18 @@ internal fun LedgerEntryScreen(
         delay(180)
         pageArmed = true
     }
-    val enabled = state.editable && pageArmed && state.loadErrorMessageRes == null
+    val pageTransition = updateTransition(state.step, label = "ledgerEntryPage")
+    // The tap guard is a minimum, not an assumption about the user's animation scale.
+    // A slow/interrupted transition must finish before its incoming targets can act.
+    val enabled = state.editable && pageArmed && !pageTransition.isRunning && state.loadErrorMessageRes == null
     var hiddenExpanded by rememberSaveable { mutableStateOf(false) }
 
-    AnimatedContent(
-        targetState = state.step,
-        modifier = modifier.fillMaxSize(),
-        transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(90)) },
-        label = "ledgerEntryPage",
+    pageTransition.AnimatedContent(
+        modifier = modifier.fillMaxSize().clipToBounds(),
+        transitionSpec = {
+            // Full-screen steps share a fixed viewport; never interpolate their size.
+            (fadeIn(tween(120)) togetherWith fadeOut(tween(90))).using(null)
+        },
     ) { step ->
         val pageEnabled = enabled && step == state.step
         MoneyFormPage(

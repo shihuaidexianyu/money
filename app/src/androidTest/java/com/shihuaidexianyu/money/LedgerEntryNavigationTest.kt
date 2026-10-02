@@ -25,6 +25,7 @@ import com.shihuaidexianyu.money.ui.record.LedgerEntryKind
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -48,6 +49,23 @@ class LedgerEntryNavigationTest {
             toId = container.createAccountUseCase("转入验证$suffix", 10000L)
         }
         awaitHome()
+    }
+
+    @Test
+    fun rapidEntryTapsOpenOnlyOnePageAndCloseReturnsToAccounts() {
+        val openEntry = composeRule.onNodeWithTag("ledger_entry_fab")
+            .fetchSemanticsNode().config[SemanticsActions.OnClick].action!!
+        // Invoke the same visible target twice before Compose can replace its hit targets.
+        composeRule.runOnUiThread {
+            assertTrue(openEntry())
+            assertTrue(openEntry())
+        }
+        awaitPage("TYPE")
+        click(hasText("关闭") and hasClickAction())
+        awaitHome()
+        runBlocking {
+            assertTrue(container.transactionRepository.queryAllCashFlowRecords().none { it.accountId == fromId })
+        }
     }
 
     @Test

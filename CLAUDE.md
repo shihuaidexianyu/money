@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Money** — an offline-first personal finance app for Android (Kotlin + Jetpack Compose, package `com.shihuaidexianyu.money`). It has no cloud backend. Legacy LAN infrastructure is retained for compatibility but service startup is disabled by `MinimalProductPolicy`. minSdk 31, target/compile SDK 36, Java 17.
 
-Current app version: **2.6.5** (versionCode **149**).
+Current app version: **2.6.6** (versionCode **150**).
 
 **All user-facing strings are Chinese (Simplified); code, comments, and docs are English.**
 
@@ -43,7 +43,7 @@ The script expects `JAVA_HOME` at `C:\Program Files\Android\Android Studio\jbr` 
 
 ## Architecture
 
-Two Gradle modules: `:app` and `:benchmark` (self-instrumenting `com.android.test` module targeting `:app`; `:app` declares a matching `benchmark` build type inheriting `release` but signed with the debug key).
+Two Gradle modules: `:app` and `:benchmark` (self-instrumenting `com.android.test`; only the matching `benchmark` test variant is enabled, targeting `:app`'s non-debuggable R8/resource-optimized variant configured after `release` and signed with the debug key). Fixture benchmarks replace test ledger data: use only a disposable emulator/device profile. Scenarios include history transitions and real flings, not repeated clicks on an already selected tab.
 
 Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 
@@ -52,6 +52,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
 - The minimal product has exactly two top-level pages: accounts (start destination) and activity. Use text-first, icon-free controls. New accounts ask only for name and opening balance. Icons, manual ordering, account-kind setup, the dashboard, batch reconciliation, advanced filters, reminders, and LAN/AI tools have no active entry. Keep primary form actions in `MoneyFormPage.footer`; successful reconciliation returns to its origin with a snackbar. Retired routes redirect to accounts.
 - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost. Consume applied system/chrome padding before child IME padding to avoid reserving it twice when the keyboard opens.
+- Paint opaque backgrounds and clip transitioning pages. Peer tabs switch directly; incoming ledger targets wait for the tap guard AND actual transition completion. Read animation values in drawing/layer phases. History refresh preserves a surviving row's key/pixel offset (date fallback only if removed); rows stay opaque, grouped totals are cached, and overflow cannot crash or wrap.
 - Ledger creation uses full-screen type/account/amount/confirmation steps (`LedgerEntryScreen` + one `LedgerEntryViewModel` with a SavedStateHandle draft). Existing shortcuts/reminder/reconciliation routes reuse the flow, skipping only explicit context. Every account list/picker uses stable creation-time/id ordering, never silent selection. Only final confirmation writes; signed/zero reconciliation and investment P&L remain intact. Editing is unchanged; the former batch shortcut enters single-account reconciliation.
 - **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
 - **`lan/`** — temporary foreground LAN server, NSD advertising, confirmed pairing with persistent device credentials, framed JSON protocol and router. AI ledger writes must go through `AiJournaledLedgerUseCase`, which atomically records them in the persistent LIFO Journal.

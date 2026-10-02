@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,12 +82,16 @@ fun AccountsScreen(
     onOpenSettings: () -> Unit = {},
     onToggleAmountVisibility: (() -> Unit)? = null,
 ) {
-    val order = compareBy<AccountListItemUiModel> { it.createdAt }.thenBy { it.id }
-    val groups = accountGroups(state.openAccounts.sortedWith(order), state.closedAccounts.sortedWith(order))
-    val total = runCatching { state.openAccounts.map { it.balance }.ledgerSumExact() }.getOrNull()
+    val groups = remember(state.openAccounts, state.closedAccounts) {
+        val order = compareBy<AccountListItemUiModel> { it.createdAt }.thenBy { it.id }
+        accountGroups(state.openAccounts.sortedWith(order), state.closedAccounts.sortedWith(order))
+    }
+    val total = remember(state.openAccounts) {
+        runCatching { state.openAccounts.map { it.balance }.ledgerSumExact() }.getOrNull()
+    }
     var showHidden by rememberSaveable { mutableStateOf(false) }
     val error = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
-    Column(modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
             title = { Text(stringResource(R.string.accounts_title)) },
             actions = {
@@ -147,7 +153,7 @@ fun AccountsScreen(
                     }
                 }
             }
-            items(groups.normal, key = { "open:${it.id}" }) { account ->
+            items(groups.normal, key = { "open:${it.id}" }, contentType = { "account" }) { account ->
                 AccountRow(account, state.settings, total ?: 0L, { onAccountClick(account.id) })
                 MoneySectionDivider()
             }
@@ -158,12 +164,12 @@ fun AccountsScreen(
                         showChevron = false, onClick = { showHidden = !showHidden },
                         accessory = { Text(stringResource(if (showHidden) R.string.action_collapse else R.string.action_view)) })
                 }
-                if (showHidden) items(groups.hidden, key = { "hidden:${it.id}" }) { account ->
+                if (showHidden) items(groups.hidden, key = { "hidden:${it.id}" }, contentType = { "account" }) { account ->
                     AccountRow(account, state.settings, total ?: 0L, { onAccountClick(account.id) })
                 }
             }
             // Invalid legacy closed balances must remain discoverable without expanding a group.
-            items(groups.closed.filter { it.requiresReopenAndSettle }, key = { "issue:${it.id}" }) { account ->
+            items(groups.closed.filter { it.requiresReopenAndSettle }, key = { "issue:${it.id}" }, contentType = { "account" }) { account ->
                 AccountRow(account, state.settings, total ?: 0L, { onAccountClick(account.id) })
             }
             val closed = groups.closed.filterNot { it.requiresReopenAndSettle }
@@ -174,7 +180,7 @@ fun AccountsScreen(
                         showChevron = false, onClick = onToggleClosedVisibility,
                         accessory = { Text(stringResource(if (state.showClosed) R.string.action_collapse else R.string.action_view)) })
                 }
-                if (state.showClosed) items(closed, key = { "closed:${it.id}" }) { account ->
+                if (state.showClosed) items(closed, key = { "closed:${it.id}" }, contentType = { "account" }) { account ->
                     AccountRow(account, state.settings, total ?: 0L, { onAccountClick(account.id) })
                 }
             }

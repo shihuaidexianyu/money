@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -79,13 +80,13 @@ import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.maskInAppAmount
 import com.shihuaidexianyu.money.ui.common.BalanceTransitionText
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import java.time.ZoneId
 import kotlinx.coroutines.launch
@@ -136,6 +137,8 @@ fun HistoryScreen(
 ) {
     var sheet by rememberSaveable { mutableStateOf<HistoryFilterSheet?>(null) }
     val listState = rememberLazyListState()
+    val zoneId = ZoneId.systemDefault()
+    val recordGroups = remember(state.records, zoneId) { historyDateGroups(state.records, zoneId) }
     var searchExpanded by rememberSaveable { mutableStateOf(state.keyword.isNotBlank()) }
     val searchVisibility = remember { MutableTransitionState(searchExpanded) }
     searchVisibility.targetState = searchExpanded
@@ -188,7 +191,7 @@ fun HistoryScreen(
     // Scroll anchor: a ledger mutation reloads the first page and can strand a user who was
     // paging deep in the list. Capture the visible date while the old page is still on screen
     // (isRefreshing), then scroll back to it once the fresh page lands.
-    var pendingAnchorDate by remember { mutableStateOf<String?>(null) }
+    var pendingAnchor by remember { mutableStateOf<HistoryViewportAnchor?>(null) }
     val visibleDateLabel by remember(listState) {
         derivedStateOf {
             (listState.layoutInfo.visibleItemsInfo.firstOrNull { (it.key as? String)?.startsWith("history_date_") == true }?.key as? String)
@@ -198,16 +201,18 @@ fun HistoryScreen(
     }
     LaunchedEffect(state.isRefreshing) {
         if (state.isRefreshing) {
-            pendingAnchorDate = visibleDateLabel ?: pendingAnchorDate
+            pendingAnchor = HistoryViewportAnchor(
+                itemKey = listState.layoutInfo.visibleItemsInfo
+                    .firstOrNull { it.index == listState.firstVisibleItemIndex }?.key as? String,
+                scrollOffset = listState.firstVisibleItemScrollOffset,
+                dateLabel = visibleDateLabel,
+            )
         } else {
-            val anchor = pendingAnchorDate
-            pendingAnchorDate = null
-            if (anchor == null || state.records.isEmpty()) return@LaunchedEffect
-            val scrollIndex = historyAnchorScrollIndex(
-                anchorDateLabel = anchor,
-                recordDateLabels = state.records.map { DateTimeTextFormatter.formatDateOnly(it.occurredAt) },
-            ) ?: return@LaunchedEffect
-            listState.scrollToItem(scrollIndex)
+            val anchor = pendingAnchor
+            pendingAnchor = null
+            if (anchor == null || state.records.isEmpty() || listState.isScrollInProgress) return@LaunchedEffect
+            val target = historyAnchorScrollTarget(anchor, recordGroups) ?: return@LaunchedEffect
+            listState.scrollToItem(target.index, target.offset)
         }
     }
     val historyLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
@@ -252,7 +257,6 @@ fun HistoryScreen(
         )
     }
 
-    val recordGroups = state.records.groupBy { DateTimeTextFormatter.formatDateOnly(it.occurredAt) }
     val accountLocked = lockedAccountId != null
     // Locked mode: the page title IS the account name, falling back to the tab title while the
     // account list is still loading.
@@ -303,6 +307,10 @@ fun HistoryScreen(
                         .testTag("history_search_field"),
                 )
             }
+            // A fixed slot avoids shifting every date and record when refresh starts/stops.
+            Box(Modifier.fillMaxWidth().height(2.dp).testTag("history_refresh_slot")) {
+                if (state.isRefreshing) LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
         },
     ) {
         item(key = "history_controls", contentType = "controls") {
@@ -347,9 +355,6 @@ fun HistoryScreen(
                 }
                 state.filterSummary?.let { summary ->
                     HistoryFilterSummaryRow(summary = summary, settings = state.settings)
-                }
-                if (state.isRefreshing) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -406,7 +411,9 @@ fun HistoryScreen(
             is AsyncContent.Refreshing,
             -> {
                 val nowMillis = System.currentTimeMillis()
-                recordGroups.forEach { (dateLabel, records) ->
+                recordGroups.forEach { group ->
+                    val dateLabel = group.dateLabel
+                    val records = group.records
                     stickyHeader(key = "history_date_$dateLabel") {
                         HistoryDateHeader(
                             dateLabel = historyDayLabelText(
@@ -415,18 +422,11 @@ fun HistoryScreen(
                                     nowMillis = nowMillis,
                                 ),
                             ),
-                            cashIncomeTotal = records
-                                .filter { it.kind == HistoryRecordKind.CASH_FLOW && it.amount > 0L }
-                                .map { it.amount }
-                                .ledgerSumExact(),
-                            cashExpenseTotal = records
-                                .filter { it.kind == HistoryRecordKind.CASH_FLOW && it.amount < 0L }
-                                .map { it.amount }
-                                .ledgerSumExact(),
+                            cashIncomeTotal = group.cashIncomeTotal,
+                            cashExpenseTotal = group.cashExpenseTotal,
                             settings = state.settings,
                             partialTotal = state.hasMoreRecords &&
-                                state.records.lastOrNull()
-                                    ?.let { DateTimeTextFormatter.formatDateOnly(it.occurredAt) } == dateLabel,
+                                recordGroups.lastOrNull()?.dateLabel == dateLabel,
                         )
                     }
                     itemsIndexed(
@@ -434,7 +434,9 @@ fun HistoryScreen(
                         key = { _, record -> "history_record_${record.id}" },
                         contentType = { _, _ -> "record" },
                     ) { index, record ->
-                        Column(modifier = Modifier.animateItem(placementSpec = null)) {
+                        // Ledger text stays opaque during paging/filtering; per-row fades
+                        // overlap old/new amounts and add avoidable layers during flings.
+                        Column {
                             HistoryRow(
                                 record = record,
                                 settings = state.settings,
@@ -614,8 +616,8 @@ private fun historyDayLabelText(dayLabel: HistoryDayLabel): String = when (dayLa
 @Composable
 private fun HistoryDateHeader(
     dateLabel: String,
-    cashIncomeTotal: Long,
-    cashExpenseTotal: Long,
+    cashIncomeTotal: Long?,
+    cashExpenseTotal: Long?,
     settings: PortableSettings,
     partialTotal: Boolean = false,
 ) {
@@ -634,7 +636,7 @@ private fun HistoryDateHeader(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f).alignByBaseline(),
             )
-            if (cashIncomeTotal > 0L) {
+            if (cashIncomeTotal != null && cashIncomeTotal > 0L) {
                 Text(
                     text = stringResource(R.string.history_day_income, formatInAppAmount(cashIncomeTotal, settings)),
                     style = MaterialTheme.typography.labelMedium,
@@ -643,12 +645,20 @@ private fun HistoryDateHeader(
                     modifier = Modifier.alignByBaseline(),
                 )
             }
-            if (cashExpenseTotal < 0L) {
+            if (cashExpenseTotal != null && cashExpenseTotal < 0L) {
                 Text(
                     text = stringResource(R.string.history_day_expense, formatInAppAmount(cashExpenseTotal, settings).removePrefix("-")),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = LocalMoneyColors.current.expense,
+                    modifier = Modifier.alignByBaseline(),
+                )
+            }
+            if (cashIncomeTotal == null || cashExpenseTotal == null) {
+                Text(
+                    text = maskInAppAmount(stringResource(R.string.history_day_total_overflow)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.alignByBaseline(),
                 )
             }

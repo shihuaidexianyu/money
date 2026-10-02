@@ -9,7 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,13 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -41,7 +39,7 @@ import com.shihuaidexianyu.money.R
 @Composable
 fun MoneySkeleton(modifier: Modifier = Modifier) {
     val loadingDescription = stringResource(R.string.loading_ellipsis)
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .semantics { stateDescription = loadingDescription },
@@ -49,7 +47,7 @@ fun MoneySkeleton(modifier: Modifier = Modifier) {
         val base = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
         val highlight = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
         val transition = rememberInfiniteTransition(label = "skeleton")
-        val progress by transition.animateFloat(
+        val progress = transition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
@@ -58,16 +56,22 @@ fun MoneySkeleton(modifier: Modifier = Modifier) {
             ),
             label = "skeletonProgress",
         )
-        // Sweep across the measured width, not a hardcoded pixel span — a fixed span leaves the right
-        // side of wider screens without any shimmer.
-        val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
-        val bandPx = widthPx * 0.35f
-        val bandStart = -bandPx + (widthPx + bandPx) * progress
-        val brush = Brush.linearGradient(
-            colors = listOf(base, highlight, base),
-            start = Offset(x = bandStart, y = 0f),
-            end = Offset(x = bandStart + bandPx, y = 0f),
-        )
+        // The shimmer only invalidates drawing. Reading progress in composition would
+        // recompose and rebuild the entire placeholder tree on every loading frame.
+        val shimmer = Modifier.drawWithCache {
+            val bandPx = size.width * 0.35f
+            val colors = listOf(base, highlight, base)
+            onDrawBehind {
+                val bandStart = -bandPx + (size.width + bandPx) * progress.value
+                drawRect(
+                    Brush.linearGradient(
+                        colors = colors,
+                        start = Offset(bandStart, 0f),
+                        end = Offset(bandStart + bandPx, 0f),
+                    ),
+                )
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -81,7 +85,7 @@ fun MoneySkeleton(modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .height(120.dp)
                     .clip(MaterialTheme.shapes.large)
-                    .background(brush),
+                    .then(shimmer),
             )
             // Section rows.
             repeat(3) {
@@ -89,7 +93,7 @@ fun MoneySkeleton(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(MaterialTheme.shapes.medium)
-                        .background(brush)
+                        .then(shimmer)
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),

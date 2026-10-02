@@ -8,7 +8,7 @@ This file contains essential context for AI coding agents working on the **Money
 The active product has two top-level pages: accounts and activity. Its core is account creation/renaming/closing/reopening, income/outflow, transfers, reconciliation, searchable history with editing/deletion/undo, plaintext JSON backup/import, shortcuts, biometric lock, amount masking, and system/light/dark themes. Account icons, manual ordering, account-kind setup, the standalone dashboard, batch reconciliation, advanced history filters, reminder management, and computer/AI connection have no active UI entry. Hidden accounts and investment semantics from existing data remain readable; legacy reminders, settings, and visual/order fields remain backup-compatible. `MinimalProductPolicy` disables reminder scheduling and LAN service startup; startup cancels old notification work.
 
 - **Package / Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.6.5` (versionCode `149`)
+- **Version**: `2.6.6` (versionCode `150`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -87,7 +87,7 @@ The script:
 
 ### Benchmark Module
 
-`:benchmark` is a self-instrumenting `com.android.test` module targeting `:app` (`benchmark/src/main/java/.../AppShellMacrobenchmark.kt`). It measures cold startup, history-tab frame timing, and accounts/history rendering with 10k and 100k ledger rows. The app module declares a matching `benchmark` build type (inherits `release`, signed with the debug key). Run it against a device/emulator with:
+`:benchmark` is a self-instrumenting `com.android.test` module targeting `:app` (`benchmark/src/main/java/.../AppShellMacrobenchmark.kt`). It measures cold startup, history-tab transitions, real history flings, and accounts/history rendering with 10k and 100k ledger rows. Only its matching `benchmark` test variant is enabled so `connectedCheck` installs the app's non-debuggable, R8/resource-optimized `benchmark` variant (configured after `release`, signed with the debug key). Fixture scenarios replace test ledger data: run only on a disposable emulator/device profile. Run it with:
 
 ```bash
 ./gradlew :benchmark:connectedCheck
@@ -182,6 +182,7 @@ app/src/main/java/com/shihuaidexianyu/money/
    - Compose UI collects state and triggers events back to the ViewModel.
    - Minimal product navigation is accounts, then activity; accounts is the start destination. Use text-first, icon-free controls and stable creation-time/id ordering across account lists and pickers. Creating an account asks only for name and opening balance; hidden legacy accounts can be restored. `MoneyFormPage.footer` keeps primary form actions reachable. Balance checking returns to its origin after saving, with a root snackbar. Retired routes redirect to accounts to support older restored tasks.
    - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost. Consume applied system/chrome padding before child IME padding to avoid reserving it twice when the keyboard opens.
+   - Active full-screen pages paint an opaque theme background; navigation and ledger-step animations are clipped to their viewport. Peer tabs switch directly without full-page crossfades. Incoming ledger targets remain disarmed until both the minimum tap guard and the actual step transition finish. Read shimmer/press animation values in drawing/graphics layers, not composition. History rows do not fade; refresh keeps the exact surviving row key and pixel offset, with a date-header fallback only when the row disappears. Cache date groups and exact totals per record list; total overflow must never crash rendering or wrap an amount.
    - New ledger entry uses independent full-screen type/account/amount/confirmation steps in `LedgerEntryScreen`, owned by one `LedgerEntryViewModel` and a serializable SavedStateHandle draft. Existing cash-flow, transfer, reconciliation, reminder, and supplemental-entry routes enter this same workflow and skip only explicit context. Accounts always use creation-time/id ordering and are never implicitly selected. The inline keypad only advances to confirmation; only final confirmation invokes mutation use cases. Reconciliation accepts signed/zero balances and keeps investment P&L semantics. Editing retains its existing flows; the former batch shortcut now opens staged single-account reconciliation.
 
 ### Dependency Injection

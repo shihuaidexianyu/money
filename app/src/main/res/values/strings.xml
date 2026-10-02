@@ -179,6 +179,7 @@
     <string name="history_date_until_format">截至 %1$s</string>
     <string name="history_amount_filtered">金额已筛选</string>
     <string name="history_partial_total">部分合计</string>
+    <string name="history_day_total_overflow">汇总超出显示范围</string>
     <string name="history_all_types">全部类型</string>
     <string name="history_filter_count_format">筛选 %1$d</string>
     <string name="history_cash_flow">收支</string>
@@ -598,7 +599,6 @@
     <string name="action_view_account_detail">查看账户详情</string>
     <string name="ledger_fab_create_first_message">记账前请先创建第一个账户</string>
     <string name="ledger_fab_need_second_message">转账至少需要两个可用账户</string>
-    <string name="ledger_fab_manage_accounts">管理账户</string>
     <string name="notification_state_changed">提醒状态已变化</string>
     <string name="ledger_fab_title">记一笔</string>
     <string name="ledger_income">收入</string>

@@ -4,12 +4,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -53,8 +57,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalTestApi::class)
 class LedgerEntryWorkflowTest {
-    @get:Rule val composeRule = createComposeRule()
+    // Exercise the full workflow with slow system-style animations as well as the normal
+    // scale used by LedgerEntryNavigationTest; safety cannot depend on a fixed 180 ms timer.
+    @get:Rule val composeRule = createComposeRule(effectContext = object : MotionDurationScale {
+        override val scaleFactor = 3f
+    })
     private val accounts = InMemoryAccountRepository()
     private val ledger = InMemoryTransactionRepository()
     private val preferences = InMemoryDevicePreferencesRepository()
@@ -62,6 +71,54 @@ class LedgerEntryWorkflowTest {
     private var exits = 0
     private var saves = 0
     private var createAccounts = 0
+
+    @Test
+    fun unfinishedStepTransitionKeepsIncomingTargetsDisarmed() {
+        show()
+        awaitEnabled("entry_kind_INCOME")
+        val originalBounds = composeRule.onNodeWithTag("entry_page_TYPE").fetchSemanticsNode().boundsInRoot
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.onNodeWithTag("entry_kind_INCOME").performClick()
+            composeRule.mainClock.advanceTimeBy(208)
+            composeRule.onNodeWithTag("entry_account_1").assertIsNotEnabled()
+            assertEquals(originalBounds, composeRule.onNodeWithTag("entry_page_ACCOUNT").fetchSemanticsNode().boundsInRoot)
+            composeRule.mainClock.advanceTimeBy(500)
+            composeRule.waitUntil(2000) {
+                runCatching { composeRule.onNodeWithTag("entry_account_1").assertIsEnabled() }.isSuccess
+            }
+            composeRule.onNodeWithTag("entry_account_1").assertIsEnabled()
+            runBlocking { assertTrue(ledger.queryAllCashFlowRecords().isEmpty()) }
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    fun backDuringAnUnfinishedTransitionRestoresOneArmedTypePage() {
+        show()
+        awaitEnabled("entry_kind_INCOME")
+        val originalBounds = composeRule.onNodeWithTag("entry_page_TYPE").fetchSemanticsNode().boundsInRoot
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.onNodeWithTag("entry_kind_INCOME").performClick()
+            composeRule.mainClock.advanceTimeBy(208)
+            composeRule.onNodeWithTag("entry_account_1").assertIsNotEnabled()
+            composeRule.onNode(hasContentDescription("返回") and hasAnyAncestor(hasTestTag("entry_page_ACCOUNT")))
+                .performClick()
+            // Interrupted animations can use a spring tail. Let the clock reach actual
+            // idle instead of leaving it frozen at an assumed tween duration.
+            composeRule.mainClock.autoAdvance = true
+            composeRule.waitForIdle()
+            awaitEnabled("entry_kind_EXPENSE")
+            composeRule.onNodeWithTag("entry_page_ACCOUNT").assertDoesNotExist()
+            assertEquals(originalBounds, composeRule.onNodeWithTag("entry_page_TYPE").fetchSemanticsNode().boundsInRoot)
+            composeRule.runOnIdle { assertEquals(LedgerEntryStep.TYPE, vm.uiState.value.step) }
+            runBlocking { assertTrue(ledger.queryAllCashFlowRecords().isEmpty()) }
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
 
     @Test
     fun globalIncomeRequiresEachDecisionAndOnlyFinalSaveWrites() {

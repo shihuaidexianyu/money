@@ -7,6 +7,7 @@ import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
@@ -36,12 +37,13 @@ class AppShellMacrobenchmark {
         compilationMode = CompilationMode.Full(),
         startupMode = StartupMode.WARM,
         iterations = 10,
-        setupBlock = { startActivityAndWait() },
+        setupBlock = {
+            seed(10_000)
+            startActivityAndWait()
+            selectTab("账户")
+        },
     ) {
-        val history = device.wait(Until.findObject(By.text("明细")), 5_000L)
-            ?: error("History destination was not visible")
-        history.click()
-        device.waitForIdle()
+        selectTab("明细")
     }
 
     @Test
@@ -80,18 +82,47 @@ class AppShellMacrobenchmark {
         setupBlock = {
             seed(recordCount)
             startActivityAndWait()
+            selectTab("账户")
         },
     ) {
-        val history = device.wait(Until.findObject(By.text("明细")), 5_000L)
-            ?: error("History destination was not visible")
-        history.click()
+        selectTab("明细")
+    }
+
+    @Test
+    fun historyScrollTenThousandRows() = benchmarkRule.measureRepeated(
+        packageName = TARGET_PACKAGE,
+        metrics = listOf(FrameTimingMetric()),
+        compilationMode = CompilationMode.Full(),
+        startupMode = StartupMode.WARM,
+        iterations = 5,
+        setupBlock = {
+            seed(10_000)
+            startActivityAndWait()
+            selectTab("明细")
+        },
+    ) {
+        val list = device.wait(Until.findObject(By.scrollable(true)), 5_000L)
+            ?: error("History list was not visible")
+        // Exercise real scrolling/prefetch; measuring idle repeated tab clicks hides jank.
+        repeat(3) { list.fling(Direction.DOWN); device.waitForIdle() }
+        repeat(3) { list.fling(Direction.UP); device.waitForIdle() }
+    }
+
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.selectTab(label: String) {
+        check(device.wait(Until.hasObject(By.text(label)), 5_000L)) { "Destination $label was not visible" }
+        // The title and the bottom tab can share text. Pick the tab, not the toolbar title.
+        val tab = device.findObjects(By.text(label)).maxBy { it.visibleBounds.bottom }
+        tab.click()
         device.waitForIdle()
     }
 
     private fun androidx.benchmark.macro.MacrobenchmarkScope.seed(recordCount: Int) {
-        device.executeShellCommand(
-            "am broadcast -a $SEED_ACTION -p $TARGET_PACKAGE --ei record_count $recordCount",
+        val result = device.executeShellCommand(
+            "am broadcast --include-stopped-packages -a $SEED_ACTION -p $TARGET_PACKAGE --ei record_count $recordCount",
         )
+        check("result=-1" in result && "data=\"$recordCount\"" in result) {
+            "Performance fixture was not loaded: $result"
+        }
     }
 
     private companion object {

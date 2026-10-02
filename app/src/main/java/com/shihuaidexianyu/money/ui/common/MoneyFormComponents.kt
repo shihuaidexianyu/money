@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -92,7 +93,12 @@ fun MoneyFormPage(
     val appBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val hostState = snackbarHostState?.takeIf { it.currentSnackbarData != null } ?: rootSnackbarHostState ?: snackbarHostState
 
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    // Each transitioning page must paint its own backdrop; otherwise blank form areas
+    // reveal the outgoing page while Navigation/AnimatedContent moves the two layers.
+    Box(
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.TopCenter,
+    ) {
         BoxWithConstraints(
             modifier = Modifier
                 .widthIn(max = 640.dp)

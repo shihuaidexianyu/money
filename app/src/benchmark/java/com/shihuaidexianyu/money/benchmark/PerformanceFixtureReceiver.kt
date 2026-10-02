@@ -1,12 +1,17 @@
 package com.shihuaidexianyu.money.benchmark
 
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.room.withTransaction
+import com.shihuaidexianyu.money.MoneyApplication
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
+import com.shihuaidexianyu.money.data.migration.StartupMigrationState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 
 /** Benchmark-variant-only fixture loader. It is absent from debug and release APKs. */
 class PerformanceFixtureReceiver : BroadcastReceiver() {
@@ -14,9 +19,18 @@ class PerformanceFixtureReceiver : BroadcastReceiver() {
         val recordCount = intent.getIntExtra(EXTRA_RECORD_COUNT, 0)
         require(recordCount == 10_000 || recordCount == 100_000)
         val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-        if (preferences.getInt(KEY_RECORD_COUNT, 0) == recordCount) return
+        if (preferences.getInt(KEY_RECORD_COUNT, 0) == recordCount) {
+            resultCode = Activity.RESULT_OK
+            resultData = recordCount.toString()
+            return
+        }
 
         runBlocking(Dispatchers.IO) {
+            val coordinator = (context.applicationContext as MoneyApplication).container.startupMigrationCoordinator
+            val startup = withTimeout(5_000L) {
+                coordinator.state.first { it != StartupMigrationState.Loading }
+            }
+            check(startup == StartupMigrationState.Ready) { "Benchmark startup migration failed: $startup" }
             val database = MoneyDatabase.getInstance(context)
             database.withTransaction {
                 val sqlite = database.openHelper.writableDatabase
@@ -29,8 +43,8 @@ class PerformanceFixtureReceiver : BroadcastReceiver() {
                     """
                     INSERT INTO accounts(
                         id, name, initialBalance, createdAt, isHidden, closedAt,
-                        lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName, iconName
-                    ) VALUES(1, 'Benchmark', 0, 1, 0, NULL, 1, NULL, 0, 'blue', 'wallet')
+                        lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName, iconName, kind
+                    ) VALUES(1, 'Benchmark', 0, 1, 0, NULL, 1, NULL, 0, 'blue', 'wallet', 'funding')
                     """.trimIndent(),
                 )
                 val insert = sqlite.compileStatement(
@@ -54,6 +68,8 @@ class PerformanceFixtureReceiver : BroadcastReceiver() {
             }
         }
         preferences.edit().putInt(KEY_RECORD_COUNT, recordCount).commit()
+        resultCode = Activity.RESULT_OK
+        resultData = recordCount.toString()
     }
 
     private companion object {
