@@ -70,7 +70,8 @@ class HistoryScreenLockedModeTest {
 
         // The filter sheet has no account row.
         composeRule.onNodeWithText("筛选").performClick()
-        composeRule.onNodeWithText("类型").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("开始日期", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("类型").assertDoesNotExist()
         composeRule.onNodeWithText("账户").assertDoesNotExist()
     }
 

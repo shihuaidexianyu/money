@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.animation.EnterTransition
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,12 +21,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -35,12 +32,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.onSizeChanged
@@ -52,7 +47,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -68,15 +62,12 @@ import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.rootSnackbarDuration
 import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
-import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
-import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.notification.NotificationLaunchDestination
 import com.shihuaidexianyu.money.domain.notification.NotificationLaunchIdentity
 import com.shihuaidexianyu.money.domain.launch.AppLaunchDestination
 import com.shihuaidexianyu.money.domain.launch.AppLaunchRequest
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 
 private val topLevelRoutes = MoneyDestination.topLevel.map { it.route }
 private val topLevelRouteSet = topLevelRoutes.toSet()
@@ -253,7 +244,7 @@ fun MoneyNavGraph(
         var showNotificationStateChanged = false
         when (val requested = request.destination) {
             AppLaunchDestination.BatchReconcile ->
-                navController.navigate(MoneyDestination.BatchReconcileRoute)
+                navController.navigate(MoneyDestination.updateBalanceRoute(accountId = 0L))
             AppLaunchDestination.Transfer ->
                 navController.navigate(MoneyDestination.recordTransferRoute())
             is AppLaunchDestination.CashFlow -> navController.navigate(
@@ -343,32 +334,22 @@ fun MoneyNavGraph(
             snackbarHost = { if (!entryHostsSnackbar) SnackbarHost(snackbarHostState) },
             floatingActionButton = {
                 if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
-                    ExtendedFloatingActionButton(
+                    androidx.compose.material3.FloatingActionButton(
                         modifier = Modifier.testTag("ledger_entry_fab"),
                         onClick = {
                             val availability = openAccountAvailability as? OpenAccountAvailability.Data
                             if (availability != null && availability.openAccountCount > 0) {
                                 navController.navigate(MoneyDestination.LedgerEntryRoute)
                             } else {
-                                handleFabAction(LedgerFabAction.EXPENSE)
+                                navController.navigate(MoneyDestination.CreateAccountRoute)
                             }
                         },
-                        expanded = currentRoute != MoneyDestination.History.route || !historyScrolled,
-                        icon = {
-                            Icon(
-                                Icons.Rounded.Add,
-                                contentDescription = if (currentRoute == MoneyDestination.History.route && historyScrolled) {
-                                    stringResource(R.string.ledger_fab_title)
-                                } else null,
-                            )
-                        },
-                        text = { Text(stringResource(R.string.ledger_fab_title)) },
-                        // Full-round capsule in primary roles, matching the filled primary button used
-                        // inside dialogs.
                         shape = CircleShape,
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                    )
+                    ) {
+                        Text(stringResource(R.string.ledger_fab_title), Modifier.padding(horizontal = 24.dp))
+                    }
                 }
             },
             bottomBar = {
@@ -404,7 +385,7 @@ fun MoneyNavGraph(
                 ) {
                     NavHost(
                         navController = navController,
-                        startDestination = MoneyDestination.Home.route,
+                        startDestination = MoneyDestination.Accounts.route,
                         modifier = Modifier.fillMaxSize(),
                         enterTransition = {
                             val initial = initialState.destination.route

@@ -4,11 +4,11 @@ This file contains essential context for AI coding agents working on the **Money
 
 ## Project Overview
 
-**Money** is an offline-first personal finance tracking app for Android, built with Kotlin and Jetpack Compose. It has no cloud backend; its only networking feature is a user-started, temporary LAN service for a paired local Python MCP bridge.
-It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, app shortcuts, biometric app lock, amount privacy masking, dark mode, and journaled AI-assisted ledger access over the local network.
+**Money** is an offline-first personal finance tracking app for Android, built with Kotlin and Jetpack Compose. It has no cloud backend. Legacy LAN/MCP infrastructure remains in the codebase but is disabled by the minimal product policy.
+The active product has two top-level pages: accounts and activity. Its core is account creation/renaming/closing/reopening, income/outflow, transfers, reconciliation, searchable history with editing/deletion/undo, plaintext JSON backup/import, shortcuts, biometric lock, amount masking, and system/light/dark themes. Account icons, manual ordering, account-kind setup, the standalone dashboard, batch reconciliation, advanced history filters, reminder management, and computer/AI connection have no active UI entry. Hidden accounts and investment semantics from existing data remain readable; legacy reminders, settings, and visual/order fields remain backup-compatible. `MinimalProductPolicy` disables reminder scheduling and LAN service startup; startup cancels old notification work.
 
 - **Package / Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.6.4` (versionCode `148`)
+- **Version**: `2.6.5` (versionCode `149`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -87,7 +87,7 @@ The script:
 
 ### Benchmark Module
 
-`:benchmark` is a self-instrumenting `com.android.test` module targeting `:app` (`benchmark/src/main/java/.../AppShellMacrobenchmark.kt`). It measures cold startup, history-tab frame timing, and large-dataset (10k rows) home rendering. The app module declares a matching `benchmark` build type (inherits `release`, signed with the debug key). Run it against a device/emulator with:
+`:benchmark` is a self-instrumenting `com.android.test` module targeting `:app` (`benchmark/src/main/java/.../AppShellMacrobenchmark.kt`). It measures cold startup, history-tab frame timing, and accounts/history rendering with 10k and 100k ledger rows. The app module declares a matching `benchmark` build type (inherits `release`, signed with the debug key). Run it against a device/emulator with:
 
 ```bash
 ./gradlew :benchmark:connectedCheck
@@ -171,7 +171,7 @@ app/src/main/java/com/shihuaidexianyu/money/
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
    - `dao/`: Room DAOs. All four ledger record types use `deletedAt` soft deletion and unique `operationId` values. `HistoryRecordDao` unions 4 tables with keyset pagination; `LedgerAggregateDao` serves aggregate queries.
    - `repository/`: Concrete implementations plus `InMemory*` variants (`InMemoryAccountRepository`, `InMemoryTransactionRepository`, `InMemoryAccountReminderSettingsRepository`, `InMemoryRecurringReminderRepository`, `InMemoryPortableSettingsRepository`, `InMemoryDevicePreferencesRepository`) for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 18, `exportSchema = true` to `app/schemas/`).
+   - `db/MoneyDatabase.kt`: Room database (current version = 21, `exportSchema = true` to `app/schemas/`).
    - `migration/`: `StartupMigrationCoordinator` runs the legacy-store/settings upgrade before the ledger is exposed, surfacing recoverable-error states (retry, use current database, reset settings, export legacy source).
    - `export/`: `ExportJsonFileWriter` writes plaintext `.json` files with collision-resistant names.
    - `backup/`: `BackupJsonCodec` (kotlinx.serialization + v1→v5 migrations), staged URI copies, validated safety snapshots, durable import receipts, and `BackupRepositoryImpl`.
@@ -180,9 +180,9 @@ app/src/main/java/com/shihuaidexianyu/money/
    - One package per feature.
    - Each screen has a paired `ViewModel` exposing a single `StateFlow<UiState>`.
    - Compose UI collects state and triggers events back to the ViewModel.
-   - Product/interaction reference: `docs/design/money-redesign-v2.md`. Top-level navigation is overview, accounts, then activity. `MoneyFormPage.footer` keeps primary form actions reachable; optional account setup uses `MoneyExpandableSection`. Balance checking returns to its origin after saving, with a root snackbar. The computer connection and AI mutation journal are presented as `连接电脑` and `AI 修改记录`.
+   - Minimal product navigation is accounts, then activity; accounts is the start destination. Use text-first, icon-free controls and stable creation-time/id ordering across account lists and pickers. Creating an account asks only for name and opening balance; hidden legacy accounts can be restored. `MoneyFormPage.footer` keeps primary form actions reachable. Balance checking returns to its origin after saving, with a root snackbar. Retired routes redirect to accounts to support older restored tasks.
    - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost. Consume applied system/chrome padding before child IME padding to avoid reserving it twice when the keyboard opens.
-   - New ledger entry uses independent full-screen type/account/amount/confirmation steps in `LedgerEntryScreen`, owned by one `LedgerEntryViewModel` and a serializable SavedStateHandle draft. Existing cash-flow, transfer, reconciliation, reminder, and supplemental-entry routes enter this same workflow and skip only explicit context. Recent accounts affect ordering, never implicit selection. The inline keypad only advances to confirmation; only final confirmation invokes mutation use cases. Reconciliation accepts signed/zero balances and keeps investment P&L semantics. Editing and batch reconciliation retain their existing flows.
+   - New ledger entry uses independent full-screen type/account/amount/confirmation steps in `LedgerEntryScreen`, owned by one `LedgerEntryViewModel` and a serializable SavedStateHandle draft. Existing cash-flow, transfer, reconciliation, reminder, and supplemental-entry routes enter this same workflow and skip only explicit context. Accounts always use creation-time/id ordering and are never implicitly selected. The inline keypad only advances to confirmation; only final confirmation invokes mutation use cases. Reconciliation accepts signed/zero balances and keeps investment P&L semantics. Editing retains its existing flows; the former batch shortcut now opens staged single-account reconciliation.
 
 ### Dependency Injection
 
@@ -195,7 +195,7 @@ ViewModels are created via `moneyViewModelFactory` in `navigation/NavigationView
 
 ### Startup Sequence
 
-`MoneyApplication.onCreate` creates notification channels synchronously, builds the container, then on a background scope: runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready`, applies notification privacy, schedules `MoneyNotificationScheduler.scheduleAfterReady(...)`, and seeds debug sample data (debuggable builds only). Ledger access before `Ready` is gated by the coordinator.
+`MoneyApplication.onCreate` creates notification channels synchronously, builds the container, then on a background scope: runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready`, cleans up retired notification work through `MoneyNotificationScheduler.scheduleAfterReady(...)`, and seeds debug sample data (debuggable builds only). Ledger access before `Ready` is gated by the coordinator.
 
 ### Mutation Side-Effect Pattern
 
@@ -207,6 +207,8 @@ After any data mutation, use cases must refresh derived state:
 - Closed accounts are read-only. Use mutation use cases rather than repositories directly so lifecycle guards are applied.
 
 ### Notifications
+
+- The minimal product sets `MinimalProductPolicy.remindersEnabled = false`. The concrete sync requester is a no-op, the worker exits successfully without reading the ledger, and startup cancels periodic/immediate/legacy work plus old reminder/balance notifications. The contracts below describe retained compatibility infrastructure, not active scheduling.
 
 - A unified `MoneyNotificationWorker` projects due reminders and stale-account balance checks. Scheduling is a 15-minute periodic unique work (`money-notification-sync-v2`, `UPDATE` policy) plus debounced one-time syncs (1s delay, `REPLACE` / `APPEND_OR_REPLACE` for continuations) requested through the domain `NotificationSyncRequester` interface.
 - Legacy unique work names (`recurring-reminder-check`, `balance-check`) are cancelled at startup.
@@ -284,7 +286,7 @@ When modifying entities:
 
 ## Key Domain Concepts
 
-- **Accounts**: Open accounts are user-ordered and may be hidden without changing calculations. A zero-balance account may be closed and later reopened; closed accounts are read-only.
+- **Accounts**: Open accounts are displayed in creation-time/id order. Legacy hidden accounts do not change calculations and can be restored to visibility; new hiding and manual ordering are not exposed. A zero-balance account may be closed and later reopened; closed accounts are read-only.
 - **Account kind**: Each account is `FUNDING` (日常) or `INVESTMENT` (投资) — a single account-level attribute, deliberately not a per-record category system. Meaning is derived at read time: a reconciliation delta on an investment account is presented as 投资收益/投资亏损 (and summed into the home 投资损益 line), while the same delta on a funding account remains 对账调整. Reclassifying an account retroactively reinterprets its whole history. Ledger arithmetic is unchanged by kind.
 - **Account creation**: The account's `initialBalance` is the opening asset event. For period dashboards, accounts opened inside the selected period contribute their initial balance to opening assets, not cash inflow or asset adjustment.
 - **Transaction types**:
@@ -293,7 +295,7 @@ When modifying entities:
   - `BalanceUpdate`: Reconciliation adjustment. It stores `actualBalance` and `systemBalanceBeforeUpdate` as evidence, but only its fixed `delta` affects ledger balance.
   - `BalanceAdjustment`: Manual correction ledger event.
 - **Balance calculation**: Uses `LedgerBalanceCalculator` semantics: before account opening the balance is `0`; from opening onward balance is `initialBalance + inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliationDelta`.
-- **Reminders**: Recurring reminders use `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods anchored to the first due time. WorkManager performs a 15-minute periodic check plus debounced one-time synchronization. No exact-alarm permission is used.
+- **Reminders**: Recurring reminders use `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods anchored to the first due time. The minimal product preserves reminder data for backup compatibility but does not schedule or expose reminders. The retained implementation uses WorkManager, not exact alarms.
 - **Export/import**: Backup schema v5 contains portable settings, accounts (including account kind since v5), all four ledger record types (including tombstones and operation IDs), reminders, and account reminder configs. v1–v4 files import with defaults (v4 accounts default to the funding kind); legacy savings-goal fields are ignored. Export is plaintext JSON only. Import first copies the selected URI into private cache, validates and previews the same bytes, writes a verified safety snapshot, and replaces portable data in one Room transaction. Durable receipts provide conditional rollback.
 - **Settings split**: `PortableSettings` (Room `portable_settings` table) travel with backups; `DevicePreferences` (DataStore: biometric lock, in-app/notification amount masks, recents hiding) are device-local and never exported.
 - **External entry points**: App shortcuts and notification deep links are normalized into `AppLaunchRequest`s and routed through the launch queue in `ui/launch/`.
@@ -301,7 +303,7 @@ When modifying entities:
 
 ## Security Considerations
 
-- **Local networking only**: There is no cloud backend or remote endpoint. `INTERNET` exists solely for the user-started `MoneyLanService`, which binds a temporary LAN port for up to six hours and advertises itself via NSD (`_moneylink._tcp.`, TXT `proto=1` + `caps`). Pairing is confirmed on the phone (`session.pair.begin`/`poll` approval dialog); approving once issues a 256-bit session token plus a persistent device credential whose SHA-256 hash is stored in the Room `paired_lan_device` table (plaintext is returned exactly once). `session.resume` silently restores sessions after expiry or service restarts; revoking a device deletes its row and kicks its active session. The eight-digit one-time code remains as the manual fallback. The current protocol is plaintext and must be treated as trusted-LAN-only.
+- **Local networking only**: There is no cloud backend or remote endpoint. `MinimalProductPolicy.computerConnectionEnabled = false` stops service startup and the LAN route redirects to accounts; the following describes retained legacy infrastructure. `INTERNET` exists solely for the user-started `MoneyLanService`, which binds a temporary LAN port for up to six hours and advertises itself via NSD (`_moneylink._tcp.`, TXT `proto=1` + `caps`). Pairing is confirmed on the phone (`session.pair.begin`/`poll` approval dialog); approving once issues a 256-bit session token plus a persistent device credential whose SHA-256 hash is stored in the Room `paired_lan_device` table (plaintext is returned exactly once). `session.resume` silently restores sessions after expiry or service restarts; revoking a device deletes its row and kicks its active session. The eight-digit one-time code remains as the manual fallback. The current protocol is plaintext and must be treated as trusted-LAN-only.
 - **LAN write safety**: A session-level phone switch controls writes; there is no per-operation approval. Every successful AI write is atomically journaled, request IDs are idempotent, and conflict-aware LIFO undo uses existing mutation use cases. Batched record writes (`sync.push.records.v1`) land atomically and enter the Journal as one undoable unit with per-patch `operationId`s derived as `ai:<requestId>:<patchId>`. Never route LAN writes directly to DAOs or repositories.
 - **Data export**: Manual export writes unencrypted JSON to app-private cache and shares it only through a `FileProvider` URI under `cache/exports/`. The UI must warn users to save it only to a trusted location.
 - **Pre-import backup**: Before any replacement, `SafetySnapshotStore` atomically writes and verifies a snapshot under `filesDir/pre_import_backups/`; `ImportReceiptStore` records its hash and supports rollback without importing device-local privacy preferences.

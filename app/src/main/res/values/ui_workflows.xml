@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="history_filter_editor_hint">调整后点“应用筛选”生效；关闭面板不会改变当前结果。</string>
-    <string name="history_advanced_filters">更多条件</string>
-    <string name="history_amount_bounds_hint">按金额绝对值筛选，多个条件需同时满足。不选类型表示全部。</string>
     <string name="history_reset_draft">重置条件</string>
     <string name="history_apply_filters">应用筛选</string>
     <string name="batch_actual_balance">实际余额</string>
@@ -15,8 +13,6 @@
     <string name="batch_invalid_amounts">请检查已选账户的实际余额</string>
     <string name="batch_retry_input_locked">已尝试保存，重试将沿用本次余额和核对时间，避免重复记账。</string>
     <string name="batch_reconcile_review_changed">核对内容已变化，请检查余额后重新确认</string>
-    <string name="settings_save_backup">保存备份到文件</string>
-    <string name="settings_share_backup">分享备份</string>
     <string name="settings_backup_saved">备份文件已保存</string>
     <string name="settings_backup_save_failed">未能保存备份，可重选位置；若临时文件已失效，请重新生成备份</string>
     <string name="settings_backup_pending">有一份待保存的备份</string>

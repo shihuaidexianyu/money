@@ -12,17 +12,16 @@ data class SettingsSectionContract(
 )
 
 val SETTINGS_SECTION_CONTRACTS: List<SettingsSectionContract> = listOf(
+    SettingsSectionContract(R.string.settings_section_display, listOf("theme")),
     SettingsSectionContract(
-        R.string.settings_section_display,
-        listOf("theme", "amount_color", "currency_symbol"),
+        R.string.settings_section_privacy,
+        listOf("biometric", "relock", "hide_recents", "hide_in_app"),
     ),
-    SettingsSectionContract(R.string.settings_section_privacy, listOf("biometric", "relock", "hide_recents", "hide_notification", "hide_in_app")),
-    SettingsSectionContract(R.string.settings_section_notifications, listOf("permission_channels", "reminder_management", "account_reminder_config")),
     SettingsSectionContract(
         R.string.settings_section_data,
-        listOf("lan_ai", "export_json", "share_json", "pending_export", "import_preview", "receipt_rollback"),
+        listOf("export_backup", "pending_export", "import_preview", "receipt_rollback"),
     ),
-    SettingsSectionContract(R.string.settings_section_about, listOf("version", "offline_data_safety")),
+    SettingsSectionContract(R.string.settings_section_about, listOf("version", "offline_data_safety", "legacy_features")),
 )
 
 data class ImportReceiptHistoryRow(

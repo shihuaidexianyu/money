@@ -12,6 +12,7 @@ fun Account.toAccountOptionUiModel(): AccountOptionUiModel {
         isHidden = isHidden,
         isInvestment = isInvestment,
         lastBalanceUpdateAt = lastBalanceUpdateAt,
+        createdAt = createdAt,
     )
 }
 

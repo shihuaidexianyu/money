@@ -37,6 +37,7 @@ data class AccountListItemUiModel(
     val requiresReopenAndSettle: Boolean = false,
     val isStale: Boolean,
     val displayOrder: Int,
+    val createdAt: Long = 0L,
 )
 
 data class AccountsUiState(
@@ -175,7 +176,7 @@ class AccountsViewModel(
                 balances.getValue(it.id),
             )
         }
-        .sortedBy { it.displayOrder }
+        .sortedWith(compareBy<AccountListItemUiModel> { it.createdAt }.thenBy { it.id })
 
     private fun mapItem(
         account: Account,
@@ -196,6 +197,7 @@ class AccountsViewModel(
                 reminderConfig = reminderConfig ?: BalanceUpdateReminderConfig(),
             ),
             displayOrder = account.displayOrder,
+            createdAt = account.createdAt,
         )
     }
 

@@ -1,27 +1,23 @@
 package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Block
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.R
@@ -37,6 +33,7 @@ data class AccountOptionUiModel(
     val isHidden: Boolean = false,
     val isInvestment: Boolean = false,
     val lastBalanceUpdateAt: Long? = null,
+    val createdAt: Long = 0L,
 )
 
 data class AccountPickerSections(
@@ -50,8 +47,9 @@ fun accountPickerSections(
     accounts: List<AccountOptionUiModel>,
     hiddenExpanded: Boolean,
 ): AccountPickerSections {
-    val visibleAccounts = accounts.filterNot(AccountOptionUiModel::isHidden)
-    val allHiddenAccounts = accounts.filter(AccountOptionUiModel::isHidden)
+    val orderedAccounts = accounts.sortedWith(compareBy<AccountOptionUiModel> { it.createdAt }.thenBy { it.id })
+    val visibleAccounts = orderedAccounts.filterNot(AccountOptionUiModel::isHidden)
+    val allHiddenAccounts = orderedAccounts.filter(AccountOptionUiModel::isHidden)
     return AccountPickerSections(
         visibleAccounts = visibleAccounts,
         hiddenAccounts = if (hiddenExpanded) allHiddenAccounts else emptyList(),
@@ -123,11 +121,7 @@ private fun AccountPickerList(
                         onClick = onClearSelection,
                         accessory = {
                             if (selectedAccountId == null) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
+                                Text(stringResource(R.string.minimal_selected), color = MaterialTheme.colorScheme.primary)
                             }
                         },
                     )
@@ -160,14 +154,7 @@ private fun AccountPickerList(
                         isClickable = true,
                         onClick = { hiddenExpanded = !sections.hiddenExpanded },
                         accessory = {
-                            Icon(
-                                imageVector = if (sections.hiddenExpanded) {
-                                    Icons.Rounded.ExpandLess
-                                } else {
-                                    Icons.Rounded.ExpandMore
-                                },
-                                contentDescription = null,
-                            )
+                            Text(stringResource(if (sections.hiddenExpanded) R.string.action_collapse else R.string.action_view))
                         },
                     )
                 }
@@ -206,33 +193,22 @@ private fun AccountPickerSection(
                 title = account.name,
                 subtitle = account.pickerSubtitle(settings),
                 showChevron = false,
-                leading = {
-                    AccountIconBadge(
-                        iconName = account.iconName,
-                        colorName = account.colorName,
-                        size = 30.dp,
-                        iconSize = 17.dp,
-                    )
-                },
                 modifier = Modifier.alpha(if (isDisabled) 0.45f else 1f),
                 onClick = { onPick(account.id) },
                 enabled = !isDisabled,
                 accessory = {
                     when {
                         selectedAccountId == account.id -> {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
-                                contentDescription = stringResource(R.string.account_picker_selected_format, account.name),
-                                tint = MaterialTheme.colorScheme.primary,
+                            val selectedDescription = stringResource(R.string.account_picker_selected_format, account.name)
+                            Text(
+                                stringResource(R.string.minimal_selected),
+                                modifier = Modifier.semantics { contentDescription = selectedDescription },
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
 
                         isDisabled -> {
-                            Icon(
-                                imageVector = Icons.Rounded.Block,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Text(stringResource(R.string.minimal_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 },

@@ -31,6 +31,7 @@ class MoneyNotificationWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.remindersEnabled) return Result.success()
         val container = (applicationContext as? MoneyAppContainerProvider)?.moneyAppContainer
             ?: return Result.success()
         return processMutex.withLock {

@@ -42,9 +42,10 @@ class CreateAccountViewModelTest {
     }
 
     @Test
-    fun `save with blank amount emits ShowMessage`() = runTest(dispatcher) {
+    fun `save with explicitly cleared amount emits ShowMessage`() = runTest(dispatcher) {
         val vm = buildViewModel()
         vm.updateName("现金")
+        vm.updateAmountText("")
         vm.effectFlow.test {
             vm.save()
             advanceUntilIdle()
@@ -129,6 +130,23 @@ class CreateAccountViewModelTest {
 
         vm.updateName("现金")
         assertEquals(null, vm.uiState.value.nameError)
+    }
+
+    @Test
+    fun `zero is an explicit clean default and rapid save taps only create one account`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val vm = buildViewModel(accounts)
+        assertEquals("0", vm.uiState.value.amountText)
+        assertTrue(!vm.uiState.value.isDirty)
+        vm.updateName("现金")
+        vm.effectFlow.test {
+            vm.save()
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(CreateAccountEffect.Saved, awaitItem())
+            expectNoEvents()
+        }
+        assertEquals(0L, accounts.queryOpenAccounts().single().initialBalance)
     }
 
     private fun buildViewModel(

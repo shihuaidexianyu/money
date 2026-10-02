@@ -31,6 +31,7 @@ class WorkManagerNotificationSyncRequester(context: Context) : NotificationSyncR
     private val appContext = context.applicationContext
 
     override fun request(reason: NotificationSyncReason) {
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.remindersEnabled) return
         runCatching {
             val request = OneTimeWorkRequestBuilder<MoneyNotificationWorker>()
                 .setInitialDelay(NotificationWorkContract.IMMEDIATE_DELAY_MILLIS, TimeUnit.MILLISECONDS)
@@ -63,6 +64,16 @@ object MoneyNotificationScheduler {
             reminderIds = legacyReminderIds,
             accountIds = legacyAccountIds,
         )
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.remindersEnabled) {
+            workManager.cancelUniqueWork(NotificationWorkContract.PERIODIC_WORK_NAME)
+            workManager.cancelUniqueWork(NotificationWorkContract.IMMEDIATE_WORK_NAME)
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager?.activeNotifications.orEmpty().filter {
+                it.notification.channelId in setOf(AndroidMoneyNotificationPublisher.RECURRING_CHANNEL_ID,
+                    AndroidMoneyNotificationPublisher.BALANCE_CHANNEL_ID)
+            }.forEach { manager?.cancel(it.tag, it.id) }
+            return
+        }
         val periodic = PeriodicWorkRequestBuilder<MoneyNotificationWorker>(
             NotificationWorkContract.PERIODIC_INTERVAL_MINUTES,
             TimeUnit.MINUTES,

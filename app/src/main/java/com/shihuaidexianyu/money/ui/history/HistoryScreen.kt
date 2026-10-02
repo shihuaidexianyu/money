@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.ui.history
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -25,18 +27,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
@@ -47,14 +43,12 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
@@ -274,7 +268,7 @@ fun HistoryScreen(
         contentPadding = PaddingValues(start = 24.dp, top = 0.dp, end = 24.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(0.dp),
         trailing = {
-            IconButton(
+            TextButton(
                 onClick = {
                     if (searchExpanded) {
                         closeSearch()
@@ -284,14 +278,11 @@ fun HistoryScreen(
                     }
                 },
             ) {
-                Icon(
-                    imageVector = if (searchExpanded) Icons.Rounded.Close else Icons.Rounded.Search,
-                    contentDescription = stringResource(if (searchExpanded) R.string.history_close_search else R.string.history_search),
-                )
+                val label = stringResource(if (searchExpanded) R.string.history_close_search else R.string.history_search)
+                Text(label, Modifier.semantics { contentDescription = label })
             }
             TextButton(onClick = { focusManager.clearFocus(); sheet = HistoryFilterSheet.OVERVIEW }) {
-                Icon(Icons.Rounded.FilterList, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(filterChipLabel(state, accountLocked), modifier = Modifier.padding(start = 4.dp))
+                Text(filterChipLabel(state, accountLocked))
             }
         },
         header = {
@@ -385,7 +376,6 @@ fun HistoryScreen(
                         EmptyKind.COMPLETELY_EMPTY -> stringResource(R.string.history_empty_description)
                         EmptyKind.FILTERED_EMPTY -> stringResource(R.string.history_filtered_empty_description)
                     },
-                    icon = Icons.Rounded.Search,
                     action = if (content.kind == EmptyKind.COMPLETELY_EMPTY) {
                         {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -581,21 +571,11 @@ private fun SearchField(
             .semantics { contentDescription = placeholder },
         placeholder = { Text(placeholder) },
         singleLine = true,
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Rounded.Search,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
         trailingIcon = if (value.isNotEmpty()) {
             {
-                IconButton(onClick = { onValueChange("") }) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = stringResource(R.string.action_clear),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                TextButton(onClick = { onValueChange("") }) {
+                    val label = stringResource(R.string.action_clear)
+                    Text(label, Modifier.semantics { contentDescription = label })
                 }
             }
         } else {
@@ -698,7 +678,7 @@ private fun ActiveFilterChips(
         if (state.excludeKeyword.isNotBlank()) {
             FilterChip(
                 selected = true,
-                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Text(stringResource(R.string.minimal_remove_filter), style = MaterialTheme.typography.labelSmall) },
                 onClick = { onRemove(HistoryFilterSheet.OVERVIEW) },
                 label = { Text(stringResource(R.string.history_excluding_keyword, state.excludeKeyword)) },
             )
@@ -706,7 +686,7 @@ private fun ActiveFilterChips(
         if (state.selectedRecordTypes.isNotEmpty()) {
             FilterChip(
                 selected = true,
-                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Text(stringResource(R.string.minimal_remove_filter), style = MaterialTheme.typography.labelSmall) },
                 onClick = { onRemove(HistoryFilterSheet.TYPE) },
                 label = { Text(typeSheetSummary(state)) },
             )
@@ -714,7 +694,7 @@ private fun ActiveFilterChips(
         if (state.businessSemantic != HistoryBusinessSemantic.ALL) {
             FilterChip(
                 selected = true,
-                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Text(stringResource(R.string.minimal_remove_filter), style = MaterialTheme.typography.labelSmall) },
                 onClick = { onRemove(HistoryFilterSheet.BUSINESS) },
                 label = { Text(businessSemanticLabel(state.businessSemantic)) },
             )
@@ -722,7 +702,7 @@ private fun ActiveFilterChips(
         if (!accountLocked && state.selectedAccountId != null) {
             FilterChip(
                 selected = true,
-                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Text(stringResource(R.string.minimal_remove_filter), style = MaterialTheme.typography.labelSmall) },
                 onClick = { onRemove(HistoryFilterSheet.ACCOUNT) },
                 label = { Text(accountSheetSummary(state)) },
             )
@@ -730,7 +710,7 @@ private fun ActiveFilterChips(
         if (state.dateStartAt != null || state.dateEndAt != null) {
             FilterChip(
                 selected = true,
-                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Text(stringResource(R.string.minimal_remove_filter), style = MaterialTheme.typography.labelSmall) },
                 onClick = { onRemove(HistoryFilterSheet.DATE) },
                 label = { Text(dateSheetSummary(state)) },
             )
@@ -738,7 +718,7 @@ private fun ActiveFilterChips(
         if (state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank()) {
             FilterChip(
                 selected = true,
-                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Text(stringResource(R.string.minimal_remove_filter), style = MaterialTheme.typography.labelSmall) },
                 onClick = { onRemove(HistoryFilterSheet.AMOUNT) },
                 label = { Text(amountChipLabel(state)) },
             )
@@ -746,7 +726,7 @@ private fun ActiveFilterChips(
         if (state.amountDirectionFilter != AmountDirectionFilter.ALL) {
             FilterChip(
                 selected = true,
-                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Text(stringResource(R.string.minimal_remove_filter), style = MaterialTheme.typography.labelSmall) },
                 onClick = { onRemove(HistoryFilterSheet.DIRECTION) },
                 label = { Text(directionChipLabel(state)) },
             )

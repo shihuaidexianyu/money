@@ -2,7 +2,6 @@ package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -54,13 +53,7 @@ fun AdaptiveTopLevelNavigation(
                                 unselectedIconColor = unselectedItemColor,
                                 unselectedTextColor = unselectedItemColor,
                             ),
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) destination.selectedIcon else destination.icon,
-                                    contentDescription = label,
-                                )
-                            },
-                            label = { Text(label) },
+                            icon = { Text(label) },
                         )
                     }
                 }
@@ -84,13 +77,7 @@ fun AdaptiveTopLevelNavigation(
                         unselectedIconColor = unselectedItemColor,
                         unselectedTextColor = unselectedItemColor,
                     ),
-                    icon = {
-                        Icon(
-                            imageVector = if (selected) destination.selectedIcon else destination.icon,
-                            contentDescription = label,
-                        )
-                    },
-                    label = { Text(label) },
+                    icon = { Text(label) },
                 )
             }
         }

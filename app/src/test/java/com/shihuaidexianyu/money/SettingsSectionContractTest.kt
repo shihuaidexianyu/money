@@ -35,18 +35,13 @@ class SettingsSectionContractTest {
     }
 
     @Test
-    fun `settings has exactly five sections with the approved ownership`() {
+    fun `settings only exposes appearance privacy backup and compatibility`() {
         assertEquals(
             listOf(
-                R.string.settings_section_display to listOf(
-                    "theme",
-                    "amount_color",
-                    "currency_symbol",
-                ),
-                R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_notification", "hide_in_app"),
-                R.string.settings_section_notifications to listOf("permission_channels", "reminder_management", "account_reminder_config"),
-                R.string.settings_section_data to listOf("lan_ai", "export_json", "share_json", "pending_export", "import_preview", "receipt_rollback"),
-                R.string.settings_section_about to listOf("version", "offline_data_safety"),
+                R.string.settings_section_display to listOf("theme"),
+                R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_in_app"),
+                R.string.settings_section_data to listOf("export_backup", "pending_export", "import_preview", "receipt_rollback"),
+                R.string.settings_section_about to listOf("version", "offline_data_safety", "legacy_features"),
             ),
             SETTINGS_SECTION_CONTRACTS.map { it.titleRes to it.itemKeys },
         )
@@ -79,7 +74,7 @@ class SettingsSectionContractTest {
         val copy = java.io.File("src/main/res/values/strings.xml").readText()
         assertTrue(copy.contains("未加密 JSON"))
         assertTrue(copy.contains("账目保存在这台设备上"))
-        assertTrue(copy.contains("连接电脑需由你手动开启"))
+        assertTrue(copy.contains("本版不再运行提醒和电脑连接服务"))
         assertTrue(copy.contains("不会自动备份"))
         listOf("AES", ".enc", "精确闹钟", "多个目标", "云同步").forEach { forbidden ->
             assertFalse(copy.contains(forbidden), forbidden)

@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.ui.history
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,30 +20,29 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
-import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
-import com.shihuaidexianyu.money.ui.common.MoneyExpandableSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
-import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import java.time.Instant
 import java.time.ZoneId
+
+internal fun HistoryFilterState.forMinimalLedger() = copy(
+    excludeKeyword = "", selectedRecordTypes = emptySet(), minAmountText = "", maxAmountText = "",
+    amountDirectionFilter = AmountDirectionFilter.ALL, businessSemantic = HistoryBusinessSemantic.ALL,
+)
 
 internal fun HistoryUiState.filterDraft() = HistoryFilterState(
     excludeKeyword = excludeKeyword, selectedRecordTypes = selectedRecordTypes,
@@ -60,14 +60,13 @@ internal fun HistoryFiltersSheet(
     onApply: (HistoryFilterState) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var draft by rememberSaveable { mutableStateOf(initialFilters) }
+    var draft by rememberSaveable { mutableStateOf(initialFilters.forMinimalLedger().let {
+        it.copy(selectedAccountId = lockedAccountId ?: it.selectedAccountId)
+    }) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var accountPicker by rememberSaveable { mutableStateOf(false) }
     var dateField by rememberSaveable { mutableStateOf<String?>(null) }
-    val validation = draft.validateAmounts()
-    val hasAdvanced = draft.excludeKeyword.isNotBlank() || draft.minAmountText.isNotBlank() ||
-        draft.maxAmountText.isNotBlank() || draft.businessSemantic != HistoryBusinessSemantic.ALL
     if (accountPicker && lockedAccountId == null) {
         AccountPickerDialog(
             title = stringResource(R.string.history_filter_account), accounts = accounts,
@@ -134,43 +133,6 @@ internal fun HistoryFiltersSheet(
                 MoneySelectionField(stringResource(R.string.history_end_date),
                     historyEndDateFieldText(draft.dateEndAt, unlimitedLabel = stringResource(R.string.history_unlimited)),
                     onClick = { dateField = "end" })
-                MoneySectionHeader(stringResource(R.string.history_type))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HistoryRecordType.entries.forEach { type ->
-                        FilterChip(selected = type in draft.selectedRecordTypes, onClick = {
-                            draft = draft.copy(selectedRecordTypes = if (type in draft.selectedRecordTypes)
-                                draft.selectedRecordTypes - type else draft.selectedRecordTypes + type)
-                        }, label = { Text(historyTypeLabel(type)) })
-                    }
-                }
-                MoneySectionHeader(stringResource(R.string.history_direction))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AmountDirectionFilter.entries.forEach { direction ->
-                        FilterChip(selected = draft.amountDirectionFilter == direction,
-                            onClick = { draft = draft.copy(amountDirectionFilter = direction) },
-                            label = { Text(stringResource(direction.labelRes)) })
-                    }
-                }
-                MoneyExpandableSection(stringResource(R.string.history_advanced_filters), initiallyExpanded = hasAdvanced,
-                    forceExpanded = !validation.isValid) {
-                    Text(stringResource(R.string.history_amount_bounds_hint), style = MaterialTheme.typography.bodySmall)
-                    MoneySingleLineField(draft.minAmountText, { draft = draft.copy(minAmountText = it) },
-                        stringResource(R.string.history_min_amount), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = validation.minErrorRes != null, supportingText = validation.minErrorRes?.let { stringResource(it) })
-                    MoneySingleLineField(draft.maxAmountText, { draft = draft.copy(maxAmountText = it) },
-                        stringResource(R.string.history_max_amount), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = validation.maxErrorRes != null, supportingText = validation.maxErrorRes?.let { stringResource(it) })
-                    MoneySingleLineField(draft.excludeKeyword, { draft = draft.copy(excludeKeyword = it) },
-                        stringResource(R.string.history_exclude_keyword))
-                    MoneySectionHeader(stringResource(R.string.history_business_semantic))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        HistoryBusinessSemantic.entries.forEach { semantic ->
-                            FilterChip(selected = draft.businessSemantic == semantic,
-                                onClick = { draft = draft.copy(businessSemantic = semantic) },
-                                label = { Text(businessSemanticLabel(semantic)) })
-                        }
-                    }
-                }
             }
             Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = { draft = HistoryFilterState(selectedAccountId = lockedAccountId) }) {
@@ -179,8 +141,8 @@ internal fun HistoryFiltersSheet(
                 Button(onClick = {
                     focusManager.clearFocus()
                     keyboardController?.hide()
-                    onApply(draft)
-                }, enabled = validation.isValid, modifier = Modifier.weight(1f)) {
+                    onApply(draft.forMinimalLedger().copy(selectedAccountId = lockedAccountId ?: draft.selectedAccountId))
+                }, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.history_apply_filters))
                 }
             }

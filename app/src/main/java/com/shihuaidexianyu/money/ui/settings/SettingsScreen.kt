@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.settings
 
 import android.content.ClipData
+import androidx.compose.runtime.setValue
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -10,7 +11,6 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -23,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppRelockDelay
-import com.shihuaidexianyu.money.domain.model.MAX_CURRENCY_SYMBOL_LENGTH
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
 import com.shihuaidexianyu.money.data.backup.ImportReceiptKind
@@ -47,22 +45,21 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private sealed interface SettingsDialog {
+    data object ExportDestination : SettingsDialog
     data object ExportWarning : SettingsDialog
     data object ShareWarning : SettingsDialog
     data class SafetyWarning(val receiptId: String) : SettingsDialog
     data object ThemeMode : SettingsDialog
-    data object AmountColorMode : SettingsDialog
-    data object CurrencySymbol : SettingsDialog
     data object RelockDelay : SettingsDialog
     data class ImportSuccess(val receiptId: String) : SettingsDialog
 }
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
@@ -94,7 +91,6 @@ fun SettingsScreen(
     onRefreshImportHistory: () -> Unit = {},
     onExportSafetySnapshot: (String) -> Unit = {},
 ) {
-    val settings = state.portableSettings
     val devicePreferences = state.devicePreferences
     val context = LocalContext.current
     val versionInfo = remember(context) { context.applicationVersionInfo() }
@@ -125,7 +121,6 @@ fun SettingsScreen(
     var receiptActionsTarget by rememberSaveable { mutableStateOf<String?>(null) }
     val busy = state.isExporting || state.isImporting
     BackHandler(enabled = busy) {}
-    var currencyDraft by remember(settings.currencySymbol) { mutableStateOf(settings.currencySymbol) }
     val openDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -166,6 +161,15 @@ fun SettingsScreen(
 
     dialog?.let { currentDialog ->
         when (currentDialog) {
+            SettingsDialog.ExportDestination -> {
+                MoneyChoiceDialog(
+                    title = stringResource(R.string.minimal_export_backup),
+                    options = listOf(false, true),
+                    label = { share -> stringResource(if (share) R.string.minimal_export_share else R.string.minimal_export_file) },
+                    onSelect = { share -> dialog = if (share) SettingsDialog.ShareWarning else SettingsDialog.ExportWarning },
+                    onDismiss = { dialog = null },
+                )
+            }
             SettingsDialog.ExportWarning, SettingsDialog.ShareWarning -> {
                 MoneyConfirmDialog(
                     title = stringResource(R.string.settings_export_plaintext_title),
@@ -200,34 +204,6 @@ fun SettingsScreen(
                         dialog = null
                     },
                     onDismiss = { dialog = null },
-                )
-            }
-
-            SettingsDialog.AmountColorMode -> {
-                MoneyChoiceDialog(
-                    title = stringResource(R.string.settings_amount_color),
-                    options = AmountColorMode.entries,
-                    selected = settings.amountColorMode,
-                    label = { it.displayName },
-                    onSelect = {
-                        onAmountColorModeChange(it)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                )
-            }
-
-            SettingsDialog.CurrencySymbol -> {
-                MoneyTextInputDialog(
-                    title = stringResource(R.string.settings_currency_symbol),
-                    value = currencyDraft,
-                    onValueChange = { currencyDraft = it.take(MAX_CURRENCY_SYMBOL_LENGTH) },
-                    onConfirm = {
-                        onCurrencySymbolChange(currencyDraft)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                    confirmLabel = stringResource(R.string.action_save),
                 )
             }
 
@@ -274,7 +250,6 @@ fun SettingsScreen(
         )
     }
 
-    val notificationPresentation = notificationSettingsPresentation(notificationPermissionState)
     val importReceiptRows = importReceiptHistoryRows(
         receipts = state.importHistory,
         rollbackEligibleReceiptId = state.rollbackEligibleReceiptId.takeUnless { state.isHistoryLoading },
@@ -330,22 +305,7 @@ fun SettingsScreen(
                     trailing = devicePreferences.themeMode.displayName,
                     onClick = { dialog = SettingsDialog.ThemeMode },
                 )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_amount_color),
-                    trailing = settings.amountColorMode.displayName,
-                    onClick = { dialog = SettingsDialog.AmountColorMode },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_currency_symbol),
-                    subtitle = stringResource(R.string.settings_currency_description),
-                    trailing = settings.currencySymbol,
-                    onClick = {
-                        currencyDraft = settings.currencySymbol
-                        dialog = SettingsDialog.CurrencySymbol
-                    },
-                )
+
             }
         }
 
@@ -382,12 +342,6 @@ fun SettingsScreen(
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
-                    title = stringResource(R.string.settings_hide_notifications),
-                    checked = devicePreferences.hideNotificationAmounts,
-                    onCheckedChange = onHideNotificationAmountsChange,
-                )
-                MoneySectionDivider()
-                PrivacySwitchRow(
                     title = stringResource(R.string.settings_hide_in_app_amounts),
                     subtitle = stringResource(R.string.settings_hide_in_app_amounts_description),
                     checked = devicePreferences.hideInAppAmounts,
@@ -402,60 +356,10 @@ fun SettingsScreen(
         item {
             MoneyListSection {
                 MoneyListRow(
-                    title = stringResource(R.string.settings_notification_permission_channels),
-                    subtitle = stringResource(notificationPresentation.statusRes),
-                    trailing = if (notificationPresentation.action == NotificationSettingsAction.REQUEST_PERMISSION) {
-                        stringResource(R.string.settings_request_permission)
-                    } else {
-                        stringResource(R.string.settings_open_system_settings)
-                    },
-                    onClick = {
-                        when (notificationPresentation.action) {
-                            NotificationSettingsAction.REQUEST_PERMISSION -> onRequestNotificationPermission()
-                            NotificationSettingsAction.OPEN_SETTINGS -> onOpenNotificationSettings(
-                                notificationPresentation.settingsTarget ?: NotificationSettingsTarget.APPLICATION,
-                            )
-                        }
-                    },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_reminder_management),
-                    subtitle = stringResource(R.string.settings_reminder_management_description),
-                    onClick = onManageReminders,
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_account_reminder_config),
-                    subtitle = stringResource(R.string.settings_account_reminder_description),
-                    onClick = onManageAccountReminderConfigs,
-                )
-            }
-        }
-
-        item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[3].titleRes))
-        }
-        item {
-            MoneyListSection {
-                MoneyListRow(
-                    title = stringResource(R.string.settings_lan_ai),
-                    subtitle = stringResource(R.string.settings_lan_ai_description),
-                    onClick = onOpenLanAi,
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_save_backup),
+                    title = stringResource(R.string.minimal_export_backup),
                     subtitle = stringResource(R.string.settings_plaintext_warning),
-                    trailing = if (state.isExporting) stringResource(R.string.settings_exporting) else "JSON",
-                    onClick = { dialog = SettingsDialog.ExportWarning },
-                    enabled = !state.isExporting && !state.isImporting,
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_share_backup),
-                    subtitle = stringResource(R.string.settings_plaintext_warning),
-                    onClick = { dialog = SettingsDialog.ShareWarning }, enabled = !busy,
+                    trailing = if (state.isExporting) stringResource(R.string.settings_exporting) else null,
+                    onClick = { dialog = SettingsDialog.ExportDestination }, enabled = !busy,
                 )
                 state.pendingExport?.let { pending ->
                     MoneySectionDivider()
@@ -501,7 +405,7 @@ fun SettingsScreen(
                                 null
                             },
                             enabled = !state.isImporting && !state.isExporting,
-                            showChevron = row.canRollback || row.canExportSafety,
+                            showChevron = false,
                             isClickable = row.canRollback || row.canExportSafety,
                         )
                         if (index != importReceiptRows.lastIndex) MoneySectionDivider()
@@ -512,14 +416,14 @@ fun SettingsScreen(
                     MoneyListRow(
                         title = stringResource(if (state.historyLoadFailed) R.string.settings_history_failed else R.string.settings_history_loading),
                         onClick = onRefreshImportHistory.takeIf { state.historyLoadFailed },
-                        enabled = !busy, showChevron = state.historyLoadFailed,
+                        enabled = !busy, showChevron = false,
                     )
                 }
             }
         }
 
         item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[4].titleRes))
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[3].titleRes))
         }
         item {
             MoneyListSection {
@@ -532,6 +436,12 @@ fun SettingsScreen(
                 MoneyListRow(
                     title = stringResource(R.string.settings_offline_safety),
                     subtitle = stringResource(R.string.settings_offline_safety_copy),
+                    showChevron = false,
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = stringResource(R.string.minimal_legacy_features_title),
+                    subtitle = stringResource(R.string.minimal_legacy_features_notice),
                     showChevron = false,
                 )
             }

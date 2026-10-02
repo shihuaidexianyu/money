@@ -10,15 +10,12 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.MoneyAppContainer
-import com.shihuaidexianyu.money.di.SystemClockProvider
 import com.shihuaidexianyu.money.domain.usecase.UuidLedgerOperationIdFactory
 import com.shihuaidexianyu.money.ui.balance.BalanceAdjustmentDetailScreen
 import com.shihuaidexianyu.money.ui.balance.BalanceAdjustmentDetailViewModel
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateDetailScreen
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateDetailViewModel
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateResultScreen
-import com.shihuaidexianyu.money.ui.balance.BatchReconcileScreen
-import com.shihuaidexianyu.money.ui.balance.BatchReconcileViewModel
 import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateScreen
 import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateViewModel
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceViewModel
@@ -43,7 +40,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
     }
     val closeBalanceUpdateResult = { accountId: Long ->
         if (!navController.popBackStack(MoneyDestination.updateBalanceRoute(accountId), true)) {
-            navController.navigate(MoneyDestination.Home.route) {
+            navController.navigate(MoneyDestination.Accounts.route) {
                 launchSingleTop = true
                 restoreState = true
                 popUpTo(navController.graph.startDestinationId) {
@@ -147,33 +144,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         )
     }
 
-    composable(MoneyDestination.BatchReconcileRoute) {
-        val viewModel = viewModel<BatchReconcileViewModel>(
-            factory = moneySavedStateViewModelFactory { savedStateHandle ->
-                BatchReconcileViewModel(
-                    accountReminderSettingsRepository = container.accountReminderSettingsRepository,
-                    accountRepository = container.accountRepository,
-                    portableSettingsRepository = container.portableSettingsRepository,
-                    transactionRepository = container.transactionRepository,
-                    calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
-                    updateBalanceUseCase = container.updateBalanceUseCase,
-                    savedStateHandle = savedStateHandle,
-                    operationIdFactory = UuidLedgerOperationIdFactory,
-                    clockProvider = SystemClockProvider,
-                )
-            },
-        )
-        BatchReconcileScreen(
-            viewModel = viewModel,
-            onBack = { navController.popBackStack() },
-            onSaved = { count ->
-                navController.previousBackStackEntry
-                    ?.savedStateHandle
-                    ?.set("batch_reconcile_message", "已核对 $count 个账户")
-                navController.popBackStack()
-            },
-        )
-    }
+    composable(MoneyDestination.BatchReconcileRoute) { RetiredFeatureDestination(navController) }
 
     composable(
         route = MoneyDestination.UpdateBalanceRoute,
@@ -195,7 +166,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         if (owner?.destination?.route != MoneyDestination.UpdateBalanceRoute) {
             LaunchedEffect(accountId) {
                 if (!navController.popBackStack()) {
-                    navController.navigate(MoneyDestination.Home.route) {
+                    navController.navigate(MoneyDestination.Accounts.route) {
                         launchSingleTop = true
                         restoreState = true
                         popUpTo(navController.graph.startDestinationId) {
@@ -229,7 +200,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         if (result == null) {
             LaunchedEffect(accountId) {
                 if (!navController.popBackStack()) {
-                    navController.navigate(MoneyDestination.Home.route) {
+                    navController.navigate(MoneyDestination.Accounts.route) {
                         launchSingleTop = true
                         restoreState = true
                         popUpTo(navController.graph.startDestinationId) {

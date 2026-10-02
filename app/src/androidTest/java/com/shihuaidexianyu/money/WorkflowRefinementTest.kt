@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -66,14 +66,16 @@ class WorkflowRefinementTest {
     }
 
     @Test
-    fun invalidBoundsCannotBeAppliedAndLockedScopeCannotBeEdited() {
+    fun retiredAmountBoundsAreDiscardedAndLockedScopeCannotBeEdited() {
+        var applied: HistoryFilterState? = null
         composeRule.setContent {
             MoneyTheme {
                 HistoryFiltersSheet(HistoryFilterState(minAmountText = "20", maxAmountText = "10"),
-                    emptyList(), 7L, {}, {})
+                    emptyList(), 7L, { applied = it }, {})
             }
         }
-        composeRule.onNodeWithText("应用筛选").assertIsDisplayed().assertIsNotEnabled()
+        composeRule.onNodeWithText("应用筛选").assertIsDisplayed().assertIsEnabled().performClick()
+        composeRule.runOnIdle { assertEquals(HistoryFilterState(selectedAccountId = 7L), applied) }
         composeRule.onNodeWithText("全部账户").assertDoesNotExist()
     }
 

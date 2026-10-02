@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -23,7 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.error
@@ -43,9 +43,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 
@@ -118,11 +116,12 @@ fun MoneyBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    IconButton(onClick = onClick, modifier = modifier.size(48.dp)) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = stringResource(R.string.action_back),
-        )
+    val label = stringResource(R.string.action_back)
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 48.dp).semantics { contentDescription = label },
+    ) {
+        Text(label)
     }
 }
 
@@ -254,6 +253,16 @@ fun MoneyInlineLabelValue(
     modifier: Modifier = Modifier,
     valueColor: Color? = null,
 ) {
+    if (LocalDensity.current.fontScale > 1.3f || label.length + value.length > 24) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            MoneyAmountText(
+                value, Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleMedium,
+                color = valueColor ?: MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        return
+    }
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -261,6 +270,7 @@ fun MoneyInlineLabelValue(
     ) {
         Text(
             text = label,
+            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -294,7 +304,7 @@ fun MoneyListRow(
     enabled: Boolean = true,
     subtitle: String? = null,
     trailing: String? = null,
-    showChevron: Boolean = onClick != null,
+    showChevron: Boolean = false,
     isClickable: Boolean = onClick != null,
     leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
@@ -397,17 +407,7 @@ fun MoneySelectionField(
             label = { Text(label) },
             supportingText = (supportingText ?: subtitle)?.let { text -> { Text(text) } },
             isError = isError,
-            trailingIcon = if (onClick != null) {
-                {
-                    Icon(
-                        imageVector = Icons.Rounded.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else {
-                null
-            },
+            trailingIcon = null,
         )
         if (onClick != null) {
             Surface(

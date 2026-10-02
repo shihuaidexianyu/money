@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 data class CreateAccountUiState(
     val name: String = "",
@@ -30,12 +31,12 @@ data class CreateAccountUiState(
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
     val kind: AccountKind = AccountKind.DEFAULT,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
-    val amountText: String = "",
+    val amountText: String = "0",
     val isSaving: Boolean = false,
 ) {
     val isDirty: Boolean
         get() = name.isNotBlank() ||
-            amountText.isNotBlank() ||
+            amountText != "0" ||
             kind != AccountKind.DEFAULT ||
             colorName != DEFAULT_ACCOUNT_COLOR_NAME ||
             iconName != DEFAULT_ACCOUNT_ICON_NAME ||
@@ -110,26 +111,29 @@ class CreateAccountViewModel(
     }
 
     fun save() {
+        val snapshot = _uiState.value
+        if (snapshot.isSaving) return
+        val amount = AmountInputParser.parseSignedToMinor(snapshot.amountText)
+        if (amount != null) _uiState.value = snapshot.copy(isSaving = true)
         viewModelScope.launch {
-            val amount = AmountInputParser.parseSignedToMinor(_uiState.value.amountText)
             if (amount == null) {
                 effects.emit(CreateAccountEffect.ShowMessage("", messageRes = R.string.account_create_amount_empty))
                 return@launch
             }
 
-            _uiState.value = _uiState.value.copy(isSaving = true)
             runCatching {
                 createAccountUseCase(
-                    name = _uiState.value.name,
+                    name = snapshot.name,
                     initialBalance = amount,
-                    balanceUpdateReminderConfig = _uiState.value.reminderConfig,
-                    colorName = _uiState.value.colorName,
-                    iconName = _uiState.value.iconName,
-                    kind = _uiState.value.kind,
+                    balanceUpdateReminderConfig = snapshot.reminderConfig,
+                    colorName = snapshot.colorName,
+                    iconName = snapshot.iconName,
+                    kind = snapshot.kind,
                 )
             }.onSuccess {
                 effects.emit(CreateAccountEffect.Saved)
             }.onFailure { throwable ->
+                if (throwable is CancellationException) throw throwable
                 // Blank/duplicate names point at the name field, so surface them inline under
                 // the input instead of as a transient snackbar.
                 when (val formError = throwable.toFormError()) {

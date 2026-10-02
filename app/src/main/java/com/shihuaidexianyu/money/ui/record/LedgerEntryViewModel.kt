@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.di.SystemClockProvider
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
@@ -126,6 +127,7 @@ class LedgerEntryViewModel(
     private val savedStateHandle: SavedStateHandle,
     operationIdFactory: LedgerOperationIdFactory,
     private val clockProvider: ClockProvider = SystemClockProvider,
+    prefillOccurredAt: Long? = null,
 ) : ViewModel() {
     private val restored = savedStateHandle.get<LedgerEntryDraft>(DRAFT_KEY)
     private val operationId = restored?.operationId ?: operationIdFactory.create()
@@ -145,8 +147,8 @@ class LedgerEntryViewModel(
             amountText = restored?.amountText ?: prefillAmount?.let(AmountFormatter::formatPlain).orEmpty(),
             actualBalanceText = restored?.actualBalanceText.orEmpty(),
             note = restored?.note ?: prefillNote.orEmpty(),
-            occurredAtMillis = restored?.occurredAtMillis ?: DateTimeTextFormatter.floorToMinute(clockProvider.nowMillis()),
-            timeEdited = restored?.timeEdited ?: false,
+            occurredAtMillis = restored?.occurredAtMillis ?: DateTimeTextFormatter.floorToMinute(prefillOccurredAt ?: clockProvider.nowMillis()),
+            timeEdited = restored?.timeEdited ?: (prefillOccurredAt != null),
             isDirty = restored?.isDirty ?: false,
             completed = restored?.completed ?: false,
             pendingTerminal = savedStateHandle[PENDING_FORM_TERMINAL_KEY],
@@ -170,10 +172,9 @@ class LedgerEntryViewModel(
         loadJob = viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
-                val recentIds = runCatching { devicePreferencesRepository.query().recentAccountIds }.getOrDefault(emptyList())
+                    .sortedWith(compareBy<Account> { it.createdAt }.thenBy { it.id })
                 val balances = calculateAccountBalancesUseCase(accounts)
                 val options = accounts.map { it.toAccountOptionUiModel(balances.getValue(it.id)) }
-                    .sortedBy { recentIds.indexOf(it.id).let { index -> if (index < 0) Int.MAX_VALUE else index } }
                 val current = _uiState.value
                 val accountId = current.accountId?.takeIf { id -> options.any { it.id == id } }
                 val toId = current.toAccountId?.takeIf { id -> options.any { it.id == id } && id != accountId }

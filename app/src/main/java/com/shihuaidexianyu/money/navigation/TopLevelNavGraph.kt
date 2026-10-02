@@ -1,14 +1,12 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,8 +18,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.MoneyAppContainer
-import com.shihuaidexianyu.money.di.SystemClockProvider
-import com.shihuaidexianyu.money.di.SystemZoneIdProvider
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
@@ -30,12 +26,8 @@ import com.shihuaidexianyu.money.ui.accounts.AccountsViewModel
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.history.HistoryScreen
 import com.shihuaidexianyu.money.ui.history.HistoryViewModel
-import com.shihuaidexianyu.money.ui.home.HomeScreen
-import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
-import com.shihuaidexianyu.money.ui.lan.LanMcpScreen
-import com.shihuaidexianyu.money.ui.lan.LanMcpViewModel
-import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
+import com.shihuaidexianyu.money.ui.reminder.NotificationPermissionUiState
 
 internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
@@ -43,58 +35,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
     onBiometricLockChange: (Boolean) -> Unit,
     onHistoryScrolledChange: (Boolean) -> Unit = {},
 ) {
-    composable(MoneyDestination.Home.route) { homeEntry ->
-        // Read from THIS destination's entry — navController.currentBackStackEntry points at
-        // whichever screen is on top during transitions/recompositions, so reading (and worse,
-        // clearing) the message there could hit the wrong SavedStateHandle.
-        val batchReconcileMessage = homeEntry
-            .savedStateHandle
-            .get<String>("batch_reconcile_message")
-        val viewModel = viewModel<HomeViewModel>(
-            factory = moneySavedStateViewModelFactory { savedStateHandle ->
-                HomeViewModel(
-                    observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
-                    savedStateHandle = savedStateHandle,
-                )
-            },
-        )
-        val state by viewModel.uiState.collectAsStateWithLifecycle()
-        val privacyScope = rememberCoroutineScope()
-        val privacySnackbar = LocalRootSnackbarDispatcher.current
-        val privacyError = stringResource(R.string.amount_visibility_update_failed)
-        HomeScreen(
-                state = state,
-                snackbarMessage = batchReconcileMessage,
-                onSnackbarMessageShown = {
-                    homeEntry.savedStateHandle.remove<String>("batch_reconcile_message")
-                },
-                onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
-                onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },
-                onOpenSettings = {
-                    navController.navigate(MoneyDestination.Settings.route) { launchSingleTop = true }
-                },
-                onManageAccounts = {
-                    navController.navigateToTopLevelTab(MoneyDestination.Accounts)
-                },
-                onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
-                onRetry = viewModel::retry,
-                onSelectPeriod = viewModel::selectPeriod,
-                onToggleAmountVisibility = {
-                    privacyScope.launch {
-                        try {
-                            val preferences = container.devicePreferencesRepository.query()
-                            container.devicePreferencesRepository.updateHideInAppAmounts(!preferences.hideInAppAmounts)
-                        } catch (error: kotlinx.coroutines.CancellationException) {
-                            throw error
-                        } catch (_: Exception) {
-                            privacySnackbar?.dispatch(rootSnackbarEffect(privacyError))
-                        }
-                    }
-                },
-                modifier = Modifier.padding(LocalTopLevelContentPadding.current)
-                    .consumeWindowInsets(LocalTopLevelContentPadding.current),
-            )
-    }
+    // A retained Home route from an older task redirects to the new root without losing data.
+    composable(MoneyDestination.Home.route) { RetiredFeatureDestination(navController) }
 
     composable(MoneyDestination.History.route) {
         HistoryScreenHost(navController = navController, container = container, onScrolledChange = onHistoryScrolledChange)
@@ -129,6 +71,9 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
+        val privacyScope = rememberCoroutineScope()
+        val privacySnackbar = LocalRootSnackbarDispatcher.current
+        val privacyError = stringResource(R.string.amount_visibility_update_failed)
         AccountsScreen(
                 state = state,
                 modifier = Modifier.padding(LocalTopLevelContentPadding.current)
@@ -136,17 +81,24 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
-                onReorderAccounts = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
-                onBatchReconcile = { navController.navigate(MoneyDestination.BatchReconcileRoute) },
+                onOpenSettings = { navController.navigate(MoneyDestination.Settings.route) },
+                onToggleAmountVisibility = {
+                    privacyScope.launch {
+                        try {
+                            val preferences = container.devicePreferencesRepository.query()
+                            container.devicePreferencesRepository.updateHideInAppAmounts(!preferences.hideInAppAmounts)
+                        } catch (error: kotlinx.coroutines.CancellationException) {
+                            throw error
+                        } catch (_: Exception) {
+                            privacySnackbar?.dispatch(rootSnackbarEffect(privacyError))
+                        }
+                    }
+                },
                 onRetry = viewModel::retry,
             )
     }
 
     composable(MoneyDestination.Settings.route) {
-        val notificationPermissionGateway = rememberNotificationPermissionGateway(
-            devicePreferencesRepository = container.devicePreferencesRepository,
-            notificationSyncRequester = container.notificationSyncRequester,
-        )
         val viewModel = rememberSettingsViewModel(
             container = container,
         )
@@ -169,14 +121,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onHideNotificationAmountsChange = viewModel::updateHideNotificationAmounts,
             onHideRecentTasksChange = viewModel::updateHideRecentTasks,
             onHideInAppAmountsChange = viewModel::updateHideInAppAmounts,
-            notificationPermissionState = notificationPermissionGateway.state,
-            onRequestNotificationPermission = { notificationPermissionGateway.requestContextually() },
-            onOpenNotificationSettings = notificationPermissionGateway.openSettings,
-            onManageReminders = { navController.navigate(MoneyDestination.ReminderListRoute) },
-            onManageAccountReminderConfigs = {
-                navController.navigateToTopLevelTab(MoneyDestination.Accounts)
-            },
-            onOpenLanAi = { navController.navigate(MoneyDestination.LanMcpRoute) },
+            notificationPermissionState = NotificationPermissionUiState.NotRequested,
+            onRequestNotificationPermission = {},
+            onOpenNotificationSettings = {},
+            onManageReminders = {},
+            onManageAccountReminderConfigs = {},
+            onOpenLanAi = {},
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,
@@ -190,33 +140,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         )
     }
 
-    composable(MoneyDestination.LanMcpRoute) {
-        val context = LocalContext.current
-        val viewModel = viewModel<LanMcpViewModel>(
-            factory = moneyViewModelFactory {
-                LanMcpViewModel(
-                    context = context,
-                    journalRepository = container.aiMutationJournalRepository,
-                    lanPairedDeviceStore = container.lanPairedDeviceStore,
-                    aiJournaledLedgerUseCase = container.aiJournaledLedgerUseCase,
-                )
-            },
-        )
-        val state by viewModel.uiState.collectAsStateWithLifecycle()
-        LanMcpScreen(
-            state = state,
-            effectFlow = viewModel.effectFlow,
-            onBack = { navController.popBackStack() },
-            onAllowWriteChange = viewModel::setAllowWrite,
-            onStart = viewModel::startServer,
-            onStop = viewModel::stopServer,
-            onApprovePairing = viewModel::approvePairing,
-            onDenyPairing = viewModel::denyPairing,
-            onRevokeDevice = viewModel::revokeDevice,
-            onUndoLatest = viewModel::undoLatest,
-            onDiscardLatest = viewModel::discardLatest,
-        )
-    }
+    composable(MoneyDestination.LanMcpRoute) { RetiredFeatureDestination(navController) }
 }
 
 /**
@@ -242,6 +166,7 @@ private fun HistoryScreenHost(
                 portableSettingsRepository = container.portableSettingsRepository,
                 devicePreferencesRepository = container.devicePreferencesRepository,
                 lockedAccountId = lockedAccountId,
+                simplified = true,
             )
         },
     )

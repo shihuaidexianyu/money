@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextReplacement
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
 import com.shihuaidexianyu.money.ui.launch.AndroidAppLaunchIntentParser
 import com.shihuaidexianyu.money.ui.record.LedgerEntryKind
@@ -46,6 +48,68 @@ class LedgerEntryNavigationTest {
             toId = container.createAccountUseCase("转入验证$suffix", 10000L)
         }
         awaitHome()
+    }
+
+    @Test
+    fun minimalAccountCreationRenameCloseAndReopenUseOnlyCoreFields() {
+        val createdName = "简洁${UUID.randomUUID().toString().take(6)}"
+        val renamedName = "$createdName 改"
+        click(hasText("新建"))
+        composeRule.onNode(hasSetTextAction()).performTextReplacement(createdName)
+        composeRule.onNode(hasText("图标")).assertDoesNotExist()
+        composeRule.onNode(hasText("账户用途")).assertDoesNotExist()
+        composeRule.onNode(hasText("提醒设置")).assertDoesNotExist()
+        click(hasText("保存") and hasClickAction())
+        awaitHome()
+        val createdId = runBlocking {
+            container.accountRepository.queryAllAccounts().single { it.name == createdName }.id
+        }
+        click(hasText(createdName))
+        click(hasText("管理"))
+        composeRule.onNode(hasSetTextAction()).performTextReplacement(renamedName)
+        click(hasText("保存") and hasClickAction())
+        composeRule.waitUntil(15000) { displayed(hasText(renamedName)) }
+        click(hasText("管理"))
+        click(hasText("关闭账户") and hasClickAction())
+        click(hasText("确认关闭"))
+        composeRule.waitUntil(15000) { displayed(hasText("重新开启账户")) }
+        runBlocking { assertEquals(true, container.accountRepository.getAccountById(createdId)?.isClosed) }
+        click(hasText("重新开启账户"))
+        composeRule.waitUntil(15000) { displayed(hasText("管理")) }
+        runBlocking {
+            val reopened = container.accountRepository.getAccountById(createdId)!!
+            assertEquals(false, reopened.isClosed)
+            assertEquals(renamedName, reopened.name)
+            assertEquals(0L, container.calculateCurrentBalanceUseCase(createdId))
+        }
+    }
+
+    @Test
+    fun scopedHistoryCanEditDeleteAndUndoWithoutChangingLedgerSemantics() {
+        val cashId = runBlocking {
+            container.createCashFlowRecordUseCase(fromId, com.shihuaidexianyu.money.domain.model.CashFlowDirection.OUTFLOW,
+                100L, "修改验证", System.currentTimeMillis(), UUID.randomUUID().toString()).recordId
+        }
+        click(hasText(accountName))
+        click(hasText("查看账户流水"))
+        click(hasTestTag("history_row_cash_flow_$cashId"))
+        click(hasText("修改记录"))
+        composeRule.onNode(hasSetTextAction()).performTextReplacement("修改后的备注")
+        click(hasText("保存修改"))
+        composeRule.waitUntil(15000) { displayed(hasTestTag("history_row_cash_flow_$cashId")) }
+        runBlocking {
+            assertEquals("修改后的备注", container.transactionRepository.queryAllCashFlowRecords().single { it.id == cashId }.note)
+            assertEquals(9900L, container.calculateCurrentBalanceUseCase(fromId))
+        }
+        click(hasTestTag("history_row_cash_flow_$cashId"))
+        click(hasText("修改记录"))
+        click(hasText("删除记录") and hasClickAction())
+        click(hasText("确认删除"))
+        composeRule.waitUntil(15000) { displayed(hasText("撤销") and hasClickAction()) }
+        runBlocking { assertEquals(10000L, container.calculateCurrentBalanceUseCase(fromId)) }
+        click(hasText("撤销") and hasClickAction())
+        composeRule.waitUntil(15000) { displayed(hasTestTag("history_row_cash_flow_$cashId")) }
+        runBlocking { assertEquals(9900L, container.calculateCurrentBalanceUseCase(fromId)) }
     }
 
     @Test
@@ -101,7 +165,7 @@ class LedgerEntryNavigationTest {
 
     @Test
     fun accountDetailExpenseSkipsKnownTypeAndAccountAndReturnsToOrigin() {
-        click(hasText("账户"))
+        click(hasText("账户") and hasClickAction())
         click(hasText(accountName))
         click(hasText("支出") and hasClickAction())
         awaitPage("AMOUNT")
@@ -148,9 +212,13 @@ class LedgerEntryNavigationTest {
         click(hasTestTag("entry_save"))
         awaitPage("CONFIRM")
         // Wait for the parent preview to finish, rather than clicking through a stale verdict.
-        composeRule.waitUntil(15000) {
-            displayed(hasText("对账")) && !displayed(hasText("补记支出")) &&
-                runCatching { composeRule.onNodeWithTag("entry_save").assertIsEnabled() }.isSuccess
+        try {
+            composeRule.waitUntil(15000) {
+                displayed(hasText("对账")) && !displayed(hasText("补记支出")) &&
+                    runCatching { composeRule.onNodeWithTag("entry_save").assertIsEnabled() }.isSuccess
+            }
+        } catch (error: Throwable) {
+            throw AssertionError("Supplemental preview did not settle:\n" + composeRule.onRoot().printToString(), error)
         }
         click(hasTestTag("entry_save"))
         awaitHome()

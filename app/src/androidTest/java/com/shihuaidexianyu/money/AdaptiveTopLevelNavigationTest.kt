@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money
 
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import com.shihuaidexianyu.money.navigation.AdaptiveNavigationType
@@ -16,19 +16,19 @@ class AdaptiveTopLevelNavigationTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun compactRendersBottomBarWithExactlyThreeDestinations() {
+    fun compactRendersBottomBarWithExactlyTwoDestinations() {
         render(AdaptiveNavigationType.BOTTOM_BAR)
 
         composeRule.onNodeWithTag("top_level_bottom_bar").assertExists()
-        assertExactlyThreeDestinations()
+        assertExactlyTwoDestinations()
     }
 
     @Test
-    fun mediumAndExpandedRenderRailWithExactlyThreeDestinations() {
+    fun mediumAndExpandedRenderRailWithExactlyTwoDestinations() {
         render(AdaptiveNavigationType.NAVIGATION_RAIL)
 
         composeRule.onNodeWithTag("top_level_navigation_rail").assertExists()
-        assertExactlyThreeDestinations()
+        assertExactlyTwoDestinations()
     }
 
     private fun render(type: AdaptiveNavigationType) {
@@ -36,19 +36,19 @@ class AdaptiveTopLevelNavigationTest {
             MoneyTheme {
                 AdaptiveTopLevelNavigation(
                     type = type,
-                    currentRoute = MoneyDestination.Home.route,
+                    currentRoute = MoneyDestination.Accounts.route,
                     onDestinationClick = {},
                 )
             }
         }
     }
 
-    private fun assertExactlyThreeDestinations() {
-        check(MoneyDestination.topLevel.size == 3)
+    private fun assertExactlyTwoDestinations() {
+        check(MoneyDestination.topLevel.size == 2)
         MoneyDestination.topLevel.forEach { destination ->
             val label = ApplicationProvider.getApplicationContext<android.content.Context>()
                 .getString(destination.labelRes)
-            composeRule.onNodeWithContentDescription(label, useUnmergedTree = true).assertExists()
+            composeRule.onNodeWithText(label, useUnmergedTree = true).assertExists()
         }
     }
 }

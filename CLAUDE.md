@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Money** — an offline-first personal finance app for Android (Kotlin + Jetpack Compose, package `com.shihuaidexianyu.money`). It has no cloud backend; `INTERNET` is used only by a user-started temporary LAN service for a paired local Python MCP bridge. minSdk 31, target/compile SDK 36, Java 17.
+**Money** — an offline-first personal finance app for Android (Kotlin + Jetpack Compose, package `com.shihuaidexianyu.money`). It has no cloud backend. Legacy LAN infrastructure is retained for compatibility but service startup is disabled by `MinimalProductPolicy`. minSdk 31, target/compile SDK 36, Java 17.
 
-Current app version: **2.6.4** (versionCode **148**).
+Current app version: **2.6.5** (versionCode **149**).
 
 **All user-facing strings are Chinese (Simplified); code, comments, and docs are English.**
 
@@ -50,9 +50,9 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - **`domain/`** — pure Kotlin, no Android deps. `repository/` holds interfaces only; `usecase/` holds single-responsibility use cases plus shared calculators/projectors/policies (`LedgerBalanceCalculator`, `HomeProjector`, `ReminderNextDueCalculator`); `model/backup/` holds the `@Serializable` snapshot DTOs.
 - **`data/`** — Room entities/DAOs, repository impls, `db/MoneyDatabase.kt`, `backup/` (JSON codec + staged import + safety snapshots), `export/`, `migration/` (startup legacy-store upgrade).
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
-- UI/UX reference: `docs/design/money-redesign-v2.md`. Navigation order is overview, accounts, activity. Use `MoneyFormPage.footer` for primary form actions and `MoneyExpandableSection` for optional setup. Successful balance checking returns to its origin with a snackbar. Computer connection and AI journal labels are `连接电脑` and `AI 修改记录`.
+- The minimal product has exactly two top-level pages: accounts (start destination) and activity. Use text-first, icon-free controls. New accounts ask only for name and opening balance. Icons, manual ordering, account-kind setup, the dashboard, batch reconciliation, advanced filters, reminders, and LAN/AI tools have no active entry. Keep primary form actions in `MoneyFormPage.footer`; successful reconciliation returns to its origin with a snackbar. Retired routes redirect to accounts.
 - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost. Consume applied system/chrome padding before child IME padding to avoid reserving it twice when the keyboard opens.
-- Ledger creation uses full-screen type/account/amount/confirmation steps (`LedgerEntryScreen` + one `LedgerEntryViewModel` with a SavedStateHandle draft). Existing shortcuts/reminder/reconciliation routes reuse the flow, skipping only explicit context. Recent accounts reorder choices, never select silently. Only final confirmation writes; signed/zero reconciliation and investment P&L remain intact. Editing and batch reconciliation are unchanged.
+- Ledger creation uses full-screen type/account/amount/confirmation steps (`LedgerEntryScreen` + one `LedgerEntryViewModel` with a SavedStateHandle draft). Existing shortcuts/reminder/reconciliation routes reuse the flow, skipping only explicit context. Every account list/picker uses stable creation-time/id ordering, never silent selection. Only final confirmation writes; signed/zero reconciliation and investment P&L remain intact. Editing is unchanged; the former batch shortcut enters single-account reconciliation.
 - **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
 - **`lan/`** — temporary foreground LAN server, NSD advertising, confirmed pairing with persistent device credentials, framed JSON protocol and router. AI ledger writes must go through `AiJournaledLedgerUseCase`, which atomically records them in the persistent LIFO Journal.
 
@@ -62,7 +62,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 
 ### Startup gating
 
-`MoneyApplication.onCreate` creates notification channels, builds the container, then on a background scope runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready` before scheduling notification workers and seeding debug sample data. **Never touch the ledger before `Ready`** — use `withReadyLedgerAccess`. Debug sample data is seeded only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.
+`MoneyApplication.onCreate` creates notification channels, builds the container, then on a background scope runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready` before cancelling retired notification work and seeding debug sample data. **Never touch the ledger before `Ready`** — use `withReadyLedgerAccess`. Debug sample data is seeded only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.
 
 ### Ledger invariants
 
@@ -83,7 +83,7 @@ App shortcuts and notification deep links are normalized into `AppLaunchRequest`
 
 ### Notification refresh
 
-Notification sync uses a unified `MoneyNotificationWorker` (15-minute periodic unique work plus debounced one-time syncs). Legacy unique work names are cancelled at startup. Amounts can be masked independently via `hideNotificationAmounts`.
+`MinimalProductPolicy.remindersEnabled = false`: the sync requester is a no-op, workers exit without publishing, and startup cancels periodic/immediate/legacy work and old reminder/balance notifications. Legacy reminder data remains backup-compatible. The retained notification contracts must not be mistaken for active product behavior.
 
 ## Code style
 
@@ -114,4 +114,4 @@ Room schema version **21**, exported to `app/schemas/` (bundled as androidTest a
 - Release signing reads `signing/keystore.properties` (gitignored, as is all of `signing/`), falling back to `../timeline/keystore.properties`. Never commit keystores.
 - `allowBackup="false"` — the app deliberately does not use Android cloud/device-transfer backup.
 - Biometric app lock and amount privacy masking (in-app and notifications independently) live in `DevicePreferences` and the `ui/lock/` / privacy gateways.
-- The LAN service lasts at most six hours and advertises itself via NSD (`_moneylink._tcp.`). Pairing is a phone-side confirmation (`session.pair.begin`/`poll`) that issues an ephemeral session token plus a persistent device credential — the phone stores only its SHA-256 hash in `paired_lan_device`, the plaintext is delivered once, and `session.resume` silently restores sessions; the eight-digit code is the manual fallback. Its protocol is plaintext trusted-LAN-only. There is no per-write approval; safety comes from session-level write permission, idempotent request IDs, atomic Journal insertion (batched record writes enter as one undoable unit), semantic conflict detection, and strict LIFO undo through existing use cases.
+- `MinimalProductPolicy.computerConnectionEnabled = false` prevents LAN service startup; its UI route redirects to accounts. Retained legacy infrastructure: the LAN service lasts at most six hours and advertises itself via NSD (`_moneylink._tcp.`). Pairing is a phone-side confirmation (`session.pair.begin`/`poll`) that issues an ephemeral session token plus a persistent device credential — the phone stores only its SHA-256 hash in `paired_lan_device`, the plaintext is delivered once, and `session.resume` silently restores sessions; the eight-digit code is the manual fallback. Its protocol is plaintext trusted-LAN-only. There is no per-write approval; safety comes from session-level write permission, idempotent request IDs, atomic Journal insertion (batched record writes enter as one undoable unit), semantic conflict detection, and strict LIFO undo through existing use cases.

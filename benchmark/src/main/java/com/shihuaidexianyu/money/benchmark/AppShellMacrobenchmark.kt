@@ -45,10 +45,10 @@ class AppShellMacrobenchmark {
     }
 
     @Test
-    fun homeTenThousandRows() = measureHome(10_000)
+    fun accountsTenThousandRows() = measureAccounts(10_000)
 
     @Test
-    fun homeOneHundredThousandRows() = measureHome(100_000)
+    fun accountsOneHundredThousandRows() = measureAccounts(100_000)
 
     @Test
     fun historyTenThousandRows() = measureHistory(10_000)
@@ -56,7 +56,7 @@ class AppShellMacrobenchmark {
     @Test
     fun historyOneHundredThousandRows() = measureHistory(100_000)
 
-    private fun measureHome(recordCount: Int) = benchmarkRule.measureRepeated(
+    private fun measureAccounts(recordCount: Int) = benchmarkRule.measureRepeated(
         packageName = TARGET_PACKAGE,
         metrics = listOf(FrameTimingMetric()),
         compilationMode = CompilationMode.Full(),

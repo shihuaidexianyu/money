@@ -44,7 +44,7 @@ internal fun NavGraphBuilder.addRecordGraph(
 
     composable(
         route = MoneyDestination.RecordCashFlowRoute +
-            "?amount={amount}&purpose={purpose}&reminderId={reminderId}&expectedDueAt={expectedDueAt}",
+            "?amount={amount}&purpose={purpose}&reminderId={reminderId}&expectedDueAt={expectedDueAt}&occurredAt={occurredAt}",
         arguments = listOf(
             navArgument("direction") { type = NavType.StringType },
             navArgument("accountId") { type = NavType.LongType },
@@ -52,6 +52,7 @@ internal fun NavGraphBuilder.addRecordGraph(
             navArgument("purpose") { type = NavType.StringType; defaultValue = "" },
             navArgument("reminderId") { type = NavType.LongType; defaultValue = 0L },
             navArgument("expectedDueAt") { type = NavType.LongType; defaultValue = 0L },
+            navArgument("occurredAt") { type = NavType.StringType; defaultValue = "" },
         ),
     ) { entry ->
         val direction = CashFlowDirection.fromValue(entry.arguments?.getString("direction"))
@@ -66,6 +67,7 @@ internal fun NavGraphBuilder.addRecordGraph(
             initialAccountId = accountId.takeIf { it > 0 },
             prefillAmount = prefillAmount.takeIf { it > 0 }, prefillNote = prefillNote.takeIf { it.isNotEmpty() },
             reminderId = reminderId.takeIf { it > 0 }, expectedDueAt = expectedDueAt.takeIf { it > 0 },
+            prefillOccurredAt = entry.arguments?.getString("occurredAt")?.toLongOrNull(),
         )
     }
 
@@ -144,6 +146,7 @@ internal fun LedgerEntryDestination(
     prefillNote: String? = null,
     reminderId: Long? = null,
     expectedDueAt: Long? = null,
+    prefillOccurredAt: Long? = null,
 ) {
     val viewModel = viewModel<LedgerEntryViewModel>(
         key = "ledger_entry",
@@ -151,6 +154,7 @@ internal fun LedgerEntryDestination(
             LedgerEntryViewModel(
                 initialKind = initialKind, initialAccountId = initialAccountId,
                 prefillAmount = prefillAmount, prefillNote = prefillNote,
+                prefillOccurredAt = prefillOccurredAt,
                 reminderId = reminderId, expectedDueAt = expectedDueAt,
                 accountRepository = container.accountRepository,
                 transactionRepository = container.transactionRepository,
@@ -181,8 +185,8 @@ internal fun LedgerEntryDestination(
             navController.popBackStack()
         },
         onManageAccounts = { navController.navigate(MoneyDestination.CreateAccountRoute) },
-        onStartCashFlow = { direction, accountId, amount ->
-            navController.navigate(MoneyDestination.recordCashFlowRoute(direction, accountId, amount, "余额核对补记", null, null))
+        onStartCashFlow = { direction, accountId, amount, occurredAt ->
+            navController.navigate(MoneyDestination.recordCashFlowRoute(direction, accountId, amount, "余额核对补记", null, null, occurredAt))
         },
     )
 }

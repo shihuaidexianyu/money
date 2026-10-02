@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.ui.record
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -9,7 +11,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
@@ -23,11 +24,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -42,7 +41,6 @@ import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.balance.investmentDeltaText
-import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
@@ -76,7 +74,7 @@ internal fun LedgerEntryScreen(
     modifier: Modifier = Modifier,
     settings: PortableSettings = PortableSettings(),
     onSaved: () -> Unit = onBack,
-    onStartCashFlow: (CashFlowDirection, Long, Long) -> Unit = { _, _, _ -> },
+    onStartCashFlow: (CashFlowDirection, Long, Long, Long) -> Unit = { _, _, _, _ -> },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -337,7 +335,6 @@ private fun LazyListScope.accountStep(
                     account.id == (if (step == LedgerEntryStep.TO_ACCOUNT) state.toAccountId else state.accountId) -> stringResource(R.string.entry_selected)
                     else -> null
                 },
-                leading = { AccountIconBadge(account.iconName, account.colorName, size = 30.dp, iconSize = 17.dp) },
                 enabled = enabled && (step != LedgerEntryStep.TO_ACCOUNT || account.id != state.accountId),
                 onClick = { viewModel.chooseAccount(account.id, step) },
                 modifier = Modifier.testTag("entry_account_${account.id}"),
@@ -369,7 +366,7 @@ private fun ReconciliationEvidence(
     settings: PortableSettings,
     enabled: Boolean,
     onRetry: () -> Unit,
-    onStartCashFlow: (CashFlowDirection, Long, Long) -> Unit,
+    onStartCashFlow: (CashFlowDirection, Long, Long, Long) -> Unit,
 ) {
     MoneyCard {
         when {
@@ -401,7 +398,7 @@ private fun ReconciliationEvidence(
                 Text(stringResource(if (investment) R.string.balance_investment_hint else R.string.balance_correction_hint), style = MaterialTheme.typography.bodySmall)
                 if (!investment && delta != null && delta != 0L && delta != Long.MIN_VALUE) {
                     listOf(CashFlowDirection.OUTFLOW, CashFlowDirection.INFLOW).forEach { direction ->
-                        TextButton(onClick = { onStartCashFlow(direction, requireNotNull(state.accountId), abs(delta)) }, enabled = enabled) {
+                        TextButton(onClick = { onStartCashFlow(direction, requireNotNull(state.accountId), abs(delta), state.occurredAtMillis) }, enabled = enabled) {
                             Text(stringResource(if (direction == CashFlowDirection.INFLOW) R.string.balance_record_income else R.string.balance_record_expense))
                         }
                     }

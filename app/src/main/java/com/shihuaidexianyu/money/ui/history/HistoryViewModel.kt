@@ -35,7 +35,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -166,6 +165,7 @@ class HistoryViewModel(
      * the account picker stays hidden. Null on the History tab itself.
      */
     private val lockedAccountId: Long? = null,
+    private val simplified: Boolean = false,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -247,10 +247,11 @@ class HistoryViewModel(
 
     /** Commit the editor as one generation; never query intermediate combinations. */
     fun applyFilterDraft(draft: HistoryFilterState) {
-        if (!draft.validateAmounts().isValid) return
-        val (start, end) = normalizeHistoryDateRange(draft.dateStartAt, draft.dateEndAt)
+        val committed = if (simplified) draft.forMinimalLedger() else draft
+        if (!committed.validateAmounts().isValid) return
+        val (start, end) = normalizeHistoryDateRange(committed.dateStartAt, committed.dateEndAt)
         applyLocalFilter {
-            draft.copy(keyword = keyword, selectedAccountId = lockedAccountId ?: draft.selectedAccountId,
+            committed.copy(keyword = keyword, selectedAccountId = lockedAccountId ?: committed.selectedAccountId,
                 dateStartAt = start, dateEndAt = end)
         }
     }
@@ -321,6 +322,7 @@ class HistoryViewModel(
             HistoryFilterState(selectedAccountId = lockedAccountId)
         } else {
             devicePreferencesRepository.query().historyFilters.toHistoryFilterState()
+                .let { if (simplified) it.forMinimalLedger() else it }
         }
         filterState.value = initialFilters
         applySettings(initialSettings)
@@ -363,7 +365,7 @@ class HistoryViewModel(
         _uiState.update {
             it.copy(
                 accountOptions = accountMap.values
-                    .sortedBy(Account::name)
+                    .sortedWith(compareBy<Account> { it.createdAt }.thenBy { it.id })
                     .map(Account::toAccountOptionUiModel),
                 records = loadedRecords.toUiModels(),
             )

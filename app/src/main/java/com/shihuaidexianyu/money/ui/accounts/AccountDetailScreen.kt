@@ -1,15 +1,12 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,29 +16,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecordKind
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecentRecord
-import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.MoneyAmountText
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
-import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
-import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
-import com.shihuaidexianyu.money.ui.common.RecordKindBadge
-import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.BalanceTransitionText
@@ -107,13 +98,9 @@ fun AccountDetailScreen(
         // === Balance card ===
         item {
             MoneyCard {
-                AccountIconBadge(
-                    iconName = state.iconName,
-                    colorName = state.colorName,
-                    isClosed = state.isClosed,
-                )
-                Text(
+                MoneyAmountText(
                     text = formatInAppAmount(state.currentBalance, state.settings),
+                    modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.displayLarge,
                 )
                 Text(
@@ -126,18 +113,10 @@ fun AccountDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                // Kind tag: the kind reinterprets reconciliation deltas at read time, so the
-                // detail header states it explicitly instead of implying it from the list.
-                MoneyStatusPill(
-                    text = stringResource(
-                        if (state.isInvestment) R.string.account_kind_investment else R.string.account_kind_funding,
-                    ),
-                    accent = if (state.isInvestment) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
+                if (state.isInvestment) {
+                    Text(stringResource(R.string.account_kind_investment), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 val closure = accountClosurePresentation(state.isClosed, state.currentBalance)
                 if (state.isClosed) {
                     MoneyStatusPill(text = stringResource(closure.statusTextRes), accent = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -178,23 +157,6 @@ fun AccountDetailScreen(
                         TextButton(onClick = onRecordIncome) { Text(stringResource(R.string.ledger_income)) }
                         TextButton(onClick = onTransfer, enabled = transferEnabled) { Text(stringResource(R.string.history_transfer)) }
                     }
-                    // The reminder schedule line only makes sense while the reminder is enabled.
-                    if (state.reminderConfig.isEnabled) {
-                        Text(
-                            text = stringResource(
-                                R.string.account_detail_reminder_time_format,
-                                state.reminderConfig.displayText,
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                if (state.isStale && !state.isClosed) {
-                    MoneyStatusPill(
-                        text = stringResource(R.string.account_stale_badge),
-                        accent = MaterialTheme.colorScheme.secondary,
-                    )
                 }
                 if (state.isHidden && !state.isClosed) {
                     MoneyStatusPill(
@@ -204,70 +166,9 @@ fun AccountDetailScreen(
                 }
             }
         }
-        // === This month summary ===
         item {
-            MoneySectionHeader(
-                title = stringResource(
-                    if (state.isInvestment) R.string.account_detail_month_cash_flow else R.string.account_detail_month_cash,
-                ),
-            )
-        }
-        item {
-            MoneyCard {
-                val moneyColors = LocalMoneyColors.current
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.ledger_income),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = formatInAppAmount(state.monthInflow, state.settings),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = moneyColors.income,
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = stringResource(R.string.ledger_expense),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = formatInAppAmount(state.monthOutflow, state.settings),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = moneyColors.expense,
-                        )
-                    }
-                }
-                if (state.isInvestment) {
-                    MoneySectionDivider()
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.account_detail_month_investment_pnl),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = signedFormatInAppAmount(state.monthInvestmentDelta, state.settings),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = if (state.monthInvestmentDelta >= 0L) {
-                                moneyColors.income
-                            } else {
-                                moneyColors.expense
-                            },
-                        )
-                    }
-                }
+            TextButton(onClick = onViewAllHistory, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.minimal_view_account_history))
             }
         }
         // === Recent records ===
@@ -275,11 +176,6 @@ fun AccountDetailScreen(
             item {
                 MoneySectionHeader(
                     title = stringResource(R.string.account_detail_recent_records),
-                    trailingContent = {
-                        TextButton(onClick = onViewAllHistory) {
-                            Text(stringResource(R.string.account_detail_view_all))
-                        }
-                    },
                 )
             }
             item {
@@ -314,7 +210,7 @@ private fun RecentRecordRow(
         AccountDetailRecordKind.BALANCE_UPDATE, AccountDetailRecordKind.BALANCE_ADJUSTMENT ->
             moneyColors.current
     }
-    // Same row language as the history ledger (V1): type badge, compact-time subtitle (the
+    // Same row language as the history ledger: compact-time subtitle (the
     // account is the page itself), signed amount, and this account's before → after balance.
     val amountText = signedFormatInAppAmount(record.amount, settings)
     val timeLabel = DateTimeTextFormatter.formatCompactDayTime(record.occurredAt, System.currentTimeMillis())
@@ -382,11 +278,6 @@ private fun RecentRecordRow(
             },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        RecordKindBadge(
-            kind = record.kind.toHistoryRecordKind(),
-            amount = record.amount,
-            modifier = Modifier.padding(top = 2.dp),
-        )
         // Same shared-line layout as the history row: title+amount, then time and balance.
         Column(modifier = Modifier.weight(1f)) {
             Row(
@@ -438,11 +329,4 @@ private fun RecentRecordRow(
             }
         }
     }
-}
-
-private fun AccountDetailRecordKind.toHistoryRecordKind(): HistoryRecordKind = when (this) {
-    AccountDetailRecordKind.CASH_FLOW -> HistoryRecordKind.CASH_FLOW
-    AccountDetailRecordKind.TRANSFER -> HistoryRecordKind.TRANSFER
-    AccountDetailRecordKind.BALANCE_UPDATE -> HistoryRecordKind.BALANCE_UPDATE
-    AccountDetailRecordKind.BALANCE_ADJUSTMENT -> HistoryRecordKind.BALANCE_ADJUSTMENT
 }

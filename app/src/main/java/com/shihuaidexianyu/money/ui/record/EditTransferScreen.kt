@@ -1,12 +1,11 @@
 package com.shihuaidexianyu.money.ui.record
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
@@ -15,10 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -194,13 +191,6 @@ fun EditTransferScreen(
                         SuggestionChip(
                             onClick = viewModel::swapAccounts,
                             label = { Text(stringResource(R.string.transfer_swap_accounts)) },
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Rounded.SwapHoriz,
-                                    contentDescription = null,
-                                    modifier = Modifier.heightIn(max = 18.dp),
-                                )
-                            },
                         )
                     }
                 }

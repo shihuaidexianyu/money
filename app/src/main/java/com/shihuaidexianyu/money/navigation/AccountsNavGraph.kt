@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.navigation
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,8 +21,6 @@ import com.shihuaidexianyu.money.ui.accounts.CreateAccountScreen
 import com.shihuaidexianyu.money.ui.accounts.CreateAccountViewModel
 import com.shihuaidexianyu.money.ui.accounts.EditAccountScreen
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
-import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsScreen
-import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsViewModel
 
 internal fun NavGraphBuilder.addAccountsGraph(
     navController: NavHostController,
@@ -40,6 +38,8 @@ internal fun NavGraphBuilder.addAccountsGraph(
         }
     }
 
+    composable(MoneyDestination.ReorderAccountsRoute) { RetiredFeatureDestination(navController) }
+
     composable(MoneyDestination.CreateAccountRoute) {
         val viewModel = viewModel<CreateAccountViewModel>(
             factory = moneyViewModelFactory {
@@ -52,21 +52,6 @@ internal fun NavGraphBuilder.addAccountsGraph(
         )
     }
 
-    composable(MoneyDestination.ReorderAccountsRoute) {
-        val viewModel = viewModel<ReorderAccountsViewModel>(
-            factory = moneyViewModelFactory {
-                ReorderAccountsViewModel(
-                    accountRepository = container.accountRepository,
-                    calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
-                    updateAccountDisplayOrderUseCase = container.updateAccountDisplayOrderUseCase,
-                )
-            },
-        )
-        ReorderAccountsScreen(
-            viewModel = viewModel,
-            onBack = { navController.popBackStack() },
-        )
-    }
 
     composable(
         route = MoneyDestination.AccountDetailRoute,

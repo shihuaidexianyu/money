@@ -46,6 +46,11 @@ class MoneyLanService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.computerConnectionEnabled) {
+            manualStopRequested = true
+            stopSelf()
+            return
+        }
         ensureChannels()
         ServiceCompat.startForeground(
             this,
@@ -63,6 +68,11 @@ class MoneyLanService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.computerConnectionEnabled) {
+            manualStopRequested = true
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_STOP -> {
                 manualStopRequested = true

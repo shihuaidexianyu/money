@@ -78,7 +78,7 @@ class LedgerEntryViewModelTest {
         advanceUntilIdle()
         assertEquals(LedgerEntryStep.TYPE, vm.uiState.value.step)
         assertNull(vm.uiState.value.accountId)
-        assertEquals(2L, vm.uiState.value.accounts.first().id)
+        assertEquals(1L, vm.uiState.value.accounts.first().id)
         vm.chooseKind(LedgerEntryKind.EXPENSE)
         assertEquals(LedgerEntryStep.ACCOUNT, vm.uiState.value.step)
         assertNull(vm.uiState.value.accountId)
@@ -661,6 +661,31 @@ class LedgerEntryViewModelTest {
         assertEquals(0L, f.ledger.queryAllBalanceUpdateRecords().single().delta)
     }
 
+    @Test
+    fun `supplemental entry inherits reconciliation time instead of advancing to a later minute`() = runTest(dispatcher) {
+        val f = fixture()
+        val reconciliationTime = now - 120_000L
+        val parent = f.vm(LedgerEntryKind.RECONCILE, 1L, prefillOccurredAt = reconciliationTime)
+        advanceUntilIdle()
+        parent.updateAmount("90")
+        parent.continueToConfirmation()
+        advanceUntilIdle()
+        assertEquals(-1000L, parent.uiState.value.delta)
+        val child = f.vm(LedgerEntryKind.EXPENSE, 1L, prefillOccurredAt = reconciliationTime)
+        advanceUntilIdle()
+        child.updateAmount("10")
+        child.continueToConfirmation()
+        child.save()
+        advanceUntilIdle()
+        assertEquals(reconciliationTime, f.ledger.queryAllCashFlowRecords().single().occurredAt)
+        parent.refreshPreview()
+        advanceUntilIdle()
+        assertEquals(0L, parent.uiState.value.delta)
+        parent.save()
+        advanceUntilIdle()
+        assertEquals(0L, f.ledger.queryAllBalanceUpdateRecords().single().delta)
+    }
+
     private inner class Fixture(
         val accounts: InMemoryAccountRepository,
         val ledger: InMemoryTransactionRepository,
@@ -671,11 +696,12 @@ class LedgerEntryViewModelTest {
             kind: LedgerEntryKind? = null, accountId: Long? = null,
             handle: SavedStateHandle = SavedStateHandle(), repository: TransactionRepository = ledger,
             accountRepository: AccountRepository = accounts, reminderId: Long? = null,
+            prefillOccurredAt: Long? = null,
         ): LedgerEntryViewModel {
             val refresh = RefreshAccountActivityStateUseCase(accountRepository, repository)
             val context = ResolveBalanceUpdateContextUseCase(accountRepository, repository)
             return LedgerEntryViewModel(
-                initialKind = kind, initialAccountId = accountId,
+                initialKind = kind, initialAccountId = accountId, prefillOccurredAt = prefillOccurredAt,
                 prefillAmount = if (reminderId != null) 1200L else null,
                 prefillNote = if (reminderId != null) "订阅" else null,
                 reminderId = reminderId, expectedDueAt = if (reminderId != null) now else null,

@@ -25,12 +25,13 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
         // Channel creation is ledger-independent and must finish before any Activity can render
         // notification status. This also removes the first-launch race with the async migration.
         AndroidMoneyNotificationPublisher.ensureChannels(this)
+        stopService(android.content.Intent(this, com.shihuaidexianyu.money.lan.MoneyLanService::class.java))
         container = MoneyAppContainer(this)
         appScope.launch {
             container.startupMigrationCoordinator.runMigration()
             container.startupMigrationCoordinator.state.first { it == StartupMigrationState.Ready }
             val privacy = container.devicePreferencesRepository.query()
-            if (privacy.hideNotificationAmounts) {
+            if (com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.remindersEnabled && privacy.hideNotificationAmounts) {
                 container.syncMoneyNotificationsUseCase.forceRefreshPrivacy()
             }
             val legacyReminderIds = runCatching {
@@ -50,6 +51,7 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
     }
 
     fun forceRefreshNotificationPrivacy() {
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.remindersEnabled) return
         appScope.launch {
             if (container.startupMigrationCoordinator.isReady) {
                 container.syncMoneyNotificationsUseCase.forceRefreshPrivacy()
@@ -58,10 +60,12 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
     }
 
     fun prepareExternalPrivacyEnable() {
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.remindersEnabled) return
         container.syncMoneyNotificationsUseCase.preparePrivacyRefresh()
     }
 
     fun recoverExternalPrivacyEnableFailure() {
+        if (!com.shihuaidexianyu.money.domain.model.MinimalProductPolicy.remindersEnabled) return
         appScope.launch {
             container.syncMoneyNotificationsUseCase.forceRefreshPrivacy()
         }

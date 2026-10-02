@@ -1,23 +1,18 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.R
-import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -29,7 +24,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
@@ -38,7 +32,6 @@ import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 
 private sealed interface EditAccountDialog {
     data object CloseConfirm : EditAccountDialog
-    data class KindSwitch(val target: AccountKind) : EditAccountDialog
 }
 
 @Composable
@@ -51,7 +44,6 @@ fun EditAccountScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<EditAccountDialog?>(null) }
-    var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack, isSaving = state.isSaving)
     val rootDispatcher = LocalRootSnackbarDispatcher.current
     val hiddenDoneMessage = stringResource(R.string.account_hidden_done)
@@ -79,18 +71,6 @@ fun EditAccountScreen(
 
     dialog?.let { currentDialog ->
         when (currentDialog) {
-            is EditAccountDialog.KindSwitch -> {
-                MoneyConfirmDialog(
-                    title = stringResource(R.string.account_kind_switch_title),
-                    message = stringResource(R.string.account_kind_switch_message),
-                    onConfirm = {
-                        viewModel.updateKind(currentDialog.target)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                )
-            }
-
             EditAccountDialog.CloseConfirm -> {
                 MoneyConfirmDialog(
                     title = stringResource(R.string.account_close_title),
@@ -106,20 +86,6 @@ fun EditAccountScreen(
             }
         }
     }
-
-    AccountSettingsPickerDialog(
-        picker = if (state.isClosed) null else picker,
-        colorName = state.colorName,
-        iconName = state.iconName,
-        reminderConfig = state.reminderConfig,
-        onDismiss = { picker = null },
-        onColorSelected = viewModel::updateColorName,
-        onIconSelected = viewModel::updateIconName,
-        onReminderPeriodSelected = viewModel::updateReminderPeriod,
-        onReminderWeekdaySelected = viewModel::updateReminderWeekday,
-        onReminderMonthDaySelected = viewModel::updateReminderMonthDay,
-        onReminderTimeSelected = viewModel::updateReminderTime,
-    )
 
     MoneyFormPage(
         title = stringResource(R.string.account_management_title),
@@ -156,61 +122,12 @@ fun EditAccountScreen(
                 )
             }
         }
-        item {
-            MoneyListSection {
-                if (!state.isClosed) {
-                    AccountVisualListRows(
-                        colorName = state.colorName,
-                        iconName = state.iconName,
-                        onColorClick = { picker = AccountSettingsPicker.COLOR },
-                        onIconClick = { picker = AccountSettingsPicker.ICON },
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = stringResource(R.string.account_kind_title),
-                        subtitle = if (state.kind == AccountKind.INVESTMENT) {
-                            stringResource(R.string.account_kind_investment_hint)
-                        } else {
-                            null
-                        },
-                        showChevron = false,
-                        accessory = {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                AccountKind.entries.forEach { option ->
-                                    FilterChip(
-                                        selected = state.kind == option,
-                                        enabled = !state.isSaving,
-                                        onClick = {
-                                            if (option != state.kind) {
-                                                dialog = EditAccountDialog.KindSwitch(option)
-                                            }
-                                        },
-                                        label = { Text(accountKindLabel(option)) },
-                                    )
-                                }
-                            }
-                        },
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = stringResource(R.string.account_hide),
-                        subtitle = stringResource(R.string.account_hide_description),
-                        showChevron = false,
-                        switchChecked = state.isHidden,
-                        onClick = {
-                            if (!state.isUpdatingHidden && !state.isSaving) {
-                                viewModel.setHidden(!state.isHidden)
-                            }
-                        },
-                        accessory = {
-                            Switch(
-                                checked = state.isHidden,
-                                onCheckedChange = viewModel::setHidden,
-                                enabled = !state.isUpdatingHidden && !state.isSaving,
-                            )
-                        },
-                    )
-                }
+        if (state.isHidden && !state.isClosed) {
+            item {
+                MoneyListRow(title = stringResource(R.string.account_status_hidden),
+                    trailing = stringResource(R.string.minimal_unhide_account), showChevron = false,
+                    enabled = !state.isSaving && !state.isUpdatingHidden,
+                    onClick = { viewModel.setHidden(false) })
             }
         }
         if (state.isClosed) {
@@ -224,17 +141,7 @@ fun EditAccountScreen(
                 }
             }
         } else {
-            item {
-                AccountReminderListSection(
-                    reminderConfig = state.reminderConfig,
-                    onReminderEnabledChange = viewModel::setReminderEnabled,
-                    onReminderPeriodClick = { picker = AccountSettingsPicker.REMINDER_PERIOD },
-                    onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
-                    onReminderMonthDayClick = { picker = AccountSettingsPicker.REMINDER_MONTH_DAY },
-                    onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
-                )
-            }
-                item { MoneySectionHeader(title = stringResource(R.string.account_close_section)) }
+            item { MoneySectionHeader(title = stringResource(R.string.account_close_section)) }
             item {
                 MoneyListSection {
                     MoneyListRow(

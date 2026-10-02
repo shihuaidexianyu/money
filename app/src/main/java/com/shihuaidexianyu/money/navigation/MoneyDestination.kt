@@ -1,15 +1,6 @@
 package com.shihuaidexianyu.money.navigation
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.annotation.StringRes
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -17,18 +8,15 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 sealed class MoneyDestination(
     val route: String,
     @param:StringRes val labelRes: Int,
-    val icon: ImageVector,
-    // Filled twin shown while the destination is selected (Material Symbols FILL behavior).
-    val selectedIcon: ImageVector = icon,
 ) {
-    data object Home : MoneyDestination("home", R.string.home_title, Icons.Rounded.Home, Icons.Filled.Home)
-    data object History : MoneyDestination("history", R.string.nav_history, Icons.Rounded.History, Icons.Filled.History)
-    data object Accounts : MoneyDestination("accounts", R.string.accounts_title, Icons.Rounded.AccountBalanceWallet, Icons.Filled.AccountBalanceWallet)
-    data object Settings : MoneyDestination("settings", R.string.settings_title, Icons.Rounded.Settings)
+    data object Home : MoneyDestination("home", R.string.home_title)
+    data object History : MoneyDestination("history", R.string.nav_history)
+    data object Accounts : MoneyDestination("accounts", R.string.accounts_title)
+    data object Settings : MoneyDestination("settings", R.string.settings_title)
 
     companion object {
         val topLevel: List<MoneyDestination>
-            get() = listOf(Home, Accounts, History)
+            get() = listOf(Accounts, History)
 
         const val CreateAccountRoute = "accounts/create"
         const val ReorderAccountsRoute = "accounts/reorder"
@@ -63,6 +51,7 @@ sealed class MoneyDestination(
             note: String?,
             reminderId: Long?,
             expectedDueAt: Long?,
+            occurredAt: Long? = null,
         ): String {
             val baseRoute = recordCashFlowRoute(direction, accountId)
             val query = buildList {
@@ -70,6 +59,7 @@ sealed class MoneyDestination(
                 note?.takeIf { it.isNotBlank() }?.let { add("purpose=${NavigationQueryCodec.encode(it)}") }
                 reminderId?.takeIf { it > 0 }?.let { add("reminderId=$it") }
                 expectedDueAt?.takeIf { it > 0 }?.let { add("expectedDueAt=$it") }
+                occurredAt?.let { add("occurredAt=$it") }
             }
             return if (query.isEmpty()) baseRoute else "$baseRoute?${query.joinToString("&")}"
         }
